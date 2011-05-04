@@ -885,7 +885,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				data=self.setup.aim[aim]
 				sds=data.GetSDS()
 				if len(sds)>0:
-					text=" %s:" %data.daim[0]
+					text+=" %s:" %data.daim[0]
 					for sd in sds:
 						text+=" %.5f m" %sd
 			resfile.write(text+"\n")
