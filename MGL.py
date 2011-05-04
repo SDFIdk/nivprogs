@@ -879,14 +879,16 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		if self.got_temp_from_inst:
 			resfile.write("T: %s %s\n" %(self.statusdata.GetTemperature(),Funktioner.Nu()))
 		#Added: Write sds
-		for aim in ['back','forward']:
-			data=self.setup.aim[aim]
-			sds=len(data.GetSDS())
-			if len(sds)>0:
-				text="sd-%-16s:" %data.daim
-				for sd in sds:
-					text+=" %.5f m" %sd
-				resfile.write(text+"\n")
+		if len(self.setup.aim['back'].GetSDS())+len(self.setup.aim['forward'].GetSDS())>0:
+			text="sd:"
+			for aim in ['back','forward']:
+				data=self.setup.aim[aim]
+				sds=data.GetSDS()
+				if len(sds)>0:
+					text=" %s:" %data.daim[0]
+					for sd in sds:
+						text+=" %.5f m" %sd
+			resfile.write(text+"\n")
 		code="N"
 		point=""
 		if startstrech:
