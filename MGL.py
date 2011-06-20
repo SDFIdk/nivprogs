@@ -1276,7 +1276,7 @@ class MGLinireader(object): #add more error handling!
 		if self.instrument is None:
 			raise InstrumentError("Instrument ikke defineret i ini-filen!")
 		if len(self.laegter)<2:
-			raise LaegteError(u"Der er ikke defineret mindst to l\u00E6gter i ini-filen")
+			raise LaegteError(u"Der er ikke defineret mindst to laegter i ini-filen") #trouble with unicode here....???
 		return Ini,[self.instrument],self.laegter
 	
 if __name__=="__main__":
