@@ -2,223 +2,171 @@ import os
 import win32ui
 import win32con
 import time
-def TjekMTLFil(filename,directory,Inst1,Inst2):
-	fullfilename=os.path.join(directory,filename)
-	D=0
-	N=0
-	Nopst=0
-	d=0
-	nopst=0
-	hdiff=0
-	f=open(fullfilename,"rb")
-	Nline=0
-	OK=True
-	Slut=None
-	Start=None
-	#Hlines=[]
-	POS=f.tell()
-	line="X"
-	lastpos=POS
-	analysis=False  #only analysis mode
-	test=TjekHeader(fullfilename,Inst1,Inst2) #nej tjek header skal ikke vaere her, sandt nok - hvis ikke ini-fil
-	if not test:
-		analysis=True
-	while len(line)>0:
-		line=f.readline()
-		pos=f.tell()
-		if not line.isspace() and len(line)>1:
-			lastpos=pos  #sidste ikke tomme line
-			line=line.split()
-			tegn=line[0]
-			if tegn=="#":
-				POS=pos #Gem position lige efter hoved
-				#Hlines.append[Nline]
-				D+=float(line[5])
-				Nopst+=int(line[-1])
-				N+=1
-				Slut=line[2]   #Seneste punkt
-	if lastpos!=POS: #hvis der er ikke tomme liner efter sidste hovede, saa skal vi goere noget specielt senere...
-		dofile=True
-	else:
-		dofile=False
-	f.seek(POS)  #Saet efter sidste hoved eller i starten, hvis ingen hoveder....
-	line="X"
-	lastpos=POS
-	while len(line)>0:
-		line=f.readline()
-		pos=f.tell()
-		if not line.isspace() and len(line)>0:
-			lastpos=f.tell() #gem sidste ikke tomme position
-			saveline=line
-			line=line.split()
-			tegn=line[0]
-			if tegn=="*" and line[1]!="B2":  #Hvis B2, saa er sidste hoved ikke skrevet, derfor fejl.
-				POS=pos #Gem position lige efter maaling
-				#print line
-				if line[1] in ["II","B1"]:  #Saa taelles headerslut ikke med!
-					d+=float(line[-2])
-					hdiff+=float(line[-1])
-					nopst+=1
-					if line[1]=="B1":
-						Start=line[2]
-					if saveline.find(Inst1.navn)!=-1: #Hvem baerer hoejden?
-						Inst1.hstate=1
-						Inst2.hstate=0
-					else:
-						Inst1.hstate=0
-						Inst2.hstate=1
-		
-	
-	f.close()  #Luk fil nu.
-	msg=u"Filen er tilsyneladende afsluttet korrekt med et hoved."
-	
-	if (nopst>0 or lastpos!=POS) and not analysis: #ikke i analyse-mode
-		OK=-1   #saerlig situation, kraever et aktivt valg!
-		msg=u"Filen blev ikke afsluttet med et hoved!\nM\u00E5ske blev programmet lukket ved en fejl ved seneste k\u00F8rsel.\n"
-		if lastpos!=POS and nopst==0:
-			msg+=u"Filen indeholder linier, men ingen aflsuttede m\u00E5linger, efter seneste hoved.\n"
-			if Slut!=None:
-				msg+="Seneste basis: "+Slut+"\n"
-		else:
-			OK=-2
-		#print pos,POS,OK	
-		if dofile and OK: #hvis der har vaeret fejlnedlukning til slut
-			copy=os.path.join(directory,"kopi.res")
-			g=open(copy,"w")
-			f=open(fullfilename,"r")
-			save=""
-			savelast=""
-			while f.tell()!=POS:
-				line=f.readline()
-				g.write(line)
-				if len(line)>0 and not line.isspace():
-					if line.split()[0]=="*":
-							savelast=save
-							save=""
-					else:
-						save+=line
-			while len(line)>0:
-				line=f.readline()#gem ikke tomme linier, eller tomme kommentarer!
-				if len(line.strip())>0:
-					if line.strip()[0]!=";":
-						g.write("; "+line) #der gemmes en udkommenteret linie!
-					elif line.find("Tilslutter til fil")==-1:
-						g.write(line)
-			g.write("\n;Tilslutter til fil...\n")
-			g.close()
-			f.close()
-			if OK==-2:
-				msg=savelast
-			
-	if Nopst+nopst==0:
-		msg=u"Filen indeholder ingen korrekte m\u00E5linger!"
-		OK=0
-	elif analysis:
-		OK=-3 #analysis signal til MTL-prog
-		msg=u"Header i fil passer ikke med data i ini-fil. Der kan ikke gemmes nye m\u00E5linger i filen!\n" 
-	
-	return OK, msg, hdiff, d, nopst, D, Nopst, N, Start, Slut
-
-
-def TilslutTilMGLFil(resfile,statusdata): #returnerer ErDetEnMGLfil,ErDerFejliFilen,besked - aendrer input status-klasse
-	OK=TjekHeader(resfile,"MGL")
-	if not OK:
-		return False,False,"Tilsyneladende ikke en MGL-datafil."
-	nheads=0
+import Funktioner
+ATTACH_MSG=";Tilslutter til fil..."
+#En faelles funktion til laesning af MTL/MGL resultatfiler....
+#Returnerer ErDetEnResFil, ErDenOK, msg			
+def ReadResultFile(resfile,statusdata,program="MGL"):
 	projekt="Ikke fundet."
-	f=open(resfile,"r")
-	line=f.readline()
-	while len(line)>0: #find slut paa header
-		line=f.readline()
-		if line.lower().find("dato")!=-1:
-			sline=line.split()
-			statusdata.SetDate(sline[-2])
-			t,m=sline[-1].split(".")
-			tid=int(t)+int(m)/60.0
-			statusdata.SetStartTime(tid)
-		if line.lower().find("projektbeskrivelse")!=-1:
-			projekt=line.split(":")[1].strip()
-		sline=line.split()
-		if len(sline)>0 and sline[0]=="*": #slut paa header her!
-			break
-	statusdata.SetProject(projekt)
-	line=f.readline()
-	while len(line)>0:
-		sline=line.split()
-		if len(sline)>0 and sline[0]=="#": 
-			nheads+=1
-			temp=float(sline[8]) 
-			t,m=sline[4].split(".")
-			tid=int(t)+int(m)/60.0
-			dato=sline[3]
-			if dato!=statusdata.GetDate():
-				statusdata.SetDate(dato)
-				statusdata.SetStartTime(tid)
-			statusdata.AddTemperature(temp,tid)
-		elif len(sline)>0 and sline[0]=="*": #kodelinie
-			code=sline[1]
-			dist=float(sline[2])
-			ddist=float(sline[3])
-			hdiff=float(sline[4])
-			statusdata.AddSetup(hdiff,dist,ddist)
-			if code=="B1":
-				statusdata.SetStart(sline[-1])
-			elif code=="B2":
-				statusdata.SetEnd(sline[-1])
-				statusdata.StartNewStretch()
-		line=f.readline()
-	f.close()
-	nerrors=0
 	msg=""
-	if nheads!=statusdata.GetStretches():
-		nerrors+=1
-		msg+="Antallet af hoveder i filen stemmer ikke med data.\n"
-	if statusdata.GetStretchData()[2]>0:
-		nerrors+=1
-		msg+=u"Filen indeholder tilsyneladende en uafsluttet str\u00E6kning."
-	if nerrors==0:
-		return True, True,"Filen er tilsyneladende OK."
-	else:
-		return True, False, msg
-				
-				
-def TjekHeader(resfile,program="MGL"):
 	f=open(resfile,"r")
-	line=f.readline().upper()
-	if line.find("PROGRAM")!=-1 and line.find(program)!=-1:
-		OK=True
-	else:
-		OK=False
-	f.close()
-	#print "header", OK
-	return OK
-def TjekMTLHeader(fullfilename,Inst1,Inst2):
-	f=open(fullfilename,"r")
 	line=f.readline()
-	while len(line)>0 and line.find("Instrumenter")==-1:
-		line=f.readline()
-	if len(line)<2:
+	today1=Funktioner.Dato()
+	today2=Funktioner.Dato2()
+	has_started=False
+	header_ended=False
+	header_pos=0 #position efter header
+	head_pos=0  #position efter sidste hoved
+	last_pos=0  #position efter sidste ikke tomme linie
+	nheads=0
+	if not(line.upper().find("PROGRAM")!=-1 and line.find(program)!=-1):
 		f.close()
-		return False
-	try:
-		line1=f.readline()  #Instrumentlinier
-		line1s=line1.split()
-		line2=f.readline()
-		line2s=line2.split()
-	except:
-		f.close()
-		return False
-	if len(line1s)<5 or len(line2s)<5:
-		f.close()
-		return False
-	if line1.find(Inst1.navn)==-1: 
-		f.close()
-		return False
-	if line2.find(Inst2.navn)==-1:
-		f.close()
-		return False
+		return False,False,"Tilsyneladende ikke en %s-resultatfil." %program
+	lines=[line]+f.readlines()
 	f.close()
-	return True
+	#Tjek MTL header here#
+	if program=="MTL":
+		instrument_names=statusdata.GetInstrumentNames()
+		if not TjekMTLHeader(lines,statusdata.GetInstruments()):
+			msg+="Instrumenter defineret i resultatfilen er IKKE kompatible med instrumenter i ini-filen!\n"
+	#loop igennem linier for at laese header og hoveder#
+	for linenumber in range(1,len(lines)):
+		line=lines[linenumber]
+		sline=line.split()
+		if len(sline)>0:
+			if not (ATTACH_MSG in line):
+				last_pos=linenumber+1
+				last_line=line
+			if sline[0]=="#": 
+				temp=float(sline[8]) 
+				t,m=sline[4].split(".")
+				tid=int(t)+int(m)/60.0
+				dato=sline[3]
+				D=float(sline[5])
+				try: #gamle MGL-filer har ikke logget antal opst....
+					Nopst=int(sline[9])
+				except:
+					Nopst=0
+				Slut=line[2]   #Seneste punkt
+				if dato==today1 or dato==today2:
+					if not has_started:
+						statusdata.SetDate(today1)
+						statusdata.SetStartTime(tid)
+						has_started=True
+					else:
+						statusdata.AddTemperature(temp,tid)
+				statusdata.AddStretch(Slut,D,Nopst)
+				head_pos=linenumber+1
+				nheads+=1
+			elif sline[0]=="*" and not header_ended:
+					header_ended=True  #marker at headeren er slut
+					header_pos=linenumber+1
+			if "projektbeskrivelse" in line.lower():
+				projekt=line.split(":")[1].strip()
+	statusdata.SetProject(projekt)
+	has_extra_lines=False
+	if nheads>0 and last_pos>head_pos:
+		msg+=u"Der er linier efter sidste hoved.\nM\u00E5ske blev programmet lukket ved en fejl."
+		msg+="\nSidste linie: %s" %last_line
+		start_pos=head_pos
+		has_extra_lines=True
+	elif nheads==0 and last_pos>header_pos:
+		msg+=u"Filen indeholder ingen hoveder, men linier efter headeren.\nM\u00E5ske blev programmet lukket ved en fejl."
+		msg+="\nSidste linie: %s" %last_line
+		start_pos=header_pos
+		has_extra_lines=True
+	elif nheads==0:
+		msg+=u"Filen indeholder ingen m\u00E5linger."
+		return True, False, msg
+	else:
+		msg=u"Filen er tilsyneladende OK."
+	#Hvis der er linier efter sidste hoved: forsoeg at laese maalinger og saette status#
+	if has_extra_lines:
+		mtl_have_warned=False
+		for i in range(start_pos,len(lines)):
+			line=lines[i]
+			sline=line.split()
+			if len(sline)>1 and sline[0]=="*":
+				code=sline[1]
+				if program=="MGL" and code in ["B1","N","B2"]:
+					dist=float(sline[2])
+					ddist=float(sline[3])
+					hdiff=float(sline[4])
+					if code=="B1":
+						Start=sline[-1]
+					elif code=="B2":
+						Slut=sline[-1]
+				elif program=="MTL" and code in ["II","B1","B2"]:
+					dist=float(sline[-2])
+					hdiff=float(sline[-1])
+					if code=="B1":
+						Start=sline[2]
+						check_line=i-4
+						statusdata.SetState(1)
+					elif code=="II":
+						check_line=i
+						statusdata.SetStata(2)
+					elif code=="B2":
+						statusdata.SetState(0)
+						check_line=i
+						Slut=sline[3]
+					if instrument_names[0] in lines[check_line]:
+						statusdata.SetInstrumentState(0) #foerste inst. baerer hoejden
+					else:
+						statusdata.SetInstrumentState(1) #andet inst baerer hoejden
+						if (not (instrument_names[1] in lines[i-4])) and (not mtl_have_warned):
+							msg+=u"\nKan ikke finde aktuelle instrumentnavne i resultatfilen.\n"
+							msg+=u"H\u00F8jdeb\u00E6rende instrument m\u00E5ske ikke sat OK."
+							mtl_have_warned=True
+				statusdata.AddSetup(hdiff,dist,ddist)
+				if code=="B1":
+					statusdata.SetStart(Start)
+				elif code=="B2": #Dette betyder at sidste hoved ikke naaede at blive skrevet da programmet crashede....
+					msg+=u"\nProgrammet er tilsyneladende afsluttet f\u00F8r sidste hoved blev skrevet.\n"
+					msg+=u"Ingen data er dog g\u00E5et tabt! Skriv det manglende hoved ind i resultatfilen."
+					statusdata.SetEnd(Slut)
+					f=open(resfile,"a")
+					f.write("; manglende hoved skrives ind her...\n")
+					f.close()
+					statusdata.StartNewStretch()
+		if statusdata.GetStretches()+statusdata.GetSetups()==0:
+			msg+="\nFilen indeholder ingen m\u00E5linger."
+			return True,False,msg
+	if not (attach_msg in lines[-1]):
+		f=open(resfile,"a")
+		f.write("%s\n" %ATTACH_MSG)
+		f.close()
+	return True,(not has_extra_lines),msg
+			
+				
+				
+				
+			
+# This is only essential in case someone tries to attach to a resfile with instruments defined in a different way than the current instruments!
+def TjekMTLHeader(lines,instruments):
+	nfound=0
+	for line in lines:
+		if "Instrument:" in line:
+			i=line.find("konstanter:")
+			if i==-1:
+				return False
+			else:
+				sline=line[i:].split()
+				try:
+					addconst=float(sline[1])
+					axisconst=float(sline[2])
+				except:
+					f.close()
+					return False
+				else:
+					if instruments[nfound].addconst==addconst and instruments[nfound].axisconst==axisconst:
+						nfound+=1
+		if "* Slut paa header" in line:
+			break
+		if nfound==2:
+			break
+	return (nfound==2)
+	
 def SletTilSenesteHoved(filnavn,directory):
 	resfilnavn=os.path.join(directory,filnavn)
 	copy=os.path.join(directory,"copy.res")

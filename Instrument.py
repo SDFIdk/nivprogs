@@ -60,6 +60,24 @@ class Instrument(object):
 	def Kill(self):
 		self.thread.Kill()
 		self.SetReadState(False)
+
+
+#------------------------MTL instruments defined here----------------------------------------#
+
+class MTLinstrument(Instrument):
+	def __init__(self,name="",addconst=0.0,axisconst=0.0,port=5,baudrate=4800,type="TOPCON"):
+		Instrument.__init__(self,name,port,baudrate,type)
+		self.axisconst=axisconst
+		self.addconst=addconst
+	def PresentYourself(self,short=False): #could be overridden
+		if short:
+			return "Instrument: %s, konstanter: %.5f m %.4f m, type: %s." %(self.name,self.addconst,self.axisconst,self.type)
+		else:
+			return "Instrument: %s,  konstanter: %.5f m %.4f m, type: %s, com-port: %i" %(self.name,self.addconst,self.axisconst,self.type,self.port)	
+
+#------------------------MGL instruments defined here----------------------------------------#
+
+
 class DINI(Instrument):
 	def __init__(self,name="",port=5,baudrate=9600,type="DINI11"):
 		Instrument.__init__(self,name,port,baudrate,type)

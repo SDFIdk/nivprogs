@@ -11,8 +11,8 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.63"
-PROGRAM.date="04-05-11"
+PROGRAM.version="beta 1.62"
+PROGRAM.date="14-04-10"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -22,17 +22,16 @@ Bugs rettes til simlk@kms.dk
 # Updates march 2010: v.1.6- new data class with nametypes. todo: add more attributes... 
 # Fixed FBtest - parameter was always 2.0 regardless of ini-file input.
 # 26.3.10 fixed Zooming in OnPointEnter - method GetCoordinates was missing in DataClass3
-# 04.05.11 Added logging of sds from instrument which are sent in 'auto mode'. Needed to handle sds like hds with first and second reading etc....
+
 #--------------------------------------------------------
 #These classes take care of the datahandling and math involved in a MGL measurement.
 #--------------------------------------------------------
-#Changes: We now need to store sds in result file. So SD-methods etc should reflect HD stuff....
 class MGLaim(object):
 	def __init__(self,mode='detail',aim=1):
 		self.dist=0 #distance
 		self.hds=[] #list of height differences, NB: readings! Not real height differences, as the rod's zero-shift should be added
 		self.rod=None
-		self.sds=[] #std. error returned from instrument. Now stored parallel to the hds...
+		self.sd=None #std. returned from instrument
 		self.nread=None #number of readings of instrument
 		self.point=None
 		self.mode=mode #presicion or detail mode
@@ -43,10 +42,8 @@ class MGLaim(object):
 			self.daim="tilbagesigte"
 		else:
 			self.daim="fremsigte"
-	def SetSD(self,sd): 
-		self.sds=[sd]
-	def AddSD(self,sd):
-		self.sds=[self.sds[0],sd]
+	def SetSD(self,sd):
+		self.sd=sd
 	def SetDistance(self,d):
 		self.dist=d
 	def SetRod(self,rod): #called with MGLlaegte class
@@ -56,7 +53,7 @@ class MGLaim(object):
 	def GetReadingDifference(self):
 		return abs(self.hds[0]-self.hds[1])
 	def SDTest(self,maxval=0.00012):
-		if len(self.sds)==0 or self.sds[-1]<=maxval:
+		if self.sd is None or self.sd<=maxval:
 			return True
 		return False
 	def DistanceTest(self,maxval):
@@ -77,12 +74,6 @@ class MGLaim(object):
 		return (self.hds[1]+self.rod.zeroshift)
 	def GetHDS(self):
 		return (numpy.array(self.hds)+self.rod.zeroshift).tolist()
-	def GetSDS(self):
-		return self.sds
-	def GetSD(self):
-		if len(self.sds)>0:
-			return self.sds[-1]
-		return None
 	def HasReadings(self):
 		if len(self.hds)>0:
 			return True
@@ -98,11 +89,10 @@ class MGLaim(object):
 		#self.dist=0, nope this is an error!
 	def ClearAll(self):
 		self.hds=[]
-		self.sds=[]
 		self.dist=0
 	def ClearLastReading(self):
 		self.hds=self.hds[:-1]
-		self.sds=self.sds[:-1]
+		self.sd=None
 		self.nread=None
 	def ClearReading2(self):
 		if len(self.hds)==2:
@@ -180,8 +170,7 @@ class MGLlaegte(object):
 		return "%s:  nulpunktsfejl: %.5f m" %(self.name,self.zeroshift)
 #----------------------------------------------------------------------------------------------------------------------
 # Frame which handles all measurements in MGL. 
-# State-handling principle: when data arrives via keyboard or data-com it should be displayed in status-box. This is handled by text-events in case of key-press in 'manual mode'. 
-# Data arriving from instrument in 'auto mode' is inserted into text boxes without firing text-events.
+# State-handling principle: when data arrives via keyboard or data-com it should be displayed in status-box. This is handled by text-events. 
 # Errors are indicated by red-colors.
 #  User prompting via dialogs should only be done when a measurement is completed - not for each keypress! i.e. when the user try's to accept the measurement.
 #  In 'precision' mode the prompting should happen earlier, before doing the second measurement.
@@ -469,7 +458,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				fields.EnableTop()
 			else:
 				self.setup.aim[self.aim].AddReading(hd)
-				self.setup.aim[self.aim].AddSD(sd)
+				self.setup.aim[self.aim].SetSD(sd)
 				self.setup.aim[self.aim].SetNRead(nr)
 				fields.hd2.ChangeValue("%.5f" %self.setup.aim[self.aim].GetHD2())
 				fields.hd2.Validate()
@@ -528,7 +517,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#First update f/b- statusboxes 
 		for aim in ['back','forward']:
 			data=self.setup.aim[aim]
-			sd=data.GetSD()
+			sd=data.sd
 			if sd is not None:
 				sd_label="%.2f mm" %(sd*1000)
 				sd_color=Funktioner.State2Col(data.SDTest(self.ini.maxsd))
@@ -878,17 +867,6 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				resfile.write("%*s %*s %*s %*.2f m %*.5f m %*.5f m %s\n" %(-13,data.daim,-11,point,-5,data.rod.name,-4,data.GetDistance(),-7,hd1,-7,hd2,shd))
 		if self.got_temp_from_inst:
 			resfile.write("T: %s %s\n" %(self.statusdata.GetTemperature(),Funktioner.Nu()))
-		#Added: Write sds
-		if len(self.setup.aim['back'].GetSDS())+len(self.setup.aim['forward'].GetSDS())>0:
-			text="sd:"
-			for aim in ['back','forward']:
-				data=self.setup.aim[aim]
-				sds=data.GetSDS()
-				if len(sds)>0:
-					text+=" %s:" %data.daim[0]
-					for sd in sds:
-						text+=" %.5f m" %sd
-			resfile.write(text+"\n")
 		code="N"
 		point=""
 		if startstrech:
@@ -1174,7 +1152,7 @@ class MGLmain(Core.MLBase):
 #---------Start up frame which inits the main frame--------------------#
 class StartFrame(Core.StartFrame):
 	def __init__(self,parent):
-		Core.StartFrame.__init__(self,parent,PROGRAM,MGLinireader(),FileOps.TilslutTilMGLFil,Core.MGLStatusData()) #initialize with these values
+		Core.StartFrame.__init__(self,parent,PROGRAM,MGLinireader(),Core.MGLStatusData()) #initialize with these values
 	def StartProgram(self):
 		instrument=self.instruments[0]
 		mainframe=MGLmain(None,self.resfile,self.instruments[0],self.laegter,self.data,self.gps,self.ini,self.statusdata,self.size)
@@ -1190,7 +1168,7 @@ def main():
 	sys.exit()
 class InstrumentError(Exception):
 	def __init__(self,msg="Kunne ikke definere instrumentet!"):
-		self.msg=value
+		self.msg=msg
 	def __str__(self):
 		return self.msg
 		
@@ -1275,7 +1253,7 @@ class MGLinireader(object): #add more error handling!
 		if self.instrument is None:
 			raise InstrumentError("Instrument ikke defineret i ini-filen!")
 		if len(self.laegter)<2:
-			raise LaegteError(u"Der er ikke defineret mindst to l\u00E6gter i ini-filen")
+			raise LaegteError("Der er ikke defineret mindst to laegter i ini-filen")
 		return Ini,[self.instrument],self.laegter
 	
 if __name__=="__main__":

@@ -108,6 +108,7 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		self.slutpunkt=slut
 		self.Dist+=dist
 		self.Nopst+=nopst
+		self.Nstraek+=1
 	def GetStretches(self):
 		return self.Nstraek
 	def GetStretchData(self):
@@ -116,12 +117,17 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		return self.hdiff
 	def GetDistanceAll(self):
 		return self.Dist
+	def GetDistance(self):
+		return self.dist
 	def GetSetupsAll(self):
 		return self.Nopst
+	def GetSetups(self):
+		return self.nopst
 	def SetProject(self,proj):
 		self.projekt=proj
 	def GetProject(self):
 		return self.projekt
+		
 class MGLStatusData(StatusData):
 		def __init__(self):
 			StatusData.__init__(self)
@@ -142,6 +148,32 @@ class MGLStatusData(StatusData):
 		def SubtractSetup(self,hdiff,dist):
 			self._SubtractSetup(hdiff,dist)
 			self.ddist=self.ddist[0:-1] #we should always have nopst>0 when calling this
+			
+#------This class handles MTL "state logic" - here we keep pointers to the instruments also --------------------#			
+class MTLStatusData(StatusData):
+		def __init__(self):
+			StatusData.__init__(self)
+			self.state=0 #means that we are in the state where 'basis start point' should be made
+			self.instrumentstate=None #defines which instrument that 'holds the height' (should be 0 or 1 tp point into the instrument list)
+			self.instruments=[]
+		def SetInstruments(self,instruments): #This must be set before this class can be used to anything
+			self.instruments=instruments
+		def GetInstruments(self):
+			return self.instruments
+		def GetInstrumentNames(self):
+			return [inst.GetName() for inst in self.instruments]
+		def SetInstrumentState(self,state):
+			self.instrumentstate=state
+		def GetInstrumentState(self):
+			return self.instrumentstate
+		def GetDefiningInstrument(self):
+			return self.instruments[self.instrumentstate]
+		def SetState(self,state):
+			self.state=state
+		def GetState(self):
+			return self.state
+		def GoToNextState(self):
+			self.state=(self.state+1)%3
 			
 class Ini(object):
 	def __init__(self):
@@ -411,7 +443,6 @@ class MLBase(GUI.MainWindow):
 	def OnTTgraph(self,event):
 		theplot=GUI.PlotFrame(self,title="Temperaturgraf")
 		theplot.PlotData(self.statusdata.Ttimes,self.statusdata.Temps,"Temperatur v. tid",'Timer efter opstart '+self.statusdata.GetTimeString())
-	
 	def OnWriteComment(self,e):
 		dlg=GUI.InputDialog(self,"Skriv kommentar i fil",["Kommentar:"])
 		dlg.ShowModal()
@@ -514,7 +545,7 @@ class FilPanel(wx.Panel):
 		return self.fields.GetTextValues()
 		
 class StartFrame(wx.Frame): #a common GUI-base class for setting up things
-	def __init__(self,parent,program,inireader,filereader,statusdata): #inireader is a function handle to something reading an ini-file. inipath is used to check if the inifile really exists
+	def __init__(self,parent,program,inireader,statusdata): #inireader is a function handle to something reading an ini-file. inipath is used to check if the inifile really exists
 		#set font sizes. Smaller for bad resolution, to enable things to fit on screen...
 		dsize=wx.GetDisplaySize()
 		if dsize[1]<750 or dsize[0]<1000:
@@ -527,7 +558,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		self.program=program
 		self.data=None
 		self.inireader=inireader #handle to function reading ini-file
-		self.filereader=filereader #handle to function reading resultfiles
+		#self.filereader=filereader #handle to function reading resultfiles
 		self.statusdata=statusdata
 		#Init the Frame#
 		wx.Frame.__init__(self,parent,title=program.name)
@@ -601,9 +632,10 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		except Exception,msg:
 			GUI.ErrorBox(None,u"Fejl under l\u00E6sning af ini-fil:\n%s\nKan ikke starte programmet."%str(msg))
 			self.Close()
-		#Setup GPS#
-		self.gps=GPS.GpsThread(None,self.ini.gpsport-1,self.ini.gpsbaud) #parent should be None here - because the real parent
-		self.data=DataClass.PointData(self.ini.database)  #is the MLBase-frame which gets the gps as input. 
+		else:
+			#Setup GPS#
+			self.gps=GPS.GpsThread(None,self.ini.gpsport-1,self.ini.gpsbaud) #parent should be None here - because the real parent
+			self.data=DataClass.PointData(self.ini.database)  #is the MLBase-frame which gets the gps as input. 
 	def LogStatus(self):
 		for inst in self.instruments:
 			self.Log(inst.PresentYourself())
@@ -712,16 +744,19 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			dlg.Destroy()
 	def AddToFile(self):
 		try:
-			isres,isok,msg=self.filereader(self.resfile,self.statusdata)
+			isres,isok,msg=FileOps.ReadResultFile(self.resfile,self.statusdata,self.program.type)  #was self.filereader(self.resfile,self.statusdata)
 		except Exception,msg:
-			GUI.ErrorBox(self,u"Fejl under l\u00E6sning af fil:\n %s\nMuligvis er den forkert formatteret." %str(msg))
+			GUI.ErrorBox(self,u"Fejl under l\u00E6sning af fil:\n %s\nMuligvis er den forkert formateret." %str(msg))
 			return
 		if isres:
 			data=self.statusdata
 			self.fil.field2.SetValue(data.GetProject())
 			imsg="Data for resultatfil:\n"
 			imsg+="Projekt: %s\n" %data.GetProject()
-			imsg+=u"Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
+			imsg+=u"Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
+			if data.GetSetups()>0:
+				imsg+=u"Uafsluttet str\u00E6kning:\n"
+				imsg+=u"Fra: %s, #opst: %i, #afstand: %.2f m" %(data.GetStart(),data.GetSetups(),data.GetDistance())
 			msg=imsg+msg+"\n\nVil du tilslutte til filen?"
 			dlg=GUI.OKdialog(self,u"Bem\u00E6rk!",msg)
 			dlg.ShowModal()
@@ -732,6 +767,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			else:
 				self.fil.field1.Clear()
 				self.fil.field2.Clear()
+				data.Clear()
 		else:
 			GUI.ErrorBox(self,"Filen er tilsyneladende ikke en korrekt resultatfil.")
 			
@@ -751,7 +787,7 @@ def CompareHdiffs(win,file,data): #a bit messy, could be better
 	selections=[]
 	heads=FileOps.Hoveder(file)
 	if len(heads)==0:
-		GUI.ErrorBox(self,"Ingen hoveder fundet i filen!")
+		GUI.ErrorBox(win,"Ingen hoveder fundet i filen!")
 		return
 	list=["Fra %s til %s" %(felt[0],felt[1]) for felt in heads]
 	msg=FileOps.FilStatus(file)
