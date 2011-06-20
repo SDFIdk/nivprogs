@@ -132,7 +132,7 @@ def ReadResultFile(resfile,statusdata,program="MGL"):
 		if statusdata.GetStretches()+statusdata.GetSetups()==0:
 			msg+="\nFilen indeholder ingen m\u00E5linger."
 			return True,False,msg
-	if not (attach_msg in lines[-1]):
+	if not (ATTACH_MSG in lines[-1]):
 		f=open(resfile,"a")
 		f.write("%s\n" %ATTACH_MSG)
 		f.close()
