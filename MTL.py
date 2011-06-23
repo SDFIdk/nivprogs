@@ -72,66 +72,45 @@ class MTLmain(Core.MLBase):
 		
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 #-------------------------Various Wx Windows Specialized for MTL -------------------------------------------------#
-
-class PunktPanel(wx.Panel):
-	def __init__(self, parent,low=-33,high=33):
-		wx.Panel.__init__(self, parent,style=wx.RAISED_BORDER|wx.TAB_TRAVERSAL)
-		self.felt1=GUI.MyNum(self,0,5,(100,-1),fontsize=16)   #Fem meter laegter maks!
-		self.felt2=GUI.MyNum(self,0,181,(120,-1),fontsize=16)
-		self.felt3=GUI.MyNum(self,179,361,(120,-1),fontsize=16)
-		self.felt4=GUI.MyNum(self,low,high,(100,-1),style=wx.TE_READONLY,fontsize=16)
-		self.sizer=wx.BoxSizer(wx.HORIZONTAL)
-		self.sizer.Add(self.felt1,0,wx.CENTER,5)
-		self.sizer.Add(self.felt2,0,wx.CENTER,5)
-		self.sizer.Add(self.felt3,0,wx.CENTER,5)
-		self.sizer.Add(self.felt4,0,wx.CENTER,5)
-		self.SetSizerAndFit(self.sizer)
-class TopText(wx.Panel):
-	def __init__(self, parent):
-		wx.Panel.__init__(self, parent)
-		self.text1=GUI.MyText(self,u"M\u00E6rke",12,style=wx.ALIGN_CENTER)
-		self.text2=GUI.MyText(self,"1. kikkertstilling",12,style=wx.ALIGN_CENTER)
-		self.text3=GUI.MyText(self,"2. kikkertstilling",12,style=wx.ALIGN_CENTER)
-		self.text4=GUI.MyText(self,"Indeksfejl ('')",12,style=wx.ALIGN_CENTER)
-		self.sizer=wx.BoxSizer(wx.HORIZONTAL)
-		self.sizer.Add(self.text1,1,wx.EXPAND,5)
-		self.sizer.Add(self.text2,1,wx.EXPAND,5)
-		self.sizer.Add(self.text3,1,wx.EXPAND,5)
-		self.sizer.Add(self.text4,1,wx.EXPAND,5)
-		self.SetSizerAndFit(self.sizer)
-		
+#Panel til input af basismaalinger....
 class OverfPanel(wx.Panel):
-	def __init__(self, parent,low=-33,high=33):
-		wx.Panel.__init__(self, parent)
-		self.row0=TopText(self)
-		self.row1=PunktPanel(self,low,high)
-		self.row2=PunktPanel(self,low,high)
-		self.row3=PunktPanel(self,low,high)
-		self.row4=PunktPanel(self,low,high)
-		self.sizer=wx.BoxSizer(wx.VERTICAL)
-		self.sizer.Add(self.row0,1,wx.EXPAND,5)
-		self.sizer.Add(self.row1,1,wx.ALL,5)
-		self.sizer.Add(self.row2,1,wx.ALL,5)
-		self.sizer.Add(self.row3,1,wx.ALL,5)
-		self.sizer.Add(self.row4,1,wx.ALL,5)
+	def __init__(self,parent,low=-33,high=33): #input graenser for indeksfejl advarsler...
+		wx.Panel.__init__(self,parent)
+		self.sizer=wx.GridSizer(5,4,5,5)
+		headings=[u"M\u00E6rke","1. kikkertstilling","2. kikkertstilling","Indeksfejl ('')"]
+		for text in headings:
+			field=GUI.MyText(self,text,14,style=wx.ALIGN_CENTER)
+			self.sizer.Add(field,1,wx.ALL,0)
+		self.columns=[[],[],[],[]]
+		for row in range(4):
+			field1=GUI.MyNum(self,0,5,(160,-1),fontsize=16)
+			field2=GUI.MyNum(self,0,181,(160,-1),fontsize=16)
+			field3=GUI.MyNum(self,179,361,(160,-1),fontsize=16)
+			field4=GUI.MyNum(self,low,high,(160,-1),fontsize=16,style=wx.TE_READONLY)
+			self.columns[0].append(field1)
+			self.columns[1].append(field2)
+			self.columns[2].append(field3)
+			self.columns[3].append(field4)
+			self.sizer.Add(field1,1,wx.ALL,0)
+			self.sizer.Add(field2,1,wx.ALL,0)
+			self.sizer.Add(field3,1,wx.ALL,0)
+			self.sizer.Add(field4,1,wx.ALL,0)
 		self.SetSizerAndFit(self.sizer)
-		self.col1=[self.row0.text1,self.row1.felt1,self.row2.felt1,self.row3.felt1,self.row4.felt1]
-		self.col2=[self.row0.text2,self.row1.felt2,self.row2.felt2,self.row3.felt2,self.row4.felt2]
-		self.col3=[self.row0.text3,self.row1.felt3,self.row2.felt3,self.row3.felt3,self.row4.felt3]
-		self.col4=[self.row0.text4,self.row1.felt4,self.row2.felt4,self.row3.felt4,self.row4.felt4]
-		self.cols=[self.col1,self.col2,self.col3,self.col4]
-	def EnableCol(self,col):
-		for field in col:
-			field.Enable()
-	def DisableCol(self,col):
-		for field in col:
+	def DisableCol(self,i):
+		for field in self.columns[i]:
 			field.Enable(0)
+	def EnableCol(self,i):
+		for field in self.columns[i]:
+			field.Enable(1)
+
+#Boks med felt til pkt. og drop-down box til laegtevalg
 class MTLChoiceBox(GUI.StuffWithBox):
 	def __init__(self,parent,laegter):
 		GUI.StuffWithBox.__init__(self,parent,label="Valg",style="vertical")
-		self.point=GUI.MyTextField(self,12)
+		self.point=GUI.MyTextField(self,12,size=(150,-1))
 		pointsizer=GUI.FieldWithLabel(self,self.point,"Punkt:",12)
 		self.laegtebox=wx.Choice(self,choices=laegter,size=(150,-1))
+		self.laegtebox.SetFont(GUI.DefaultFont(12))
 		laegtesizer=GUI.FieldWithLabel(self,self.laegtebox,u"L\u00E6gte:",12)
 		self.AddStuff(pointsizer)
 		self.AddStuff(laegtesizer)
@@ -156,90 +135,92 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.valg=MTLChoiceBox(self,self.laegter)
 		#self.valg.kortbutton.Bind(wx.EVT_BUTTON,self.OnKort)
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
-		self.main=GUI.ButtonBox(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring")
+		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
 		self.maal=OverfPanel(self,-20,20)
 		self.regnebox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],label="Tjek",fontsize=12)
 		self.regnebox.Update([])
-		#self.parent.Log("Sigte: %s" %(Funktioner.Bool2sigte(Inst.sigte)))
-		self.valg.SetFocus()
-		self.maal.Enable(0)
-		self.main.Enable(0)
+		self.parent.Log("Sigte: %s" %(Funktioner.Bool2sigte(self.sigte)))
+		#EVENT HANDLING SETUP#
+		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCancel)
+		#self.maal.Enable(0)
+		#self.main.Enable(0)
 		#self.valg.gobutton.Bind(wx.EVT_BUTTON,self.OnGo)
 		self.CreateRow()
 		#sizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.AddItem(self.status,0)
 		self.AddItem(self.map,0)
-		self.AddItem(self.valg,0)
-		self.AddRow(2)
-		self.CreateRow()
-		self.AddItem(self.main,wx.LEFT)
-		self.AddRow(1,wx.LEFT|wx.ALL)
+		sizer_right=wx.BoxSizer(wx.VERTICAL)
+		sizer_right.Add(self.valg,1,wx.ALL,5)
+		sizer_right.Add(self.main,1,wx.ALL,5)
+		self.AddItem(sizer_right,0)
+		self.AddRow(2,wx.CENTER|wx.ALL)
+		#self.CreateRow()
+		#self.AddItem(self.main,1)
+		#self.AddRow(1,wx.LEFT|wx.ALL)
 		#self.AddItem(sizer)
 		self.CreateRow()
 		#sizer=wx.BoxSizer(wx.HORIZONTAL)
-		self.AddItem(self.maal)
-		self.AddItem(self.regnebox)
-		self.AddRow(2)
+		self.AddItem(self.maal,1)
+		self.AddItem(self.regnebox,1,wx.RIGHT)
+		self.AddRow(1)
 		#self.AddItem(sizer)
 		
 		#self.main.knap3.Bind(wx.EVT_BUTTON,self.Omvalg)
 		#self.main.knap2.Bind(wx.EVT_BUTTON,self.Manuel)
 		#self.main.knap1.Bind(wx.EVT_BUTTON,self.OnAuto)
 		i=1
-		for field in self.maal.col1[1:]:
-			field.Bind(wx.EVT_TEXT,self.Validate)
-			field.grandfather=self
-			field.auto=False
-			field.overwrite=True
-			field.sound=True
-			#Navigation
-			field.nexttab=self.maal.col2[i]
-			if i==1:
-				pt=4
-			else:
-				pt=i-1
-			field.prevtab=self.maal.col3[pt]
-			if i<4:	
-				field.next=self.maal.col1[i+1]
-			else:
-				field.next=self.maal.col2[1]
-			i+=1
-		i=1
-		for field in self.maal.col2[1:]:
-			field.sound=True
-			field.Bind(wx.EVT_TEXT,self.Validate)
-			field.grandfather=self  #For auto action
-			field.cid=i-1  #Til Auto fra feltet og frem
-			field.type="Z" #skal vaere decimalgrader
-			#Navigation
-			field.nexttab=self.maal.col3[i]
-			field.prevtab=self.maal.col1[i]
-			if i!=4: 
-				field.next=self.maal.col2[i+1]
-			else:
-				field.next=self.maal.col3[4]
-			i+=1
-		i=1		
-		for field in self.maal.col3[1:]:
-			field.sound=True
-			field.Bind(wx.EVT_TEXT,self.Validate)
-			field.grandfather=self  #For auto action
-			field.cid=8-i #omvendt raekkefoelge i 2.kikkerstilling
-			field.type="Z" #skal vaere decimalgrader
-			#Navigation
-			field.prevtab=self.maal.col2[i]
-			nt=(i % 4)+1
-			field.nexttab=self.maal.col1[nt]
-			if i!=1: 
-				field.next=self.maal.col3[i-1]
-			else:
-				field.next=self.main
-			i+=1
-		self.maal.col3[1].Bind(wx.EVT_TEXT_ENTER,self.SidsteRetur)  #NB-ogsaa navigation!!!!
+		#for field in self.maal.col1[1:]:
+		#	field.Bind(wx.EVT_TEXT,self.Validate)
+		#	field.grandfather=self
+		#	field.auto=False
+		#	field.overwrite=True
+		#	field.sound=True
+		#	#Navigation
+		#	field.nexttab=self.maal.col2[i]
+		#	if i==1:
+		#		pt=4
+		#	else:
+		#		pt=i-1
+		#	field.prevtab=self.maal.col3[pt]
+		#	if i<4:	
+		#		field.next=self.maal.col1[i+1]
+		#	else:
+		#		field.next=self.maal.col2[1]
+		#	i+=1
+		#i=1
+		#for field in self.maal.col2[1:]:
+		#	field.sound=True
+		#	field.Bind(wx.EVT_TEXT,self.Validate)
+		#	field.grandfather=self  #For auto action
+		#	field.cid=i-1  #Til Auto fra feltet og frem
+		#	field.type="Z" #skal vaere decimalgrader
+		#	#Navigation
+		#	field.nexttab=self.maal.col3[i]
+		#	field.prevtab=self.maal.col1[i]
+		#	if i!=4: 
+		#		field.next=self.maal.col2[i+1]
+		#		field.next=self.maal.col3[4]
+		#	i+=1
+		#i=1		
+		#for field in self.maal.col3[1:]:
+		#	field.sound=True
+		#	field.Bind(wx.EVT_TEXT,self.Validate)
+		#	field.grandfather=self  #For auto action
+		#	field.cid=8-i #omvendt raekkefoelge i 2.kikkerstilling
+		# 	field.prevtab=self.maal.col2[i]
+		#	nt=(i % 4)+1
+		#	field.nexttab=self.maal.col1[nt]
+		#	if i!=1: 
+		#		field.next=self.maal.col3[i-1]
+		#	else:
+		#		field.next=self.main
+		#	i+=1
+		#self.maal.col3[1].Bind(wx.EVT_TEXT_ENTER,self.SidsteRetur)  #NB-ogsaa navigation!!!!
 		#self.main.under.knap2.Bind(wx.EVT_BUTTON,self.Afbryd) #afbryder-knap
 		#self.main.under.knap1.Bind(wx.EVT_BUTTON,self.CloseOK)
 		#self.Bind(EVT_AUTO,self.OnEvtAuto)
 		self.ShowMe()
+		self.valg.SetFocus()
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
 		if self.parent.gps.isAlive():
 			self.parent.map.DetachGPS()
@@ -248,7 +229,9 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.map.UpdatePoints() #uses same data as parent, so this influences the parents map as well.
 		else:
 			self.map.SetPanMode()
-		self.map.SetMap()	
+		self.map.SetMap()
+	def OnCancel(self,event):
+		self.Close()
 	def SidsteRetur(self,event):
 		self.InitState()
 	def OnKort(self,event):
