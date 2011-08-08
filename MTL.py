@@ -4,7 +4,7 @@ import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
 from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
 import Instrument 
-import numpy 
+import numpy as np
 import Funktioner
 import FileOps
 import sys
@@ -12,12 +12,16 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
 PROGRAM.version="beta 0.1"
-PROGRAM.date="15-06-11"
-PROGRAM.type="MTL"
+PROGRAM.date="08-08-11"
+PROGRAM.type="MTL" #vigtigt signak til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
 Bugs rettes til simlk@kms.dk
 """
+#---------Various Global Vars--------------#
+RADIUS=6385000.0   #Jordradius.
+MAX_ROD=30.0      #Maximum rod size accepted in input fields
+MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
 #---------Main Windows defined here--------------------------------------#
 class MTLmain(Core.MLBase):
 	def __init__(self,parent,resfil,instruments,laegter,data,gps,ini,statusdata,size):
@@ -59,10 +63,11 @@ class MTLmain(Core.MLBase):
 			self.buttonboxes[0].button[2].Enable(instrumentstate>=0)
 	def OnBasis1(self,event):
 		self.Log("Basis1")
-		win=MakeBasis(self)
+		win=MakeBasis(self,0)
 		win.InitializeMap()
 	def OnBasis2(self,event):
-		self.Log("Basis2")
+		win=MakeBasis(self,1)
+		win.InitializeMap()
 	def OnTransferHeight(self,event):
 		self.Log("Transfer height")
 	def OnInstrument2Instrument(self,event):
@@ -72,10 +77,24 @@ class MTLmain(Core.MLBase):
 		
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 #-------------------------Various Wx Windows Specialized for MTL -------------------------------------------------#
+
+		
+class ZDistanceField(GUI.MyTextField):
+	def __init__(self,parent,low,high,zdist_handler,*args,**kwargs):
+		self.low=low
+		self.high=high
+		self.zdist_handler=zdist_handler
+		GUI.MyTextField.__init__(self,parent,*args,**kwargs)
+		self.SetValidator(self.ZValidator)
+	def ZValidator(self,text): #special validator MTL zenith distances where the format should be ddd.mmss
+		return self.zdist_handler(text,self.low,self.high)
+		
 #Panel til input af basismaalinger....
 class OverfPanel(wx.Panel):
-	def __init__(self,parent,low=-33,high=33): #input graenser for indeksfejl advarsler...
+	def __init__(self,parent,basis_setup,low=-33,high=33): #input graenser for indeksfejl advarsler...
 		wx.Panel.__init__(self,parent)
+		self.parent=parent
+		self.setup=basis_setup #a class which handles field validation, data storage and calculation
 		self.sizer=wx.GridSizer(5,4,5,5)
 		headings=[u"M\u00E6rke","1. kikkertstilling","2. kikkertstilling","Indeksfejl ('')"]
 		for text in headings:
@@ -83,10 +102,12 @@ class OverfPanel(wx.Panel):
 			self.sizer.Add(field,1,wx.ALL,0)
 		self.columns=[[],[],[],[]]
 		for row in range(4):
-			field1=GUI.MyNum(self,0,5,(160,-1),fontsize=16)
-			field2=GUI.MyNum(self,0,181,(160,-1),fontsize=16)
-			field3=GUI.MyNum(self,179,361,(160,-1),fontsize=16)
-			field4=GUI.MyNum(self,low,high,(160,-1),fontsize=16,style=wx.TE_READONLY)
+			field1=GUI.MyNum(self,0,MAX_ROD,size=(160,-1),fontsize=16) #The 'high' value here is set in the global var MAX_ROD
+			field2=GUI.MyTextField(self,size=(160,-1),fontsize=16)
+			field3=GUI.MyTextField(self,size=(160,-1),fontsize=16)
+			field2.SetValidator(basis_setup.Position1Validator)
+			field3.SetValidator(basis_setup.Position2Validator)
+			field4=GUI.MyNum(self,low,high,size=(160,-1),fontsize=16,style=wx.TE_READONLY)
 			self.columns[0].append(field1)
 			self.columns[1].append(field2)
 			self.columns[2].append(field3)
@@ -95,6 +116,23 @@ class OverfPanel(wx.Panel):
 			self.sizer.Add(field2,1,wx.ALL,0)
 			self.sizer.Add(field3,1,wx.ALL,0)
 			self.sizer.Add(field4,1,wx.ALL,0)
+		#Set up event handling and field navigation#
+		for col in range(3):
+			for row in range(4):
+				field=self.columns[col][row]
+				if col>0:
+					field.Bind(wx.EVT_CHAR,self.OnChar)
+				field.Bind(wx.EVT_TEXT,self.OnText)
+				nextrow=(row+1)%4
+				nextcol=(col+int(row==3))%3
+				nexttabrow=(row+int(col==2))%4
+				nexttabcol=(col+1)%3
+				prevtabcol=(col-1)%3
+				prevtabrow=(row+3*(int(col==0)))%4
+				field.SetNextReturn(self.columns[nextcol][nextrow])
+				field.SetNextTab(self.columns[nexttabcol][nexttabrow])
+				field.SetPrev(self.columns[prevtabcol][prevtabrow])
+				field.ij_id=[row,col] #a custom id, to identify the field position in event handlers....
 		self.SetSizerAndFit(self.sizer)
 	def DisableCol(self,i):
 		for field in self.columns[i]:
@@ -102,7 +140,37 @@ class OverfPanel(wx.Panel):
 	def EnableCol(self,i):
 		for field in self.columns[i]:
 			field.Enable(1)
-
+	def OnText(self,event): 
+		#Validate only the field issuing the event#
+		field=event.GetEventObject()
+		ok=field.Validate()
+		row,col=field.ij_id
+		self.setup.SetValidity(row,col,ok)
+		if ok:
+			self.setup.SetData(row,col,self.columns[col][row].GetValue())
+			row_validity=self.setup.IsValid(row=row)
+			if row_validity:
+				self.columns[3][row].SetValue("%.0f"%self.setup.GetIndexError(row))
+				self.columns[3][row].Validate()
+			if self.setup.IsValid():
+				self.parent.UpdateHeightStatus()
+			if col==0 and row<3: #marks should decrease..... Not really reflected anywhere else... This is just a simple signal to the user....
+				mark=float(field.GetMyValue())
+				self.columns[0][row+1].SetBounds(0,mark-MIN_DECREMENT)  #uses a global var for this 'minimal' step...
+		event.Skip()
+	def OnChar(self,event): #easier to handle char events here, rather than via the standard 'keyhandler' setup of MyTextField....
+		key=event.GetKeyCode()
+		field=event.GetEventObject()
+		row,col=field.ij_id
+		if key==42:
+			self.parent.SetAutoMode()
+		elif key==47:
+			self.parent.SetSingleAutoMode(field)
+		else:
+			event.Skip() #so that text appears in the field....
+	def GetData(self):
+		pass
+		
 #Boks med felt til pkt. og drop-down box til laegtevalg
 class MTLChoiceBox(GUI.StuffWithBox):
 	def __init__(self,parent,laegter):
@@ -110,43 +178,53 @@ class MTLChoiceBox(GUI.StuffWithBox):
 		self.point=GUI.MyTextField(self,12,size=(150,-1))
 		pointsizer=GUI.FieldWithLabel(self,self.point,"Punkt:",12)
 		self.laegtebox=wx.Choice(self,choices=laegter,size=(150,-1))
+		self.laegtebox.SetSelection(0)
 		self.laegtebox.SetFont(GUI.DefaultFont(12))
 		laegtesizer=GUI.FieldWithLabel(self,self.laegtebox,u"L\u00E6gte:",12)
 		self.AddStuff(pointsizer)
 		self.AddStuff(laegtesizer)
 		self.FinishUp()
+	def SetPoint(self,point):
+		self.point.SetValue(point)
+	def GetPoint(self):
+		return self.point.GetValue().strip()
+	def GetRod(self):
+		return self.laegtebox.GetSelection()
 #------------------------- MakeBasis Frame defined here --------------------------------------------------------------#
 class MakeBasis(GUI.FullScreenWindow):
-	def __init__(self, parent):
+	def __init__(self, parent,instrument_number=0):
 		self.laegter=["a","b"]
+		self.instrument_number=instrument_number #the height status after succesful measurements should be this number.... Instrument that 'carries' height.
 		self.statusdata=parent.statusdata
 		self.maerker=[]
-		self.colOK=False
-		self.rowOK=[0,0,0,0]
-		self.mode="NA"
-		self.fields=[]
+		self.mode=0 #modes are 0: manual and 1: auto 2; single auto - i.e. just one field....
+		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
+		self.modecolors=["green","red","yellow"]
+		self.auto_fields=[]
 		self.sigte=-2*int((self.statusdata.GetSetups())==0)+1
-		self.Inst=self.statusdata.GetInstruments()[0]
+		self.setup=MTLBasisSetup(self.sigte)
+		self.instrument=self.statusdata.GetInstruments()[instrument_number]
 		GUI.FullScreenWindow.__init__(self, parent)
 		self.ini=self.parent.ini  #data passed in ini-file, error limits relevant here
-		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Punkt: ",u"H\u00F8jdeforskel: ","Mode: "])
-		self.status.Update([self.Inst.GetName(),Funktioner.Bool2sigte(self.sigte),"NA"])
-		punkter=[]
+		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "])
 		self.valg=MTLChoiceBox(self,self.laegter)
+		self.valg.SetPoint("ost")
 		#self.valg.kortbutton.Bind(wx.EVT_BUTTON,self.OnKort)
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
+		self.map.RegisterPointFunction(self.PointNameHandler) #handles left-clicks on points in map - sets name in point box
 		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
-		self.maal=OverfPanel(self,-20,20)
-		self.regnebox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],label="Tjek",fontsize=12)
+		self.maal=OverfPanel(self,self.setup,-20,20)
+		self.regnebox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: ",u"H\u00F8jde:"],label="Beregning",fontsize=12)
 		self.regnebox.Update([])
 		self.parent.Log("Sigte: %s" %(Funktioner.Bool2sigte(self.sigte)))
 		#EVENT HANDLING SETUP#
+		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetAutoMode)
+		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetManualMode)
+		self.main.button[2].Bind(wx.EVT_BUTTON,self.OnAccept)
 		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCancel)
-		#self.maal.Enable(0)
-		#self.main.Enable(0)
-		#self.valg.gobutton.Bind(wx.EVT_BUTTON,self.OnGo)
+		#LAYOUT#
+		self.UpdateStatus()
 		self.CreateRow()
-		#sizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.AddItem(self.status,0)
 		self.AddItem(self.map,0)
 		sizer_right=wx.BoxSizer(wx.VERTICAL)
@@ -154,71 +232,10 @@ class MakeBasis(GUI.FullScreenWindow):
 		sizer_right.Add(self.main,1,wx.ALL,5)
 		self.AddItem(sizer_right,0)
 		self.AddRow(2,wx.CENTER|wx.ALL)
-		#self.CreateRow()
-		#self.AddItem(self.main,1)
-		#self.AddRow(1,wx.LEFT|wx.ALL)
-		#self.AddItem(sizer)
 		self.CreateRow()
-		#sizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.AddItem(self.maal,1)
 		self.AddItem(self.regnebox,1,wx.RIGHT)
 		self.AddRow(1)
-		#self.AddItem(sizer)
-		
-		#self.main.knap3.Bind(wx.EVT_BUTTON,self.Omvalg)
-		#self.main.knap2.Bind(wx.EVT_BUTTON,self.Manuel)
-		#self.main.knap1.Bind(wx.EVT_BUTTON,self.OnAuto)
-		i=1
-		#for field in self.maal.col1[1:]:
-		#	field.Bind(wx.EVT_TEXT,self.Validate)
-		#	field.grandfather=self
-		#	field.auto=False
-		#	field.overwrite=True
-		#	field.sound=True
-		#	#Navigation
-		#	field.nexttab=self.maal.col2[i]
-		#	if i==1:
-		#		pt=4
-		#	else:
-		#		pt=i-1
-		#	field.prevtab=self.maal.col3[pt]
-		#	if i<4:	
-		#		field.next=self.maal.col1[i+1]
-		#	else:
-		#		field.next=self.maal.col2[1]
-		#	i+=1
-		#i=1
-		#for field in self.maal.col2[1:]:
-		#	field.sound=True
-		#	field.Bind(wx.EVT_TEXT,self.Validate)
-		#	field.grandfather=self  #For auto action
-		#	field.cid=i-1  #Til Auto fra feltet og frem
-		#	field.type="Z" #skal vaere decimalgrader
-		#	#Navigation
-		#	field.nexttab=self.maal.col3[i]
-		#	field.prevtab=self.maal.col1[i]
-		#	if i!=4: 
-		#		field.next=self.maal.col2[i+1]
-		#		field.next=self.maal.col3[4]
-		#	i+=1
-		#i=1		
-		#for field in self.maal.col3[1:]:
-		#	field.sound=True
-		#	field.Bind(wx.EVT_TEXT,self.Validate)
-		#	field.grandfather=self  #For auto action
-		#	field.cid=8-i #omvendt raekkefoelge i 2.kikkerstilling
-		# 	field.prevtab=self.maal.col2[i]
-		#	nt=(i % 4)+1
-		#	field.nexttab=self.maal.col1[nt]
-		#	if i!=1: 
-		#		field.next=self.maal.col3[i-1]
-		#	else:
-		#		field.next=self.main
-		#	i+=1
-		#self.maal.col3[1].Bind(wx.EVT_TEXT_ENTER,self.SidsteRetur)  #NB-ogsaa navigation!!!!
-		#self.main.under.knap2.Bind(wx.EVT_BUTTON,self.Afbryd) #afbryder-knap
-		#self.main.under.knap1.Bind(wx.EVT_BUTTON,self.CloseOK)
-		#self.Bind(EVT_AUTO,self.OnEvtAuto)
 		self.ShowMe()
 		self.valg.SetFocus()
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
@@ -230,165 +247,69 @@ class MakeBasis(GUI.FullScreenWindow):
 		else:
 			self.map.SetPanMode()
 		self.map.SetMap()
+	def PointNameHandler(self,name):
+		name=Pointname2Numformat(name)
+		self.valg.SetPoint(name)
 	def OnCancel(self,event):
-		self.Close()
-	def SidsteRetur(self,event):
-		self.InitState()
-	def OnKort(self,event):
-		GPS=self.parent.GPS
-		GPS.window.Show()
-		GPS.window.Maximize(0)
-	def OnClick(self,event):
-		GPS=self.parent.GPS 
-		if GPS.window.selected!=-1:
-			j=GPS.window.selected
-			self.valg.punkt.SetValue("%s" %GPS.window.pnavne[j])
-			
-	def Manuel(self,event):
-		if self.mode!="MANUEL":
-			self.ManuelMode()
+		quit=True
+		valid=self.setup.GetValidity()[:,1:].sum()
+		if valid>1:
+			dlg=GUI.OKdialog(self,"Vil du afslutte?",
+			u"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5 du vil aflsutte?"%valid)
+			dlg.ShowModal()
+			quit=dlg.WasOK()
+			dlg.Destroy()
+		if quit:
+			self.Log(u"Afbryder basism\u00E5ling.")
+			self.Close()
+	def OnAccept(self,event):
+		self.Log("Accept")
+		mask=self.maal.GetValidity()
+		if not mask.all():
+			GUI.ErrorBox(self,u"Udf\u00F8r alle m\u00E5linger f\u00F8rst")
 		else:
-			self.InitState()
-			
-	def OnEvtAuto(self,event):
-		val=event.value
-		if self.mode=="AUTO" or self.mode=="SINGLE AUTO":
-			if val[0]=="E":
-				FejlBoks(self,str(val[1]))
-				self.ManuelMode()
-				return
-			elif val[0]!="<":
-				FejlBoks(self,u"Forkert input!\nForventede en vinkelm\u00E5ling.")
-				self.ManuelMode()
-				return
+			self.CloseOK()
+	def OnSetAutoMode(self,event):
+		self.SetAutoMode()
+	def OnSetManualMode(self,event):
+		self.SetManualMode()
+	def SetAutoMode(self):
+		mask=self.maal.GetValidity()
+		maerker_ok=(mask[:,0].sum()==4) 
+		if maerker_ok:
+			if self.mode==0:
+				self.mode=1
+				for col in range(1,3):
+					self.maal.DisableCol(col)
+				#....etc......#
+				self.UpdateStatus()
 			else:
-				val=val[1]
-			if self.mode=="AUTO":
-				self.fields[0].SetValue(str(val))
-				self.fields[0].Enable()
-				self.fields=self.fields[1:]
-				if len(self.fields)==0:
-					self.Release()
-			if self.mode=="SINGLE AUTO":
-				self.fields[0].SetValue(str(val))
-				self.fields[0].Enable()
-				#self.fields[0].SetFocus()
-				self.ManuelMode()
-	def Single_Auto(self,field):
-		if not self.thread.isAlive():  #Kan ogsaa tjekke for en auto-thread om noedvendigt! 
-			field.Enable(0)
-			self.mode="SINGLE AUTO"
-			self.fields=[field]
-			self.parent.Log("'Auto Mode' startes i enkelt felt.")
-			self.Auto()
+				GUI.ErrorBox(self,u"Skift til manuel mode f\u00F8rst")
 		else:
-			WaitForThread(self)
-	def Call_Auto(self,cid):
-		if self.mode=="MANUEL":
-			self.fields=self.maal.col2[1:]
-			for i in range(0,4):  #da reverse() modificerer listen!
-				self.fields.append(self.maal.col3[4-i])
-			self.fields=self.fields[cid:]
-			for field in self.fields:
-				#field.Clear() #slet ikke felter!
+			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
+	def SetSingleAutoMode(self,field):
+		mask=self.maal.GetValidity()
+		maerker_ok=(mask[:,0].sum()==4) 
+		if maerker_ok:
+			if self.mode==0:
+				self.mode=2
+				self.auto_field=field
 				field.Enable(0)
-			self.mode="AUTO"
-			self.Auto()
+				self.UpdateStatus()
+			else:
+				GUI.ErrorBox(self,u"Skift til manuel mode f\u00F8rst")
 		else:
-			self.ManuelMode()
-	def Call_Cancel(self):
-		self.InitState()
-	def OnAuto(self,event):
-		if self.mode!="AUTO" and self.mode!="SINGLE AUTO":
-			if self.thread!=None and self.thread.isAlive():
-				WaitForThread2(self)
-				self.thread.kill()
-				return 
-			self.fields=self.maal.col2[1:]
-			for i in range(0,4):  #da reverse() modificerer listen!
-				self.fields.append(self.maal.col3[4-i])
-			self.mode="AUTO"
-			for field in self.fields:
-				#field.Clear()  #slet ikke felter
-				field.Enable(0)
-			self.Auto()
-		else:
-			self.KillAuto()
-	def AfterAuto(self):
-		self.parent.Log("Afslutter 'Auto Mode'")
-		if self.OK:
-			self.InitState()
-		else:
-			self.ManuelMode()
-	def Auto(self):
-		if self.mode=="AUTO":
-			self.status.Update(field=4,text=self.mode,colour="red")
-		else:
-			self.status.Update(field=4,text=self.mode,colour="yellow")
-		self.thread=AutoThread(self,len(self.fields),1,self.Inst.port,self.parent) 
-		self.thread.setName(self.Inst.navn)
-		self.thread.start()
-	
-	def Release(self):
-		sound = wx.Sound(mmdir+'alert.wav')
-		sound.Play(wx.SOUND_SYNC)
-		self.parent.Log(u"M\u00E5linger fuldf\u00F8rt")
-		self.AfterAuto()
-	
-	def KillAuto(self):
-		self.parent.Log("Afbryder 'Auto Mode'")
-		EnableCol(self.maal.col2)
-		EnableCol(self.maal.col3)
-		self.maal.Enable()
-		self.thread.kill()
-		self.InitState()
-	def ManuelMode(self):
-		#self.main.knap1.SetValue(0)
-		if self.thread!=None and self.thread.isAlive():
-			self.thread.kill()
-		self.mode="MANUEL"  #manuel
-		self.Log("Skifter til 'Manuel Mode'.")
-		self.status.Update(field=4,text=self.mode,colour="green")
-		EnableCol(self.maal.col2)
-		EnableCol(self.maal.col3)
-		self.maal.Enable()   #Overrides individual field-enables!!!!!!!
-		if not self.OK:
-			for col in range(0,3):
-				for field in self.maal.cols[col][1:]:
-					if not field.ok:
-						field.SetFocus()
-						return
-				
-		else:
-			self.maal.col2[1].SetFocus()
-	def Validate(self,event):
-		event.GetEventObject().Validate() #valider kun kalderen!
-		str=self.maal.col1[1].GetValue()  #hahaha
-		if str.strip()=="monty":
-			self.DoSketch()
-		if str.find("test")!=-1:
-			self.TestMode()
-			return
-		self.colOK=True
-		i=1
-		for field in self.maal.col1[1:]:
-			#self.colOK=self.colOK&field.Validate()
-			self.colOK=self.colOK&field.ok
-			if field.ok and i<4: #kund de foerste tre maerker
-				maerke=float(field.GetMyValue())
-				field.next.SetBounds(0,maerke-0.0001) #maerker skal blive mindre
-				field.next.Validate()
-			i+=1
-		self.main.knap1.Enable(self.colOK)   
-		for row in range(1,5):
-			s=True
-			for col in range(0,3):
-				#s=s&self.maal.cols[col][row].Validate()
-				s=s&self.maal.cols[col][row].ok
-			self.rowOK[row-1]=s	
-		event.Skip()
-		self.Udregn()
-		
+			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
+	def SetManualMode(self):
+		self.mode=0
+		for col in range(1,3):
+			self.maal.EnableCol(col)
+		self.UpdateStatus()
+	def UpdateStatus(self):
+		self.status.Update([self.instrument.GetName(),Funktioner.Bool2sigte(self.sigte),self.modenames[self.mode]],colours={2:self.modecolors[self.mode]})
+	def UpdateHeightStatus(self):
+		s,h1,h2,hdiff=self.setup.Calculate()
+		self.regnebox.Update(["%.4f m" %s,"%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0),"%.4f m" %hdiff])
 	def TestMode(self):
 		for i in range(1,5):
 			self.maal.col1[i].SetValue(str(3-i/2))
@@ -400,69 +321,6 @@ class MakeBasis(GUI.FullScreenWindow):
 		dlg=MyLongMessageDialog(self,"You asked for it!",msg)
 		dlg.ShowModal()
 		dlg.Destroy()
-	def Udregn(self):
-		global Radius
-		R=Radius
-		self.z1=[0,0,0,0]
-		self.z2=[0,0,0,0]
-		self.z1gem=[0,0,0,0]
-		self.z2gem=[0,0,0,0]
-		self.ind=[0,0,0,0]
-		self.maerker=[0,0,0,0]
-		for row in range(0,4):
-			if self.rowOK[row]:  
-				self.maerker[row]=float(self.maal.col1[row+1].GetMyValue()) #foerste raekke er toptekst
-				self.z1[row]=Dec2Grad(self.maal.col2[row+1].GetMyValue()) #Til grader
-				self.z2[row]=Dec2Grad(self.maal.col3[row+1].GetMyValue()) #Til grader
-				self.z1gem[row]=self.maal.col2[row+1].GetMyValue() #husk at gemme de oprindelige maalinger!
-				self.z2gem[row]=self.maal.col3[row+1].GetMyValue()
-				self.ind[row]=(self.z2[row]+self.z1[row]-360)/2 #KES-se HOVMTL05.BAS
-				self.maal.col4[row+1].SetValue("%.0f" %(self.ind[row]*60*60)) #I hele sekunder (Palle)
-				self.maal.col4[row+1].Validate()
-		if sum(self.rowOK)==len(self.rowOK):
-			#Nu regnes der saa
-			self.OK=1
-			#Korrigerede zenitdistancer
-			z1=self.z1[0]-self.ind[0]  #Bemaerk Python indeksering!
-			z2=self.z1[1]-self.ind[1]
-			z3=self.z1[2]-self.ind[2]
-			z4=self.z1[3]-self.ind[3]
-			#COTANGENS:
-			cot1=cot(radians(z1))
-			cot2=cot(radians(z2))
-			cot3=cot(radians(z3))
-			cot4=cot(radians(z4))
-			M1=self.maerker[0]
-			M2=self.maerker[1]
-			M3=self.maerker[2]
-			M4=self.maerker[3]
-			#Sigtelaengder
-			try:
-				self.s1=(M1-M3)/(cot1-cot3)
-				self.s2=(M2-M4)/(cot2-cot4)
-				self.dist=(self.s1+self.s2)*0.5
-				#Instrumenthoejder (KES HOVMTL05.BAS) Minus sigte giver det rigtige fortegn!
-				self.h1=-self.sigte*(M3*cot1 - M1*cot3 )/(cot1 - cot3) - 0.5 * (self.dist**2) / R 
-				self.h2=-self.sigte*(M4*cot2 - M2*cot4 )/(cot2 - cot4) - 0.5 * (self.dist**2) / R
-				self.hdiff=(self.h1+self.h2)*0.5
-			except ZeroDivisionError:
-				self.OK=0
-				self.s1=0
-				self.s2=0
-				self.dist=0
-				self.h1=0
-				self.h2=0
-				self.hdiff=0
-				dlg=MyMessageDialog(self,"Fejl!","Division med nul!\nTjek zenitdistancer.")
-				dlg.ShowModal()
-				dlg.Destroy()
-			
-			self.Update()
-		else:
-			self.OK=0
-			self.Update()
-			
-				
 	def CloseOK(self,event):
 		global T0
 		global Nopst
@@ -599,77 +457,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.Log("Afstand: %.2f m\nH1: %.4f m   H2: %.4f m   Hdiff: %.4f m" %(self.dist,self.h1,self.h2,self.hdiff))
 		resfil.write("\n")
 		resfil.close()
-		
-	def Afbryd(self,event):
-		OK=True
-		if self.thread!=None and self.thread.isAlive():
-				self.thread.kill()
-		if self.colOK or sum(self.rowOK)>0:
-			dlg=OKdialog(self,"Afbrydelse!",u"Er du sikker p\u00E5, at du vil afbryde punktoverf\u00F8rslen?")
-			dlg.ShowModal()
-			OK=dlg.OK
-			dlg.Destroy()
-		if OK:
-			self.Log(u"Punktoverf\u00F8rsel afbrudt kl. %s" %Nu())
-			self.parent.Update()
-			self.Close()
-		else:
-			self.InitState()
-	def Omvalg(self,event):
-		self.mode="NA"
-		if self.thread!=None and self.thread.isAlive():
-			self.thread.kill()
-		self.status.Update(field=4,text=self.mode,colour=bgcolor)
-		self.main.Enable(0)
-		self.maal.Enable(0)
-		self.valg.Enable(1)
-		self.valg.SetFocus()
-	def OnGo(self,event):
-		self.punkt=self.valg.punkt.GetValue().replace(" ","") #slet spaces i punktnavn
-		OK=True
-		if OversaetPunkt(self.punkt)==-1:
-			sound = wx.Sound(mmdir+'alert.wav')
-			sound.Play(wx.SOUND_SYNC)
-			dlg=JaNejDialog(self,u"Bem\u00E6rk!",u"Punktnummeret %s er tilsyneladende ukurant.\nVil du forts\u00E6tte alligevel?" %self.punkt)
-			dlg.ShowModal()
-			OK=dlg.OK
-			dlg.Destroy()
-			if not OK:
-				self.valg.punkt.SetBackgroundColour("red")
-				self.valg.punkt.SetFocus()
-				self.valg.punkt.Refresh()
-		if OK:
-			self.valg.Enable(0)
-			self.main.Enable(1)
-			self.valg.punkt.SetBackgroundColour("green")
-			self.valg.punkt.Refresh()
-			self.punktnr=self.valg.punkt.GetSelection()
-			self.laegtenr=self.valg.laegte.GetSelection()
-			self.laegte=self.laegter[self.laegtenr]
-			self.Update()
-			self.ManuelMode()
-			#self.main.SetFocus()
-			
-	def InitState(self):
-		self.main.SetFocus()
-		self.maal.Enable(0)
-		self.mode="NA"
-		self.status.Update(field=4,text=self.mode,colour=bgcolor)
-		
 	
-	def Update(self):
-		self.status.Update([self.Inst.navn,Bool2sigte(self.sigte),self.punkt,"%.4f m" %self.hdiff])
-		self.regnebox.Update(["%.4f m" %self.dist, "%.4f m" %self.h1, "%.4f m" %self.h2, "%.1f mm" %(1000*(self.h1-self.h2))])
-		self.border.Layout()
-		self.main.under.knap1.Enable(self.OK)
-		self.main.knap1.Enable(self.colOK)
-		self.Refresh()
-	def EnableCol(self,col):
-		for field in col:
-			field.Enable()
-	def DisableCol(self,col):
-		for field in col:
-			field.Enable(0)
 	def Log(self,text):
 		self.parent.Log(text)
 
@@ -684,7 +472,80 @@ class StartFrame(Core.StartFrame):
 		mainframe=MTLmain(None,self.resfile,self.instruments,self.laegter,self.data,self.gps,self.ini,self.statusdata,self.size)
 		mainframe.Show()
 		self.Close()
+#---------------------- Core MTL-classes, state, maths, etc. handled here----------------------------------------------------#
+def StandardZdistanceTranslator(val): # A validator for input in the format ddd.mmss - by using other validators, field 'types' can be changed flexibly
+	sval=val.replace(",",".").strip()
+	digits=""
+	try:
+		fval=float(sval)
+	except:
+		return False,0
+	digits=sval.partition(".")[2]
+	if len(digits)!=4 or int(digits[0:2])>59 or int(digits[2:])>59:
+		return False,0
+	S=int(sval[-2:]) #sekunder
+	M=int(sval[-4:-2]) #minutter
+	G=int(sval[0:-5])  #grader
+	return True,np.pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
 
+#THIS is the core class which handles basis setup state and math, the rest is GUI and event handling...... 
+#The class has been prepared for the possibility of handling input in formats other than ddd.mmss, e.g. angles in gon or whatever.... Only need to set relevant translator and validator methods 
+
+class MTLBasisSetup(object):
+	def __init__(self,aim=1):
+		#1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
+		self.raw_data=np.zeros((4,3),dtype="<S20")
+		self.real_data=np.zeros((4,3)) #real angles stored in radians,...
+		self.index_errors=np.zeros((4,))
+		self.validity_mask=np.zeros((4,3),dtype=np.bool)
+		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
+		self.aim=aim
+	def SetTranslator(self,func):
+		self.zformat_translator=func
+	def Position1Validator(self,val):
+		ok,val=self.zformat_translator(val)
+		return ok and 0<=val<=np.pi
+	def Position2Validator(self,val):
+		ok,val=self.zformat_translator(val)
+		return ok and np.pi<=val<=2*np.pi
+	def MarkValidator(self,val): #validates 'marks' from input column 0
+		try:
+			val=float(val)
+		except:
+			return False
+		return self.rod_min<=val<=self.rod_max
+	def SetValidity(self,row,col,validity):
+		self.validity_mask[row,col]=validity
+	def IsValid(self,row=None,col=None):
+		return self.validity_mask[row,col].all()
+	def SetData(self,row,col,val):
+		self.raw_data[row,col]=val
+		#translate#
+		if col>0 and self.zformat_translator is not None:
+			ok,val=self.zformat_translator(val)
+		else:
+			val=float(val)
+		self.real_data[row,col]=val
+	def GetIndexError(self,row):
+		return ((self.real_data[row,1]+self.real_data[row,2]-np.pi)*0.5)*180.0/np.pi*3600.0
+	def Calculate(self):
+		index_err=(self.real_data[:,1]+self.real_data[:,2]-np.pi)*0.5
+		z_corr=self.real_data[:,1]-index_err  #standard formel fra KES...
+		M=self.real_data[:,0]  #only a 'view' not a copy!
+		cot=1.0/np.tan(z_corr)
+		s1=(M[0]-M[2])/(cot[0]-cot[2])
+		s2=(M[1]-M[3])/(cot[1]-cot[3])
+		dist=(s1+s2)*0.5
+		#Instrumenthoejder (KES HOVMTL05.BAS) Minus sigte giver det rigtige fortegn!
+		h1=-self.aim*(M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS   # Earth radius
+		h2=-self.aim*(M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS
+		hdiff=(h1+h2)*0.5
+		return dist,h1,h2,hdiff
+	def GetData(self):
+		return self.real_data
+	def GetValidity(self):
+		return self.validity_mask
+	
 #----------Initialisation classes, definition of rods etc.-----------------#
 class InstrumentError(Exception):
 	def __init__(self,msg="Kunne ikke definere instrumentet!"):

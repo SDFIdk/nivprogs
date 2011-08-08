@@ -156,7 +156,6 @@ def TjekMTLHeader(lines,instruments):
 					addconst=float(sline[1])
 					axisconst=float(sline[2])
 				except:
-					f.close()
 					return False
 				else:
 					if instruments[nfound].addconst==addconst and instruments[nfound].axisconst==axisconst:
@@ -166,6 +165,14 @@ def TjekMTLHeader(lines,instruments):
 		if nfound==2:
 			break
 	return (nfound==2)
+
+def TjekHeader(fname,program_name): #majet, majet simpel funktion, som bare ser efter programnavn i foerste linie af en fil....
+	f=open(fname,"r")
+	line=f.readline()
+	f.close()
+	if program_name.lower() in line.lower():
+		return True
+	return False
 	
 def SletTilSenesteHoved(filnavn,directory):
 	resfilnavn=os.path.join(directory,filnavn)

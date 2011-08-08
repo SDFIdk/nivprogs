@@ -938,33 +938,8 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 #------------------------------------------------------------#
 class MyNumMGL(GUI.MyNum): #a MGL version of the classic GUI-class :-)
 	def __init__(self,parent,low=-999,high=999,digitlength=None,ntype=float,**kwargs):
-		GUI.MyNum.__init__(self,parent,low,high,ntype=ntype,**kwargs)
-		self.digitlength=digitlength #allowed number of digits
-		#self.killfocus=False
+		GUI.MyNum.__init__(self,parent,low,high,digitlength=digitlength,ntype=ntype,**kwargs)
 		self.sound=True #play sound on bad input?
-	def Validate(self):
-		sval=self.GetMyValue(False)
-		digits=""
-		try:
-			val=float(sval)
-		except:
-			self.ok=0
-		else:
-			self.ok=1
-			digits=sval.partition(".")[2].strip()
-			if (val>self.high) or (val<self.low):
-				self.ok=0
-			if self.ok and self.digitlength!=None:  
-				if len(digits)<self.digitlength: #serves as a min-digitlength
-					self.ok=0
-		if self.ok:
-			self.SetBackgroundColour("green")
-		elif len(sval)>0:
-			self.SetBackgroundColour("red")
-			if self.sound and len(digits)>=self.digitlength:  
-				Core.SoundAlert()
-		self.Refresh()
-		return self.ok
 	def OnEnter(self,event): #Overides prev event-handler 
 		if (not self.ok) and self.sound and (not self.IsEmpty()):
 			Core.SoundAlert()
