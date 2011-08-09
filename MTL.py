@@ -18,6 +18,7 @@ PROGRAM.about="""
 MTL program skrevet i Python. 
 Bugs rettes til simlk@kms.dk
 """
+DEBUG=False
 #---------Various Global Vars--------------#
 RADIUS=6385000.0   #Jordradius.
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
@@ -78,17 +79,6 @@ class MTLmain(Core.MLBase):
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 #-------------------------Various Wx Windows Specialized for MTL -------------------------------------------------#
 
-		
-class ZDistanceField(GUI.MyTextField):
-	def __init__(self,parent,low,high,zdist_handler,*args,**kwargs):
-		self.low=low
-		self.high=high
-		self.zdist_handler=zdist_handler
-		GUI.MyTextField.__init__(self,parent,*args,**kwargs)
-		self.SetValidator(self.ZValidator)
-	def ZValidator(self,text): #special validator MTL zenith distances where the format should be ddd.mmss
-		return self.zdist_handler(text,self.low,self.high)
-		
 #Panel til input af basismaalinger....
 class OverfPanel(wx.Panel):
 	def __init__(self,parent,basis_setup,low=-33,high=33): #input graenser for indeksfejl advarsler...
@@ -163,59 +153,70 @@ class OverfPanel(wx.Panel):
 		field=event.GetEventObject()
 		row,col=field.ij_id
 		if key==42:
-			self.parent.SetAutoMode()
+			self.parent.SetAutoMode(row,col)
 		elif key==47:
 			self.parent.SetSingleAutoMode(field)
 		else:
 			event.Skip() #so that text appears in the field....
-	def GetData(self):
-		pass
+	
 		
 #Boks med felt til pkt. og drop-down box til laegtevalg
-class MTLChoiceBox(GUI.StuffWithBox):
+class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox......
 	def __init__(self,parent,laegter):
 		GUI.StuffWithBox.__init__(self,parent,label="Valg",style="vertical")
 		self.point=GUI.MyTextField(self,12,size=(150,-1))
 		pointsizer=GUI.FieldWithLabel(self,self.point,"Punkt:",12)
-		self.laegtebox=wx.Choice(self,choices=laegter,size=(150,-1))
+		self.laegtebox=wx.Choice(self,choices=laegter,size=(150,-1),style=wx.TE_PROCESS_ENTER)
+		self.laegtebox.Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
 		self.laegtebox.SetSelection(0)
 		self.laegtebox.SetFont(GUI.DefaultFont(12))
 		laegtesizer=GUI.FieldWithLabel(self,self.laegtebox,u"L\u00E6gte:",12)
 		self.AddStuff(pointsizer)
 		self.AddStuff(laegtesizer)
 		self.FinishUp()
+		self.next_item=None #remember to set this attr to control browsing
 	def SetPoint(self,point):
 		self.point.SetValue(point)
 	def GetPoint(self):
 		return self.point.GetValue().strip()
 	def GetRod(self):
 		return self.laegtebox.GetSelection()
+	def OnEnter(self,event):
+		print "ost"
+		if self.next_item is not None:
+			self.next_item.SetFocus()
+		else:
+			print "kk"
+			event.Skip()
+		#....other stuff like checking point name etc.....#
+	
 #------------------------- MakeBasis Frame defined here --------------------------------------------------------------#
 class MakeBasis(GUI.FullScreenWindow):
 	def __init__(self, parent,instrument_number=0):
-		self.laegter=["a","b"]
+		self.laegter=parent.laegter
 		self.instrument_number=instrument_number #the height status after succesful measurements should be this number.... Instrument that 'carries' height.
 		self.statusdata=parent.statusdata
-		self.maerker=[]
+		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.mode=0 #modes are 0: manual and 1: auto 2; single auto - i.e. just one field....
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
 		self.modecolors=["green","red","yellow"]
-		self.auto_fields=[]
+		self.auto_fields=[] #an ordered list of fields from subpanel to receive data from instrument
 		self.sigte=-2*int((self.statusdata.GetSetups())==0)+1
 		self.setup=MTLBasisSetup(self.sigte)
 		self.instrument=self.statusdata.GetInstruments()[instrument_number]
 		GUI.FullScreenWindow.__init__(self, parent)
-		self.ini=self.parent.ini  #data passed in ini-file, error limits relevant here
 		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "])
-		self.valg=MTLChoiceBox(self,self.laegter)
-		self.valg.SetPoint("ost")
-		#self.valg.kortbutton.Bind(wx.EVT_BUTTON,self.OnKort)
+		self.valg=MTLChoiceBox(self,[rod.name for rod in self.laegter])
+		self.valg.SetPoint("%s"%self.statusdata.GetEnd())
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
 		self.map.RegisterPointFunction(self.PointNameHandler) #handles left-clicks on points in map - sets name in point box
 		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
 		self.maal=OverfPanel(self,self.setup,-20,20)
-		self.regnebox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: ",u"H\u00F8jde:"],label="Beregning",fontsize=12)
-		self.regnebox.Update([])
+		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
+		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=12,colsize=1)
+		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=12,label="Kontrol")
+		self.resultbox.Update([])
+		self.controlbox.Update([])
 		self.parent.Log("Sigte: %s" %(Funktioner.Bool2sigte(self.sigte)))
 		#EVENT HANDLING SETUP#
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetAutoMode)
@@ -225,7 +226,10 @@ class MakeBasis(GUI.FullScreenWindow):
 		#LAYOUT#
 		self.UpdateStatus()
 		self.CreateRow()
-		self.AddItem(self.status,0)
+		sizer_left=wx.BoxSizer(wx.VERTICAL)
+		sizer_left.Add(self.status,0,wx.ALL,5)
+		sizer_left.Add(self.resultbox,0,wx.ALL,5)
+		self.AddItem(sizer_left,0)
 		self.AddItem(self.map,0)
 		sizer_right=wx.BoxSizer(wx.VERTICAL)
 		sizer_right.Add(self.valg,1,wx.ALL,5)
@@ -234,10 +238,12 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.AddRow(2,wx.CENTER|wx.ALL)
 		self.CreateRow()
 		self.AddItem(self.maal,1)
-		self.AddItem(self.regnebox,1,wx.RIGHT)
-		self.AddRow(1)
+		self.AddItem(self.controlbox,1)
+		self.AddRow(1,wx.ALL)
 		self.ShowMe()
 		self.valg.SetFocus()
+		if DEBUG:
+			self.TestMode()
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
 		if self.parent.gps.isAlive():
 			self.parent.map.DetachGPS()
@@ -270,17 +276,18 @@ class MakeBasis(GUI.FullScreenWindow):
 		else:
 			self.CloseOK()
 	def OnSetAutoMode(self,event):
-		self.SetAutoMode()
+		self.SetAutoMode(self.maal.GetAutoFields())
 	def OnSetManualMode(self,event):
 		self.SetManualMode()
-	def SetAutoMode(self):
+	def SetAutoMode(self,fields):
 		mask=self.maal.GetValidity()
 		maerker_ok=(mask[:,0].sum()==4) 
 		if maerker_ok:
 			if self.mode==0:
 				self.mode=1
-				for col in range(1,3):
-					self.maal.DisableCol(col)
+				self.auto_fields=fields
+				for field in fields:
+					field.Enable(0)
 				#....etc......#
 				self.UpdateStatus()
 			else:
@@ -293,7 +300,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		if maerker_ok:
 			if self.mode==0:
 				self.mode=2
-				self.auto_field=field
+				self.auto_fields=[field]
 				field.Enable(0)
 				self.UpdateStatus()
 			else:
@@ -309,12 +316,15 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.status.Update([self.instrument.GetName(),Funktioner.Bool2sigte(self.sigte),self.modenames[self.mode]],colours={2:self.modecolors[self.mode]})
 	def UpdateHeightStatus(self):
 		s,h1,h2,hdiff=self.setup.Calculate()
-		self.regnebox.Update(["%.4f m" %s,"%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0),"%.4f m" %hdiff])
+		dh=abs(h1-h2)
+		col=Funktioner.State2Col(self.ini.maxdh_basis<=dh)
+		self.controlbox.Update(["%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0)],colours={2:col})
+		self.resultbox.Update(["%.4f m" %s,"%.4f m" %hdiff])
 	def TestMode(self):
 		for i in range(1,5):
-			self.maal.col1[i].SetValue(str(3-i/2))
-			self.maal.col2[i].SetValue(str(88.1111+i))
-			self.maal.col3[i].SetValue(str(271.4949-i))
+			self.maal.columns[0][i].SetValue(str(3-i/2))
+			self.maal.columns[1][i].SetValue(str(88.1111+i))
+			self.maal.columns[2][i].SetValue(str(271.4949-i))
 	def DoSketch(self):
 		msg=Sketch.sketch
 		self.Log("Doing sketch....!")
@@ -579,20 +589,21 @@ class MTLinireader(object): #add more error handling!
 		self.path=BASEDIR+"/MTL.ini"
 	def Read(self):
 		#default vaerdier#
-		self.fbtest=4.0 #frem-tilbage forkast
-		self.fbunit="ne"
-		self.maxdd=2.0 #max. afst. forsk.
-		self.maxsl=50 #max. sigtel.
-		self.maxsd=0.00012 #max inst. sd
-		self.maxhd=0.00050 #max forskel mellem sigter i praes.-mode
-		self.gpsport=-1 
-		self.gpsbaud=-1
-		self.mapdirs=[]
-		self.database=None
-		self.instport=5 
-		self.instbaud=9600
-		self.instruments=[]
-		self.laegter=[]
+		ini=Core.Ini()
+		ini.fbtest=4.0 #frem-tilbage forkast
+		ini.fbunit="ne"
+		ini.maxdh_basis=0.001 #max. forskel mellem h1 og h2 ved basis
+		ini.maxdh_mutual=0.005 #max. forskel mellem maalt dh ved gensidige sigter
+		ini.maxdh_setups=0.005 #max. afv. mellem satser
+		ini.maxsd_setups=0.01 #max. stdafv. ved flere satser
+		ini.gpsport=-1 
+		ini.gpsbaud=-1
+		ini.mapdirs=[]
+		ini.database=None
+		ini.instport=5 
+		ini.instbaud=9600
+		instruments=[]
+		laegter=[]
 		f=open(self.path,"r")
 		line=Funktioner.RemRem(f)
 		while len(line)>0:
@@ -601,16 +612,16 @@ class MTLinireader(object): #add more error handling!
 					key=line[:i].strip()
 				line=line[i+1:].split()
 				if key=="gps" and len(line)>0:
-					self.gpsport=int(line[0])
+					ini.gpsport=int(line[0])
 					if len(line)>1:
-						self.gpsbaud=int(line[1])
+						ini.gpsbaud=int(line[1])
 				if key=="kortmappe" and len(line)>0:
 					mapdir=line[0]
 					if mapdir[-1] not in ["/","\\"]:
 						mapdir+="/"
-					self.mapdirs.append(mapdir)
+					ini.mapdirs.append(mapdir)
 				if key=="database" and len(line)>0:
-					self.database=line[0]
+					ini.database=line[0]
 				if key=="instrument" and len(line)>3:
 					instrumentname=line[0]
 					addconst=float(line[1])
@@ -618,41 +629,36 @@ class MTLinireader(object): #add more error handling!
 					instrumentport=int(line[3])
 					instrumentbaud=int(line[4])
 					instrumenttype=line[5]
-					self.instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
+					instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
 				if key=="ftforkast" and len(line)>0:
-					self.fbtest=float(line[0])
+					ini.fbtest=float(line[0])
 				if key=="fejlgraenser" and len(line)>0:
-					self.maxsl=float(line[0])
+					ini.maxsl=float(line[0])
 					if len(line)>1:
-						self.maxdd=float(line[1])
+						ini.maxdh_basis=float(line[1])
 					if len(line)>2:
-						self.maxsd=float(line[2])
+						ini.maxdh_mutual=float(line[2])
 					if len(line)>3:
-						self.maxhd=float(line[3])
+						ini.maxdh_setups=float(line[3])
+					if len(line)>4:
+						ini.maxsd_setups=float(line[4])
+					
 				if key=="laegte" and len(line)>1:
 					name=line[0]
 					zeroshift=float(line[1])
-					self.laegter.append(MTLlaegte(name,zeroshift))
+					laegter.append(MTLlaegte(name,zeroshift))
 				line=Funktioner.RemRem(f)
 		f.close()
-		Ini=Core.Ini()
-		Ini.gpsbaud=self.gpsbaud
-		Ini.gpsport=self.gpsport
-		Ini.mapdirs=self.mapdirs
-		Ini.database=self.database
-		Ini.fbtest=self.fbtest
-		Ini.fbunit=self.fbunit
-		if len(self.instruments)<2: 
+		if len(instruments)<2: 
 			raise InstrumentError("Instrumenter ikke defineret i ini-filen!")
-		if len(self.laegter)<1:
+		if len(laegter)<1:
 			raise LaegteError("Der er ikke defineret mindst een laegte i ini-filen")
-		return Ini,self.instruments,self.laegter
+		return ini,instruments,laegter
 	
 		
 
 def main():
 	App=wx.App()
-	#frame=MLBase(None,"Test",ini,StatusData(),ProgramType())
 	frame=StartFrame(None)
 	frame.Show()
 	App.MainLoop()
