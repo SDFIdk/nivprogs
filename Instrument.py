@@ -14,6 +14,7 @@ class DummyThread(object):
 	def isAlive(self):
 		return False
 #Base Instrument Class, should be subclassed to MTLinstrument and MGLinstrument
+#Threads created by subclasses should implement a 'Kill' method.....
 class Instrument(object):
 	def __init__(self,name="instrument",port=5,baudrate=1000,type="ost"):
 		self.name=name #screen name
@@ -64,20 +65,92 @@ class Instrument(object):
 
 #------------------------MTL instruments defined here----------------------------------------#
 
-class MTLinstrument(Instrument):
-	def __init__(self,name="",addconst=0.0,axisconst=0.0,port=5,baudrate=4800,type="TOPCON"):
+class MTLinstrument(Instrument): #well really a Topcon instrument for now....
+	def __init__(self,name="",addconst=0.0,axisconst=0.0,port=5,baudrate=4800,type="TOPCON",id=0):
 		Instrument.__init__(self,name,port,baudrate,type)
 		self.axisconst=axisconst
 		self.addconst=addconst
+		self.id=id #needed to distinguish events called from diff. instruments...
 	def PresentYourself(self,short=False): #could be overridden
 		if short:
 			return "Instrument: %s, konstanter: %.5f m %.4f m, type: %s." %(self.name,self.addconst,self.axisconst,self.type)
 		else:
-			return "Instrument: %s,  konstanter: %.5f m %.4f m, type: %s, com-port: %i" %(self.name,self.addconst,self.axisconst,self.type,self.port)	
+			return "Instrument: %s,  konstanter: %.5f m %.4f m, type: %s, com-port: %i" %(self.name,self.addconst,self.axisconst,self.type,self.port)
+	def ReadData(self): #is really common, at least, to instruments communicating via (virtual) com-port.....
+		try:
+			con=serial.Serial(self.port,self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
+		except: #well this is easiest since the eventhandler should be listening...
+			event=DataEvent(OK=False,hascon=False)
+			wx.PostEvent(self.eventhandler,event)
+		else:
+			self.portstatus=True  #flag to signal that the we can connect to instrument.
+			self.thread=TopconThread(con,self.eventhandler,self.logwindow,self.id,self.name)
+			self.SetReadState(True)
+
+
+class TopconThread(threading.Thread):
+	def __init__(self,connection,eventhandler,logwin,id,name):
+		threading.Thread.__init__(self) # init the thread
+		self.connection=connection
+		self.eventhandler=eventhandler
+		self.logwindow=logwin
+		self.id=id
+		self.name=name
+		self.start()
+	def Kill(self):
+		self.alive=False
+		try:
+			self.connection.close()
+		except:
+			pass
+		text=u"L\u00E6sning fra %s blev afbrudt." %self.name
+		event=LogEvent(text=text)
+		wx.PostEvent(self.logwindow,event)
+	def run(self):
+		self.alive=True
+		try:
+			self.connection.flush()  #er denne raekkefoelge optimal?? Maaske laese lineien to gange??
+			s=self.connection.readline()
+			#Write accept code 4 times#
+			ak= chr(6) + "006" + chr(3) + chr(13) + chr(10)
+			for j in range(0,4):
+				self.connection.write(ak)
+			self.connection.close()
+		except Exception,msg:
+			try:
+				self.connection.close()
+			except:
+				pass
+			msg="Afslutter 'AutoMode' pga. en fejl:\n"+str(msg)
+			self.alive=False
+			evt=DataEvent(id=self.id,value=["E",msg2])
+			wx.PostEvent(self.eventhandler,evt)
+		else:
+			if self.alive: #betyder at eventhandler-vinduet skulle eksistere endnu!
+				send=False
+				if s[0]=="?": #afstand
+					val=s[2:s.find("m")].lstrip("0") #fjern nuller foran og foerste 2 tegn
+					val=val[0:-3]+"."+val[-3:] #indsaet ., vi antager 3 decimaler
+					val=["?",val]
+					send=True
+				elif s[0]=="<": #vinkel
+					val=s[1:s.find("+")].lstrip("0") #fjern foerste tegn og nuller og behold frem til +
+					val=val[0:-4]+"."+val[-4:] #indsaet ., vi antager 4 decimaler
+					val=["<",val]
+					send=True
+			try:
+				self.connection.close()
+			except:
+				pass
+			if self.alive and send:
+				time.sleep(0.5) #do we really need this?? Tries to avoid comm. errors from long distance analog signals....
+				evt=DataEvent(id=self.id,value=val)
+				wx.PostEvent(self.eventhandler,evt)
+					
+			
+
 
 #------------------------MGL instruments defined here----------------------------------------#
-
-
 class DINI(Instrument):
 	def __init__(self,name="",port=5,baudrate=9600,type="DINI11"):
 		Instrument.__init__(self,name,port,baudrate,type)

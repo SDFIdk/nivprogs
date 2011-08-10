@@ -949,15 +949,7 @@ class MyNumMGL(GUI.MyNum): #a MGL version of the classic GUI-class :-)
 		else:
 			event.Skip()
 	
-class RodBox(wx.ComboBox):
-	def __init__(self,parent,rods,size=(120,-1),fontsize=12):
-		wx.ComboBox.__init__(self,parent,choices=rods,size=size,style=wx.TE_PROCESS_ENTER)
-		self.SetFont(GUI.DefaultFont(fontsize))
-		self.Bind(wx.EVT_CHAR,self.OnChar)
-	def OnChar(self,event):
-		key=event.GetKeyCode()
-		if key in [wx.WXK_DOWN,wx.WXK_UP]: #kill all other events to make it in practice read only!
-			event.Skip()  
+
 class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the right,
 	def __init__(self,parent,title,rods=["1","2"],size=12):
 		wx.Panel.__init__(self,parent)
@@ -965,7 +957,7 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		self.rods=rods #only names, not rod-classes.
 		self.point=GUI.MyTextField(self,size=(120,-1),fontsize=size)
 		pointsizer=GUI.FieldWithLabel(self,field=self.point,size=size,label="Pkt:")
-		self.rod=RodBox(self,rods,(120,-1),fontsize=size)
+		self.rod=Core.RodBox(self,rods,(120,-1),fontsize=size)
 		self.dist=MyNumMGL(self,0,200,2,size=(120,-1),fontsize=size) #distandsfelt
 		rodsizer=GUI.FieldWithLabel(self,field=self.rod,label=u"Lgt:",size=size)
 		self.hd=MyNumMGL(self,0,100,5,size=(120,-1),fontsize=size) #sigtehoejdefelt

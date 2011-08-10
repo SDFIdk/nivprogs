@@ -195,7 +195,18 @@ class ResFile(object):
 	def __init__(self,name,fpointer):
 		self.fname=name
 		self.file=fpointer
-		
+
+class RodBox(wx.ComboBox):  #common box used to select rods in MGL and MTL
+	def __init__(self,parent,rods,size=(120,-1),fontsize=12):
+		wx.ComboBox.__init__(self,parent,choices=rods,size=size,style=wx.TE_PROCESS_ENTER)
+		self.SetFont(GUI.DefaultFont(fontsize))
+		self.Bind(wx.EVT_CHAR,self.OnChar)
+	def OnChar(self,event):
+		key=event.GetKeyCode()
+		if key in [wx.WXK_DOWN,wx.WXK_UP]: #kill all other events to make it in practice read only!
+			event.Skip()  
+
+
 # Main window with functionality common to MGL and MTL
 class MLBase(GUI.MainWindow): 
 	def __init__(self,parent,resfile,database,gps,ini,statusdata,programtype,size=12,**kwargs): #must be called with Ini-data- and additional program specific  args. Size refers to fontsize parameter,,,

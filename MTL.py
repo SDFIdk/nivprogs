@@ -18,7 +18,7 @@ PROGRAM.about="""
 MTL program skrevet i Python. 
 Bugs rettes til simlk@kms.dk
 """
-DEBUG=False
+DEBUG=True
 #---------Various Global Vars--------------#
 RADIUS=6385000.0   #Jordradius.
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
@@ -63,7 +63,6 @@ class MTLmain(Core.MLBase):
 		if state==0:
 			self.buttonboxes[0].button[2].Enable(instrumentstate>=0)
 	def OnBasis1(self,event):
-		self.Log("Basis1")
 		win=MakeBasis(self,0)
 		win.InitializeMap()
 	def OnBasis2(self,event):
@@ -124,6 +123,9 @@ class OverfPanel(wx.Panel):
 				field.SetPrev(self.columns[prevtabcol][prevtabrow])
 				field.ij_id=[row,col] #a custom id, to identify the field position in event handlers....
 		self.SetSizerAndFit(self.sizer)
+		#a list of zdist fields in the order they are *usually* measured:
+		#top-> bottom + bottom-> top
+		self.zfields=self.columns[1]+self.columns[2][::-1] 
 	def DisableCol(self,i):
 		for field in self.columns[i]:
 			field.Enable(0)
@@ -152,9 +154,10 @@ class OverfPanel(wx.Panel):
 		key=event.GetKeyCode()
 		field=event.GetEventObject()
 		row,col=field.ij_id
-		if key==42:
-			self.parent.SetAutoMode(row,col)
-		elif key==47:
+		if key==42: #char '*'
+			start_field=(col-1)*4+row
+			self.parent.SetAutoMode(self.zfields[start_field:])
+		elif key==47:#char '/'
 			self.parent.SetSingleAutoMode(field)
 		else:
 			event.Skip() #so that text appears in the field....
@@ -166,10 +169,9 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 		GUI.StuffWithBox.__init__(self,parent,label="Valg",style="vertical")
 		self.point=GUI.MyTextField(self,12,size=(150,-1))
 		pointsizer=GUI.FieldWithLabel(self,self.point,"Punkt:",12)
-		self.laegtebox=wx.Choice(self,choices=laegter,size=(150,-1),style=wx.TE_PROCESS_ENTER)
+		self.laegtebox=Core.RodBox(self,laegter,size=(150,-1),fontsize=12)
 		self.laegtebox.Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
 		self.laegtebox.SetSelection(0)
-		self.laegtebox.SetFont(GUI.DefaultFont(12))
 		laegtesizer=GUI.FieldWithLabel(self,self.laegtebox,u"L\u00E6gte:",12)
 		self.AddStuff(pointsizer)
 		self.AddStuff(laegtesizer)
@@ -182,11 +184,9 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 	def GetRod(self):
 		return self.laegtebox.GetSelection()
 	def OnEnter(self,event):
-		print "ost"
 		if self.next_item is not None:
 			self.next_item.SetFocus()
 		else:
-			print "kk"
 			event.Skip()
 		#....other stuff like checking point name etc.....#
 	
@@ -213,29 +213,35 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
 		self.maal=OverfPanel(self,self.setup,-20,20)
 		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
-		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=12,colsize=1)
+		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=12,colsize=2)
 		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=12,label="Kontrol")
 		self.resultbox.Update([])
 		self.controlbox.Update([])
-		self.parent.Log("Sigte: %s" %(Funktioner.Bool2sigte(self.sigte)))
 		#EVENT HANDLING SETUP#
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetAutoMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetManualMode)
 		self.main.button[2].Bind(wx.EVT_BUTTON,self.OnAccept)
 		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCancel)
+		self.instrument.SetLogWindow(self)
+		self.instrument.SetEventHandler(self)
+		self.Bind(Instrument.EVT_LOG,self.OnInstLog)
+		self.Bind(Instrument.EVT_DATA,self.OnData)
 		#LAYOUT#
 		self.UpdateStatus()
 		self.CreateRow()
 		sizer_left=wx.BoxSizer(wx.VERTICAL)
 		sizer_left.Add(self.status,0,wx.ALL,5)
 		sizer_left.Add(self.resultbox,0,wx.ALL,5)
-		self.AddItem(sizer_left,0)
-		self.AddItem(self.map,0)
+		self.AddItem(sizer_left,1,wx.ALL|wx.ALIGN_LEFT,5)
+		self.AddItem(self.map,2,wx.ALL,5)
 		sizer_right=wx.BoxSizer(wx.VERTICAL)
 		sizer_right.Add(self.valg,1,wx.ALL,5)
 		sizer_right.Add(self.main,1,wx.ALL,5)
-		self.AddItem(sizer_right,0)
-		self.AddRow(2,wx.CENTER|wx.ALL)
+		self.AddItem(sizer_right,1,wx.ALL,5)
+		self.AddRow(2,wx.ALIGN_LEFT|wx.ALL)
+		#self.CreateRow()
+		#self.AddItem(self.resultbox,1,wx.ALL|wx.ALIGN_LEFT,5)
+		#self.AddRow(0,wx.ALL)
 		self.CreateRow()
 		self.AddItem(self.maal,1)
 		self.AddItem(self.controlbox,1)
@@ -244,6 +250,12 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.valg.SetFocus()
 		if DEBUG:
 			self.TestMode()
+		#WRITE TO LOG#
+		self.Log(u"Starter basism\u00E5ling kl. %s" %Funktioner.Nu())
+		self.Log("Sigte: %s" %(Funktioner.Bool2sigte(self.sigte)))
+		#TEST INSTRUMENT#
+		if not self.instrument.TestPort():
+			GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
 		if self.parent.gps.isAlive():
 			self.parent.map.DetachGPS()
@@ -261,7 +273,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		valid=self.setup.GetValidity()[:,1:].sum()
 		if valid>1:
 			dlg=GUI.OKdialog(self,"Vil du afslutte?",
-			u"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5 du vil aflsutte?"%valid)
+			u"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5, at du vil aflsutte?"%valid)
 			dlg.ShowModal()
 			quit=dlg.WasOK()
 			dlg.Destroy()
@@ -276,11 +288,11 @@ class MakeBasis(GUI.FullScreenWindow):
 		else:
 			self.CloseOK()
 	def OnSetAutoMode(self,event):
-		self.SetAutoMode(self.maal.GetAutoFields())
+		self.SetAutoMode(self.maal.zfields) 
 	def OnSetManualMode(self,event):
 		self.SetManualMode()
 	def SetAutoMode(self,fields):
-		mask=self.maal.GetValidity()
+		mask=self.setup.GetValidity()
 		maerker_ok=(mask[:,0].sum()==4) 
 		if maerker_ok:
 			if self.mode==0:
@@ -295,7 +307,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		else:
 			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
 	def SetSingleAutoMode(self,field):
-		mask=self.maal.GetValidity()
+		mask=self.setup.GetValidity()
 		maerker_ok=(mask[:,0].sum()==4) 
 		if maerker_ok:
 			if self.mode==0:
@@ -309,20 +321,20 @@ class MakeBasis(GUI.FullScreenWindow):
 			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
 	def SetManualMode(self):
 		self.mode=0
-		for col in range(1,3):
-			self.maal.EnableCol(col)
+		for field in self.auto_fields:
+			field.Enable()
 		self.UpdateStatus()
 	def UpdateStatus(self):
 		self.status.Update([self.instrument.GetName(),Funktioner.Bool2sigte(self.sigte),self.modenames[self.mode]],colours={2:self.modecolors[self.mode]})
 	def UpdateHeightStatus(self):
 		s,h1,h2,hdiff=self.setup.Calculate()
 		dh=abs(h1-h2)
-		col=Funktioner.State2Col(self.ini.maxdh_basis<=dh)
+		col=Funktioner.State2Col(self.ini.maxdh_basis>=dh)
 		self.controlbox.Update(["%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0)],colours={2:col})
 		self.resultbox.Update(["%.4f m" %s,"%.4f m" %hdiff])
 	def TestMode(self):
-		for i in range(1,5):
-			self.maal.columns[0][i].SetValue(str(3-i/2))
+		for i in range(0,4):
+			self.maal.columns[0][i].SetValue(str(3-i*0.5))
 			self.maal.columns[1][i].SetValue(str(88.1111+i))
 			self.maal.columns[2][i].SetValue(str(271.4949-i))
 	def DoSketch(self):
@@ -331,6 +343,10 @@ class MakeBasis(GUI.FullScreenWindow):
 		dlg=MyLongMessageDialog(self,"You asked for it!",msg)
 		dlg.ShowModal()
 		dlg.Destroy()
+	def OnData(self,event):
+		pass
+	def OnInstLog(self,event):
+		pass
 	def CloseOK(self,event):
 		global T0
 		global Nopst
@@ -504,10 +520,10 @@ def StandardZdistanceTranslator(val): # A validator for input in the format ddd.
 class MTLBasisSetup(object):
 	def __init__(self,aim=1):
 		#1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
-		self.raw_data=np.zeros((4,3),dtype="<S20")
-		self.real_data=np.zeros((4,3)) #real angles stored in radians,...
-		self.index_errors=np.zeros((4,))
-		self.validity_mask=np.zeros((4,3),dtype=np.bool)
+		self.raw_data=np.zeros((4,3),dtype="<S20") #raw string input from input fields.... 
+		self.real_data=np.zeros((4,3)) #real numbers - angles stored in radians,...
+		self.index_errors=np.zeros((4,)) #array which stores index errors - NEEDED??
+		self.validity_mask=np.zeros((4,3),dtype=np.bool) #mask to mark validity of data....
 		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
 		self.aim=aim
 	def SetTranslator(self,func):
