@@ -12,7 +12,7 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
 PROGRAM.version="beta 0.1"
-PROGRAM.date="08-08-11"
+PROGRAM.date="11-08-11"
 PROGRAM.type="MTL" #vigtigt signak til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -164,10 +164,20 @@ class OverfPanel(wx.Panel):
 	
 		
 #Boks med felt til pkt. og drop-down box til laegtevalg
+def ValidatePointName(name): #should perhaps be defined elsewhere
+	if 3<len(name)<12:
+		try:
+			int(name)
+		except:
+			pass
+		else:
+			return True
+	return False
 class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox......
 	def __init__(self,parent,laegter):
 		GUI.StuffWithBox.__init__(self,parent,label="Valg",style="vertical")
 		self.point=GUI.MyTextField(self,12,size=(150,-1))
+		self.point.SetValidator(ValidatePointName)
 		pointsizer=GUI.FieldWithLabel(self,self.point,"Punkt:",12)
 		self.laegtebox=Core.RodBox(self,laegter,size=(150,-1),fontsize=12)
 		self.laegtebox.Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
@@ -179,6 +189,7 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 		self.next_item=None #remember to set this attr to control browsing
 	def SetPoint(self,point):
 		self.point.SetValue(point)
+		self.point.Validate()
 	def GetPoint(self):
 		return self.point.GetValue().strip()
 	def GetRod(self):
@@ -189,7 +200,7 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 		else:
 			event.Skip()
 		#....other stuff like checking point name etc.....#
-	
+		self.point.Validate()
 #------------------------- MakeBasis Frame defined here --------------------------------------------------------------#
 class MakeBasis(GUI.FullScreenWindow):
 	def __init__(self, parent,instrument_number=0):
@@ -207,7 +218,10 @@ class MakeBasis(GUI.FullScreenWindow):
 		GUI.FullScreenWindow.__init__(self, parent)
 		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "])
 		self.valg=MTLChoiceBox(self,[rod.name for rod in self.laegter])
-		self.valg.SetPoint("%s"%self.statusdata.GetEnd())
+		startp=self.statusdata.GetEnd()
+		if startp is None:
+			startp=""
+		self.valg.SetPoint("%s"%startp)
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
 		self.map.RegisterPointFunction(self.PointNameHandler) #handles left-clicks on points in map - sets name in point box
 		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
@@ -222,6 +236,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetManualMode)
 		self.main.button[2].Bind(wx.EVT_BUTTON,self.OnAccept)
 		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCancel)
+		self.maal.columns[2][3].Bind(wx.EVT_TEXT_ENTER,self.OnLastReturn)
 		self.instrument.SetLogWindow(self)
 		self.instrument.SetEventHandler(self)
 		self.Bind(Instrument.EVT_LOG,self.OnInstLog)
@@ -256,6 +271,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		#TEST INSTRUMENT#
 		if not self.instrument.TestPort():
 			GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
+			self.Log(u"Kunne ikke \u00E5bne instrumentets com-port...")
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
 		if self.parent.gps.isAlive():
 			self.parent.map.DetachGPS()
@@ -281,12 +297,17 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.Log(u"Afbryder basism\u00E5ling.")
 			self.Close()
 	def OnAccept(self,event):
-		self.Log("Accept")
-		mask=self.maal.GetValidity()
+		mask=self.setup.GetValidity()
 		if not mask.all():
 			GUI.ErrorBox(self,u"Udf\u00F8r alle m\u00E5linger f\u00F8rst")
 		else:
 			self.CloseOK()
+	def OnLastReturn(self,event):
+		mask=self.setup.GetValidity()
+		if mask.all():
+			self.main.button[2].SetFocus()
+		else:
+			event.Skip()
 	def OnSetAutoMode(self,event):
 		self.SetAutoMode(self.maal.zfields) 
 	def OnSetManualMode(self,event):
@@ -302,6 +323,7 @@ class MakeBasis(GUI.FullScreenWindow):
 					field.Enable(0)
 				#....etc......#
 				self.UpdateStatus()
+				self.instrument.ReadData()
 			else:
 				GUI.ErrorBox(self,u"Skift til manuel mode f\u00F8rst")
 		else:
@@ -315,12 +337,14 @@ class MakeBasis(GUI.FullScreenWindow):
 				self.auto_fields=[field]
 				field.Enable(0)
 				self.UpdateStatus()
+				self.instrument.ReadData()
 			else:
 				GUI.ErrorBox(self,u"Skift til manuel mode f\u00F8rst")
 		else:
 			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
 	def SetManualMode(self):
 		self.mode=0
+		self.instrument.Kill() 
 		for field in self.auto_fields:
 			field.Enable()
 		self.UpdateStatus()
@@ -344,107 +368,90 @@ class MakeBasis(GUI.FullScreenWindow):
 		dlg.ShowModal()
 		dlg.Destroy()
 	def OnData(self,event):
-		pass
+		if self.mode>0: #some sort of auto mode...
+			code,val=event.value
+			if code=='E':
+				Core.SoundBadData()
+				GUI.ErrorBox(self,unicode(val))
+				self.SetManualMode()  #leave function here...
+			elif code!='<':
+				Core.SoundBadData()
+				GUI.ErrorBox(self,u"Forventede en vinkelm\u00E5ling!")
+				self.SetManualMode()  #leave function here...
+			else: #then code is '<' and we have angles...
+				field=self.auto_fields.pop([0])
+				field.SetValue(val) #issues a text-event which triggers event handlers... Watch out that these dont send the thread of control astray!!!!
+				if len(self.auto_fields)==0:
+					self.SetManualMode()
+					self.Valg.SetFocus()
+					Core.SoundGoodData()
+				else:
+					self.instrument.ReadData()
+		else: #somehow the the instrument is still sending data - so kill the damn' thread
+			self.instrument.Kill()
 	def OnInstLog(self,event):
-		pass
-	def CloseOK(self,event):
-		global T0
-		global Nopst
-		global totaldist
-		global nopst
-		global dist
-		global hdiff
-		global fullresfilnavn
-		global Temp
-		global Ttimes
-		global overfhdiff
-		global sidsteInst
-		global overfdist
-		global Nhdiffs
-		global Start
-		global Slut
-		GPS=self.parent.GPS
-		GPS.window.Show(0)
-		middeltid=(MyTime()+self.start)/2-T0
-		self.exitstate=1
+		self.Log(event.text)
+	def CloseOK(self,event): #TODO: decide when to make the fbreject test.....!!!!!!
 		if self.sigte==1:
-			self.h=self.hdiff+hdiff
-			nopst+=1
-			dist+=self.dist
-			hoved=LavHoved(self,self.h,dist,nopst,Start,self.punkt,Dato2(),Nu())
-			hoved.ShowModal()
-			if hoved.exitstate:
-				T=float(hoved.edit.numfield[0].GetMyValue())
-				start=hoved.edit.field[0].GetValue().strip().replace(" ","")  #slet spaces...
-				slut=hoved.edit.field[1].GetValue().strip().replace(" ","")
-				self.punkt=slut
-				Slut=slut
-				Start=start
-				self.SkrivMaaling()
-				dato=hoved.edit.field[2].GetValue().strip().replace(" ","")
-				tid=hoved.edit.field[3].GetValue().strip().replace(" ","")
-				jside=hoved.edit.field[4].GetValue().replace(",",".").strip().replace(" ","")
-				Temp.append(T)
-				Ttimes.append(MyTime()-T0)
-				resfil=open(fullresfilnavn,"a")
-				doprint=True #som default print
-				if not hoved.ekstra.IsEmpty():
-					ekstra=hoved.ekstra.GetValue()
-					if ekstra.find("dontprint")!=-1: #paanaer hvis vi beder om ikke at goere det!
-						doprint=False
-					else:
-						for line in ekstra.splitlines():
-							line=Internationale(line)
-							resfil.write(line+"\n") #ikke kommentar-tegn foran mere....
-				resfil.write("# %s %s %s %s %.2f %.5f %s %.1f %i\n\n"%(start,slut,dato,tid,dist,self.h,jside,T,nopst))
-				resfil.close()
-				self.Log(SL)
-				self.Log("Hoved:\nFra %s til %s" %(start,slut))
-				self.Log("Journalside: %s" %jside)
-				self.Log("Hdiff: %.4f m Afstand: %.2f m Opstillinger: %d" %(self.h,dist,nopst)) 
-				#Reset og opdater
-				Nhdiffs+=1
-				Nopst+=nopst
-				totaldist+=dist
-				hdiff=0
-				nopst=0  
-				dist=0
-				Inst1.hstate=0
-				Inst2.hstate=0
-				overfhdiff=-self.hdiff
-				overfdist=self.dist
-				self.Inst.fast=True
-				sidsteInst=self.Inst
-				hoved.Destroy()
-				if doprint: #har vi bedt om ikke at printe??
-					try:
-						FileOps.Jside(fullresfilnavn)
-					except Exception, msg:
-						print str(msg)
-						FejlBoks(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
-				self.Inst.ind.append(map(lambda x:60*60*x,self.ind)) #I sekunder
-				self.Inst.times.append(middeltid)
-				self.parent.Update()
-				self.Close()
-			else:
-				self.exitstate=0
-				hoved.Destroy()
-				nopst-=1
-				dist-=self.dist
-				
-				
-		if self.sigte==-1:
-			Start=self.punkt
-			self.SkrivMaaling()
-			self.Inst.hstate=1
-			hdiff=self.hdiff
-			nopst=1
-			dist=self.dist
-			self.Inst.ind.append(map(lambda x:60*60*x,self.ind)) #I sekunder
-			self.Inst.times.append(middeltid)
-			self.parent.Update()
-			self.Close()
-	def SkrivMaaling(self):
+			self.MakeHead() #like in MGL - but must close window
+		else:
+			self.WriteData()
+	def MakeHead(self):
+		if self.parent.fbtest is not None and self.parent.fbtest.found:
+			test=self.parent.fbtest.wasok
+		else:
+			test=None
+		temp=self.statusdata.GetTemperature()
+		hvd=Core.MakeHead(self,self.statusdata,Funktioner.Dato(),Funktioner.Nu(),temp=temp,test=test)
+		hvd.ShowModal()
+		if hvd.WasOK():
+			start,slut,dato,tid,jside,temp,ekstra=hvd.GetValues()
+			if start!=self.statusdata.GetStart() or slut!=self.statusdata.GetEnd():
+				self.statusdata.slutpunkt=slut #if edited save this
+				self.statusdata.startpunkt=start
+				OK=self.TestStretch()
+				if not OK: #then escape
+					hvd.Destroy()
+					return
+			self.WriteData(True)
+			dato=dato.strip().replace(" ","")
+			tid=tid.strip().replace(" ","")
+			jside=jside.replace(",",".").strip().replace(" ","")
+			resfile=open(self.resfile,"a")
+			if len(ekstra)>0:
+				for line in ekstra.splitlines():
+					line=Funktioner.Internationale(line)
+					resfile.write(line+"\n") #ikke kommentar-tegn foran mere....
+			hdiff,dist,nopst=self.statusdata.GetStretchData()
+			resfile.write("# %s %s %s %s %.2f %.5f %s %.1f %i\n\n"%(start,slut,dato,tid,dist,hdiff,jside,temp,nopst))
+			resfile.close()
+			#log to parents log
+			self.parent.Log("Hoved:\nFra %s til %s" %(start,slut))
+			self.parent.Log("Journalside: %s" %jside)
+			self.parent.Log("Hdiff: %.4f m Afstand: %.2f m Opstillinger: %d" %(hdiff,dist,nopst)) 
+			#now print
+			if ekstra.find("dontprint")==-1:
+				try:
+					FileOps.Jside(self.resfile,mode=1,program="MGL")
+				except Exception, msg:
+					GUI.ErrorBox(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
+			#update data 
+			if self.parent.fbtest is not None:
+				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.hdiff,self.statusdata.dist,dato,tid)
+				#self.Log(repr(OK))
+				if not OK:
+					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
+			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
+			self.statusdata.StartNewStretch()
+			self.back.EnablePoint()
+			#start new strech
+			hvd.Destroy()
+			self.StartNew()
+		else:
+			self.statusdata.SubtractSetup(self.setup.GetHD(),self.setup.GetDistance()) #should be improved....
+			self.UpdateStretchBox()
+			hvd.Destroy()
+	def WriteData(self):
 		global fullresfilnavn
 		global Start
 		global Slut

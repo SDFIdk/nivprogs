@@ -80,7 +80,7 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 		try:
 			con=serial.Serial(self.port,self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
 		except: #well this is easiest since the eventhandler should be listening...
-			event=DataEvent(OK=False,hascon=False)
+			event=DataEvent(id=self.id,value=['E',u'Instrumentets com port (port %i) kunne ikke \u00E5bnes' %self.port]) #for at foelge samme standard som traaden bruger, se nedenfor
 			wx.PostEvent(self.eventhandler,event)
 		else:
 			self.portstatus=True  #flag to signal that the we can connect to instrument.
@@ -88,6 +88,13 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			self.SetReadState(True)
 
 
+# This thread more or less copied from earlier versions of the program.
+# Sends events to logwindow with a .text attr and to 'eventhandler' window which handles data.
+#  DataEvents has an id attr (to distinguish instruments) and a value attr, which is a list: [code,data]
+# The code can be: 
+# ? - means the data is a distance reading
+# < - means the data is an angle reading
+# E - which means that an error occured. 'Data' is then an error msg.
 class TopconThread(threading.Thread):
 	def __init__(self,connection,eventhandler,logwin,id,name):
 		threading.Thread.__init__(self) # init the thread
@@ -96,6 +103,7 @@ class TopconThread(threading.Thread):
 		self.logwindow=logwin
 		self.id=id
 		self.name=name
+		self.accept_code=chr(6) + "006" + chr(3) + chr(13) + chr(10) #magisk accept-kode, som skal sendes tilbage til instrumentet
 		self.start()
 	def Kill(self):
 		self.alive=False
@@ -112,18 +120,17 @@ class TopconThread(threading.Thread):
 			self.connection.flush()  #er denne raekkefoelge optimal?? Maaske laese lineien to gange??
 			s=self.connection.readline()
 			#Write accept code 4 times#
-			ak= chr(6) + "006" + chr(3) + chr(13) + chr(10)
 			for j in range(0,4):
-				self.connection.write(ak)
+				self.connection.write(self.accept_code)
 			self.connection.close()
 		except Exception,msg:
 			try:
 				self.connection.close()
 			except:
 				pass
-			msg="Afslutter 'AutoMode' pga. en fejl:\n"+str(msg)
+			msg=u"Fejl ved l\u00E6sning fra instrument:\n"+str(msg)
 			self.alive=False
-			evt=DataEvent(id=self.id,value=["E",msg2])
+			evt=DataEvent(id=self.id,value=["E",msg])
 			wx.PostEvent(self.eventhandler,evt)
 		else:
 			if self.alive: #betyder at eventhandler-vinduet skulle eksistere endnu!
