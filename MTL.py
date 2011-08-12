@@ -12,7 +12,7 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
 PROGRAM.version="beta 0.1"
-PROGRAM.date="11-08-11"
+PROGRAM.date="12-08-11"
 PROGRAM.type="MTL" #vigtigt signak til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -23,6 +23,7 @@ DEBUG=True
 RADIUS=6385000.0   #Jordradius.
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
 MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
+SL="*"*50
 #---------Main Windows defined here--------------------------------------#
 class MTLmain(Core.MLBase):
 	def __init__(self,parent,resfil,instruments,laegter,data,gps,ini,statusdata,size):
@@ -55,26 +56,57 @@ class MTLmain(Core.MLBase):
 		self.UpdateStatus()
 	def UpdateStatus(self):
 		self._UpdateStatus()
-		state=self.statusdata.GetState()
+		allowed_actions=[True,False,False]
+		if self.statusdata.GetSetups()>0:
+			allowed_actions=[False,True,True]
 		instrumentstate=self.statusdata.GetInstrumentState()
 		#Enable buttons according to the current state defined in statusdata#
 		for i in range(3):
-			self.buttonboxes[i].Enable(state==i)
-		if state==0:
+			self.buttonboxes[i].Enable(allowed_actions[i])
+		if allowed_actions[0]:
 			self.buttonboxes[0].button[2].Enable(instrumentstate>=0)
 	def OnBasis1(self,event):
+		self.Log(SL)
 		win=MakeBasis(self,0)
 		win.InitializeMap()
 	def OnBasis2(self,event):
+		self.Log(SL)
 		win=MakeBasis(self,1)
 		win.InitializeMap()
 	def OnTransferHeight(self,event):
-		self.Log("Transfer height")
+		self.Log(SL)
+		hdiff,dist=self.statusdata.GetLastBasis()
+		hdiff*=-1  #aiming backwards...
+		self.statusdata.AddSetup(hdiff,dist)
+		start=self.statusdata.GetEnd()
+		self.statusdata.SetStart(start)
+		instname=self.statusdata.GetDefiningInstrument().GetName()
+		resfile=open(self.resfile,"a")
+		self.Log(u"Overf\u00F8rer instrumenth\u00F8jde til %s" %instname)
+		resfile.write("%*s %*s %*s %s\n" %((-12,"Basis",-12,"Instrument",-18,"Overfoert afstand","Overfoert hoejdeforskel")))
+		resfile.write("%*s %*s %*s %.4fm\n" %(-12,start,-12,instname,-18,"%.2fm"%dist,hdiff))
+		resfile.write("* B1 %s " %start+"%.3f %.6f\n" %(dist,hdiff))
+		if self.gps.isAlive():
+			try:
+				x,y,dop=self.gps.GetPos() #not compl. thread safe
+			except:
+				pass
+			else:
+				if dop<30:
+					resfile.write("GPS: %.1f %.1f %.1f\n" %(x,y,dop))
+		resfile.close()
+		self.UpdateStatus()
 	def OnInstrument2Instrument(self,event):
-		self.Log("I til I")
+		self.Log(SL)
+		self.Log("II")
+		self.statusdata.AddSetup(1.0,400.0)
+		self.statusdata.SetInstrumentState((self.statusdata.GetInstrumentState()+1)%2)
+		self.Log("Instrument %s now carries the height..." %(self.statusdata.GetInstrumentNames()[self.statusdata.GetInstrumentState()]))
+		self.UpdateStatus()
 	def OnBasisEnd(self,event):
-		self.Log("Basis slut")
-		
+		self.Log(SL)
+		win=MakeBasis(self,self.statusdata.GetInstrumentState())
+		win.InitializeMap()
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 #-------------------------Various Wx Windows Specialized for MTL -------------------------------------------------#
 
@@ -207,6 +239,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.laegter=parent.laegter
 		self.instrument_number=instrument_number #the height status after succesful measurements should be this number.... Instrument that 'carries' height.
 		self.statusdata=parent.statusdata
+		self.resfile=parent.resfile
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.mode=0 #modes are 0: manual and 1: auto 2; single auto - i.e. just one field....
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
@@ -219,7 +252,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "])
 		self.valg=MTLChoiceBox(self,[rod.name for rod in self.laegter])
 		startp=self.statusdata.GetEnd()
-		if startp is None:
+		if startp is None or self.sigte==1:
 			startp=""
 		self.valg.SetPoint("%s"%startp)
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
@@ -267,7 +300,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.TestMode()
 		#WRITE TO LOG#
 		self.Log(u"Starter basism\u00E5ling kl. %s" %Funktioner.Nu())
-		self.Log("Sigte: %s" %(Funktioner.Bool2sigte(self.sigte)))
+		self.Log("Sigte: %s, instrument: %s" %(Funktioner.Bool2sigte(self.sigte),self.instrument.GetName()))
 		#TEST INSTRUMENT#
 		if not self.instrument.TestPort():
 			GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
@@ -301,7 +334,12 @@ class MakeBasis(GUI.FullScreenWindow):
 		if not mask.all():
 			GUI.ErrorBox(self,u"Udf\u00F8r alle m\u00E5linger f\u00F8rst")
 		else:
-			self.CloseOK()
+			OK=self.valg.point.Validate()
+			if OK:
+				self.CloseOK()
+			else:
+				GUI.ErrorBox(self,"Indtast punktnavn.")
+				self.valg.point.SetFocus()
 	def OnLastReturn(self,event):
 		mask=self.setup.GetValidity()
 		if mask.all():
@@ -391,11 +429,53 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.instrument.Kill()
 	def OnInstLog(self,event):
 		self.Log(event.text)
-	def CloseOK(self,event): #TODO: decide when to make the fbreject test.....!!!!!!
-		if self.sigte==1:
-			self.MakeHead() #like in MGL - but must close window
+	def TestStretch(self):
+		if self.parent.fbtest is None:
+			return True
 		else:
+			data=self.statusdata
+			found,OK,diff,nfound=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
+			#self.Log(repr(found)+repr(OK)+repr(diff)+repr(nfound))
+			if found:
+				if OK:
+					self.Log(u"Fremm\u00E5ling fundet, forkastelseskriterie overholdt.")
+					return True
+				else:
+					msg=u"Forkastelseskriterie for frem og tilbage-m\u00E5lte str\u00E6kninger overksredet med %.1f mm.\n" %diff
+					msg+=u"Vil du godkende m\u00E5lingen?"
+					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
+					dlg.ShowModal()
+					OK=dlg.WasOK()
+					dlg.Destroy()
+					return OK
+			else:
+				return True
+	def CloseOK(self): #TODO: decide when to make the fbreject test.....!!!!!!
+		s,h1,h2,hdiff=self.setup.Calculate()
+		#Perhaps add test for abs(h1-h2)<self.ini.maxdh_basis here....
+		point=self.valg.GetPoint()
+		self.statusdata.AddSetup(hdiff,s)
+		if self.sigte==1: #then we should make head and start new stretch. Also test back vs. forward here, if available.
+			self.statusdata.SetEnd(point)
+			OK=self.TestStretch()
+			if OK:
+				OK=self.MakeHead() #like in MGL - almost
+				if OK:
+					#We need to keep a pointer to the last hdiff and dist....
+					self.statusdata.StartNewStretch()
+				else:
+					self.statusdata.SubtractSetup() #leave function here...
+					return
+			else:
+				self.statusdata.SubtractSetup() #leave function here...
+				return
+		else:
+			self.statusdata.SetStart(point)
 			self.WriteData()
+		self.statusdata.SetInstrumentState(self.instrument_number)
+		self.Log(u"Afslutter basism\u00E5ling kl. %s" %Funktioner.Nu())
+		self.parent.UpdateStatus()
+		self.Close()  
 	def MakeHead(self):
 		if self.parent.fbtest is not None and self.parent.fbtest.found:
 			test=self.parent.fbtest.wasok
@@ -407,13 +487,13 @@ class MakeBasis(GUI.FullScreenWindow):
 		if hvd.WasOK():
 			start,slut,dato,tid,jside,temp,ekstra=hvd.GetValues()
 			if start!=self.statusdata.GetStart() or slut!=self.statusdata.GetEnd():
-				self.statusdata.slutpunkt=slut #if edited save this
-				self.statusdata.startpunkt=start
+				self.statusdata.SetEnd(slut) #if edited save this
+				self.statusdata.SetStart(start)
 				OK=self.TestStretch()
-				if not OK: #then escape
+				if not OK: #then escape  #TODO: Check this!!!!!!!!
 					hvd.Destroy()
-					return
-			self.WriteData(True)
+					return False
+			self.WriteData()
 			dato=dato.strip().replace(" ","")
 			tid=tid.strip().replace(" ","")
 			jside=jside.replace(",",".").strip().replace(" ","")
@@ -432,26 +512,25 @@ class MakeBasis(GUI.FullScreenWindow):
 			#now print
 			if ekstra.find("dontprint")==-1:
 				try:
-					FileOps.Jside(self.resfile,mode=1,program="MGL")
+					FileOps.Jside(self.resfile,mode=1,program="MTL")
 				except Exception, msg:
 					GUI.ErrorBox(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
 			#update data 
 			if self.parent.fbtest is not None:
-				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.hdiff,self.statusdata.dist,dato,tid)
-				#self.Log(repr(OK))
+				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.GetHdiff(),self.statusdata.GetDistance(),dato,tid)
 				if not OK:
 					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
 			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
-			self.statusdata.StartNewStretch()
-			self.back.EnablePoint()
-			#start new strech
 			hvd.Destroy()
-			self.StartNew()
+			return True
 		else:
-			self.statusdata.SubtractSetup(self.setup.GetHD(),self.setup.GetDistance()) #should be improved....
-			self.UpdateStretchBox()
 			hvd.Destroy()
+			return False
 	def WriteData(self):
+		resfile=open(self.resfile,"a")
+		resfile.write(";TODO basis\n")
+		resfile.close()
+		return
 		global fullresfilnavn
 		global Start
 		global Slut

@@ -617,8 +617,8 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		else:
 			dd_color="green"
 		ul=["%.2f m" %ddsum]
-		ul+=["%s" %self.statusdata.startpunkt,"%.2f m" %self.statusdata.dist,"%.5f m" %self.statusdata.hdiff]
-		ul+=["%i" %self.statusdata.nopst]
+		ul+=["%s" %self.statusdata.GetStart(),"%.2f m" %self.statusdata.GetDistance(),"%.5f m" %self.statusdata.GetHdiff()]
+		ul+=["%i" %self.statusdata.GetSetups()]
 		self.strkstatus.Update(ul,colours={0:dd_color})
 	def OnDelete(self,event):
 		if self.mmode!='manual':
@@ -660,7 +660,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#Update statusdata (strech)
 		if self.nmode==2 or self.pmode=='detail':
 			gotohead=False
-			if self.statusdata.nopst==0: #then we have just started a strech
+			if self.statusdata.GetSetups()==0: #then we have just started a strech
 				startp=self.back.point.GetValue()
 				if len(startp)==0:
 					GUI.ErrorBox(self,"Du skal indtaste et startpunkt.")
@@ -770,7 +770,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.nmode=1
 		self.nextbutton.Enable(0)
 		self.UpdateStretchBox()
-		if self.statusdata.nopst>0:
+		if self.statusdata.GetSetups()>0:
 			self.back.DisablePoint()
 			self.back.dist.SetFocus()
 		else:
@@ -781,7 +781,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.forwardstatus.Clear()
 		self.forward.Clear()
 		self.back.Clear()
-		if self.statusdata.slutpunkt is not None and self.statusdata.nopst==0: #do this after clear.
+		if self.statusdata.slutpunkt is not None and self.statusdata.GetSetups()==0: #do this after clear.
 				self.back.point.ChangeValue(self.statusdata.slutpunkt)
 		self.forward.EnableTop()
 		self.back.EnableTop()
@@ -790,12 +790,12 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.setup.StartNew()
 		#Swap Rods:
 		if swap:
-			if self.statusdata.nopst>0 or self.statusdata.Nopst>0:
+			if self.statusdata.GetSetups()>0 or self.statusdata.GetSetupsAll()>0:
 				backrod=self.back.rod.GetSelection()
 				forwrod=self.forward.rod.GetSelection()
 				self.forward.rod.SetSelection(backrod)
 				self.back.rod.SetSelection(forwrod)
-		if (self.statusdata.nopst>0 or self.statusdata.Nopst>0) and self.instrument.GetPortStatus():
+		if (self.statusdata.GetSetups()>0 or self.statusdata.GetSetupsAll()>0) and self.instrument.GetPortStatus():
 			self.AutoHandler('back')
 		else:
 			self.SetManualMode()
@@ -840,7 +840,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					GUI.ErrorBox(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
 			#update data 
 			if self.parent.fbtest is not None:
-				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.hdiff,self.statusdata.dist,dato,tid)
+				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.GetHdiff(),self.statusdata.GetDistance(),dato,tid)
 				#self.Log(repr(OK))
 				if not OK:
 					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
@@ -861,7 +861,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		startstrech=False
 		for aim in ['back','forward']:
 			data=self.setup.aim[aim]
-			if self.statusdata.nopst==1 and aim=='back':
+			if self.statusdata.GetSetups()==1 and aim=='back':
 				point=self.statusdata.startpunkt
 				startstrech=True
 			elif endstrech and aim=='forward':
@@ -914,7 +914,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		
 	def PointNameHandler(self,name):
 		name=Pointname2Numformat(name)
-		if self.statusdata.nopst>0 or not self.forward.point.IsEmpty(): #a way to force insertion into forward-point
+		if self.statusdata.GetSetups()>0 or not self.forward.point.IsEmpty(): #a way to force insertion into forward-point
 			self.forward.point.SetValue(name)
 		else:
 			self.back.point.SetValue(name)

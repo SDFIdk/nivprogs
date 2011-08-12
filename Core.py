@@ -34,12 +34,10 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 	def Clear(self):
 		self._Clear()
 	def _Clear(self):
-		self.nopst=0 #opst. i enkelt straek
+		self._setups=np.empty((0,2))
 		self.Nopst=0 #Alle opst.
 		self.Nstraek=0
-		self.dist=0  #afst. i enkelt straek
 		self.Dist=0 #total afstand opmaalt
-		self.hdiff=0 #aktuel h-forskel i straek
 		self.startpunkt=None #aktuelt startpunkt
 		self.slutpunkt=None #seneste slutpunkt
 		self.Temps=[] #liste med temperaturer
@@ -78,26 +76,20 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 			return "%.1f" %self.Temps[-1]
 		else:
 			return "NA"
-	def _AddSetup(self,hdiff=0,dist=0):
-		self.nopst+=1
-		self.hdiff+=hdiff
-		self.dist+=dist
-	def _StartNewStretch(self):
-		self.Nopst+=self.nopst
-		self.Dist+=self.dist
-		self.Nstraek+=1
-		self.nopst=0
-		self.hdiff=0
-		self.dist=0
-		self.startpunkt=None
 	def AddSetup(self,hdiff=0,dist=0):
 		self._AddSetup(hdiff,dist)
-	def SubtractSetup(self,hdiff=0,dist=0):
-		self._SubtractSetup(hdiff,dist)
-	def _SubtractSetup(self,hdiff,dist):
-		self.hdiff-=hdiff
-		self.dist-=dist
-		self.nopst-=1
+	def _AddSetup(self,hdiff=0,dist=0):
+		self._setups=np.vstack((self._setups,[hdiff,dist]))
+	def _StartNewStretch(self):
+		self.Nopst+=self.GetSetups()
+		self.Dist+=self.GetDistance()
+		self.Nstraek+=1
+		self._setups=np.empty((0,2))
+		self.startpunkt=None
+	def SubtractSetup(self,*args):
+		self._SubtractSetup(*args)
+	def _SubtractSetup(self,*args):
+		self._setups=self._setups[:-1] # deletes last row
 	def StartNewStretch(self):
 		self._StartNewStretch()
 	def SetStartPoint(self,name):
@@ -112,17 +104,23 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 	def GetStretches(self):
 		return self.Nstraek
 	def GetStretchData(self):
-		return self.hdiff,self.dist,self.nopst
+		return self.GetHdiff(),self.GetDistance(),self.GetSetups()
 	def GetHdiff(self):
-		return self.hdiff
+		if self._setups.shape[0]>0:
+			return self._setups[:,0].sum()
+		else:
+			return 0.0
 	def GetDistanceAll(self):
 		return self.Dist
 	def GetDistance(self):
-		return self.dist
+		if self._setups.shape[0]>0:
+			return self._setups[:,1].sum()
+		else:
+			return 0.0
 	def GetSetupsAll(self):
 		return self.Nopst
 	def GetSetups(self):
-		return self.nopst
+		return self._setups.shape[0]
 	def SetProject(self,proj):
 		self.projekt=proj
 	def GetProject(self):
@@ -145,17 +143,17 @@ class MGLStatusData(StatusData):
 			return sum(self.ddist)
 		def SetLastDD(self,dd):
 			self.ddist[-1]=dd
-		def SubtractSetup(self,hdiff,dist):
-			self._SubtractSetup(hdiff,dist)
+		def SubtractSetup(self,*args):
+			self._SubtractSetup(*args)
 			self.ddist=self.ddist[0:-1] #we should always have nopst>0 when calling this
 			
 #------This class handles MTL "state logic" - here we keep pointers to the instruments also --------------------#			
 class MTLStatusData(StatusData):
 		def __init__(self):
 			StatusData.__init__(self)
-			self.state=0 #means that we are in the state where 'basis start point' should be made
 			self.instrumentstate=None #defines which instrument that 'holds the height' (should be 0 or 1 tp point into the instrument list)
 			self.instruments=[]
+			self.last_basis=[0,0] #keep hdiff and dist from a basis at the end of a stretch - in order to reuse the data in 'transfer height'.
 		def SetInstruments(self,instruments): #This must be set before this class can be used to anything
 			self.instruments=instruments
 		def GetInstruments(self):
@@ -168,12 +166,13 @@ class MTLStatusData(StatusData):
 			return self.instrumentstate
 		def GetDefiningInstrument(self):
 			return self.instruments[self.instrumentstate]
-		def SetState(self,state):
-			self.state=state
-		def GetState(self):
-			return self.state
-		def GoToNextState(self):
-			self.state=(self.state+1)%3
+		def StartNewStretch(self):
+			if self.GetSetups()>0:
+				self.last_basis=self._setups[-1]
+			self._StartNewStretch()
+		def GetLastBasis(self):
+			return self.last_basis
+			
 			
 class Ini(object):
 	def __init__(self):
@@ -999,7 +998,7 @@ class Logger(wx.Panel):
 class MakeHead(GUI.InputDialog):
 	def __init__(self,parent,statusdata,dato,tid,jside="",temp=None,test=None):
 		textlabels=["Fra:","Til:","Dato:","Tid:","Journalside:"]
-		textvals=[statusdata.startpunkt,statusdata.slutpunkt,dato,tid]
+		textvals=[statusdata.GetStart(),statusdata.GetEnd(),dato,tid]
 		numlabels=["Temperatur:"]
 		try:
 			float(temp)
@@ -1021,7 +1020,7 @@ class MakeHead(GUI.InputDialog):
 		else:
 			test="IKKE FUNDET"
 			testcol=None
-		status.Update(["%.5f m" %statusdata.hdiff,"%.2f m" %statusdata.dist,"%i" %statusdata.nopst])
+		status.Update(["%.5f m" %statusdata.GetHdiff(),"%.2f m" %statusdata.GetDistance(),"%i" %statusdata.GetSetups()])
 		testbox.Update([test],colours={0:testcol})
 		self.ekstra=GUI.EditFields(self,["Ekstra information (tryk, vandtemp., etc.):"])
 		self.sizer.Insert(0,status,0,wx.ALL,5)
