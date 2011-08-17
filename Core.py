@@ -35,6 +35,7 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		self._Clear()
 	def _Clear(self):
 		self._setups=np.empty((0,2))
+		self._last_stretch=np.empty((0,2)) #det er nu nemmere at holde data i hukommelsen - dette er seneste skridt mod at holde alt i huk!
 		self.Nopst=0 #Alle opst.
 		self.Nstraek=0
 		self.Dist=0 #total afstand opmaalt
@@ -84,6 +85,7 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		self.Nopst+=self.GetSetups()
 		self.Dist+=self.GetDistance()
 		self.Nstraek+=1
+		self._last_stretch=np.copy(self._setups)
 		self._setups=np.empty((0,2))
 		self.startpunkt=None
 	def SubtractSetup(self,*args):
@@ -153,7 +155,6 @@ class MTLStatusData(StatusData):
 			StatusData.__init__(self)
 			self.instrumentstate=None #defines which instrument that 'holds the height' (should be 0 or 1 tp point into the instrument list)
 			self.instruments=[]
-			self.last_basis=[0,0] #keep hdiff and dist from a basis at the end of a stretch - in order to reuse the data in 'transfer height'.
 		def SetInstruments(self,instruments): #This must be set before this class can be used to anything
 			self.instruments=instruments
 		def GetInstruments(self):
@@ -166,12 +167,8 @@ class MTLStatusData(StatusData):
 			return self.instrumentstate
 		def GetDefiningInstrument(self):
 			return self.instruments[self.instrumentstate]
-		def StartNewStretch(self):
-			if self.GetSetups()>0:
-				self.last_basis=self._setups[-1]
-			self._StartNewStretch()
 		def GetLastBasis(self):
-			return self.last_basis
+			return self._last_stretch[-1]
 			
 			
 class Ini(object):
@@ -224,41 +221,37 @@ class MLBase(GUI.MainWindow):
 		GUI.MainWindow.__init__(self,parent, title=programtype.name,style=wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU|wx.CAPTION|wx.CLIP_CHILDREN)
 		self.SetIcon(wx.Icon(MMDIR+"icon.bmp", wx.BITMAP_TYPE_ICO))
 		# Setting up the menu.
-		filemenu= wx.Menu()
-		anamenu=wx.Menu()
-		funkmenu=wx.Menu()
+		self.filemenu= wx.Menu()
+		self.anamenu=wx.Menu()
+		self.funkmenu=wx.Menu()
 		self.punktmenu=wx.Menu()
-		about=filemenu.Append(wx.ID_ANY, "&About"," Om programmet")
-		filemenu.AppendSeparator()
-		exit=filemenu.Append(wx.ID_ANY,"E&xit"," Afslut programmet")
+		about=self.filemenu.Append(wx.ID_ANY, "&About"," Om programmet")
+		self.filemenu.AppendSeparator()
+		exit=self.filemenu.Append(wx.ID_ANY,"E&xit"," Afslut programmet")
+		#Punkt-Menu#
 		self.GPSsetup=self.punktmenu.Append(wx.ID_ANY,"Tilslut GPS",u"Fors\u00F8g at tilutte USB-GPS via virtuel COM-port")
-		#self.GPSstop=self.punktmenu.Append(wx.ID_ANY,"Stop GPS","Stopper GPS-enhed")
 		self.ShowMap=self.punktmenu.Append(wx.ID_ANY,"Vis kort","Viser den aktuelle (gps) position")
 		#Analyse-Menu#
-		MeasTemp=anamenu.Append(wx.ID_ANY,u"M\u00E5l temperatur",u"Opdater temperatur")
-		WriteComment=anamenu.Append(wx.ID_ANY,"Skriv kommentar til fil",u"Skriv en kommentar (tryk/temp osv.) til resultatfil")
-		anamenu.AppendSeparator()
-		CompareHdiff=anamenu.Append(wx.ID_ANY,u"Sammenlign h\u00F8jdeforskelle",u"Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
-		SumHeights=anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
-		MakeReject=anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
-		anamenu.AppendSeparator()
-		TTgraph=anamenu.Append(wx.ID_ANY,"&Temperatur-Tid","Graf over temperatur efter opstart.")
+		MeasTemp=self.anamenu.Append(wx.ID_ANY,u"M\u00E5l temperatur",u"Opdater temperatur")
+		WriteComment=self.anamenu.Append(wx.ID_ANY,"Skriv kommentar til fil",u"Skriv en kommentar (tryk/temp osv.) til resultatfil")
+		self.anamenu.AppendSeparator()
+		CompareHdiff=self.anamenu.Append(wx.ID_ANY,u"Sammenlign h\u00F8jdeforskelle",u"Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
+		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
+		MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
+		self.anamenu.AppendSeparator()
+		TTgraph=self.anamenu.Append(wx.ID_ANY,"&Temperatur-Tid","Graf over temperatur efter opstart.")
 		#Rediger-Menu#
-		#self.SletSeneste=funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
-		#self.SletSHoved=funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
-		#funkmenu.AppendSeparator()
-		ShowFile=funkmenu.Append(wx.ID_ANY,"Vis resultatfil","Viser resultatfilen i et nyt vindue.")
-		SkrivJS=funkmenu.Append(wx.ID_ANY,"Udskriv journalside","Udksriver journalsider fra datafilen.")
+		ShowFile=self.funkmenu.Append(wx.ID_ANY,"Vis resultatfil","Viser resultatfilen i et nyt vindue.")
+		SkrivJS=self.funkmenu.Append(wx.ID_ANY,"Udskriv journalside","Udksriver journalsider fra datafilen.")
 		#self.RedHoved=funkmenu.Append(wx.ID_ANY,"Rediger et hoved","Rediger et hoved i datafilen.")
 		#self.SletHoved=funkmenu.Append(wx.ID_ANY,"Slet et hoved","Slet et hoved i datafilen.")
-		TjekPunkter=funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
-		TjekJsider=funkmenu.Append(wx.ID_ANY,"Tjek journalsider","Tjek journalsider i datafil(er).")
-		#TjekJsider.Enable(0)
+		TjekPunkter=self.funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
+		TjekJsider=self.funkmenu.Append(wx.ID_ANY,"Tjek journalsider","Tjek journalsider i datafil(er).")
 		# Creating the menubar.
 		menuBar = wx.MenuBar()
-		menuBar.Append(filemenu,"&File")
-		menuBar.Append(funkmenu,"&Rediger")
-		menuBar.Append(anamenu,"&Analyse")
+		menuBar.Append(self.filemenu,"&File")
+		menuBar.Append(self.funkmenu,"&Rediger")
+		menuBar.Append(self.anamenu,"&Analyse")
 		menuBar.Append(self.punktmenu,"&Punkter")
 		self.SetMenuBar(menuBar)  # Adding the MenuBar to the Frame content.
 		#Menu-Binding

@@ -6,7 +6,7 @@ import Funktioner
 ATTACH_MSG=";Tilslutter til fil..."
 #En faelles funktion til laesning af MTL/MGL resultatfiler....
 #Returnerer ErDetEnResFil, ErDenOK, msg			
-def ReadResultFile(resfile,statusdata,program="MGL"):
+def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan tilslutte til baade en ny og en gammel MTL-fil....
 	projekt="Ikke fundet."
 	msg=""
 	f=open(resfile,"r")
@@ -102,14 +102,11 @@ def ReadResultFile(resfile,statusdata,program="MGL"):
 					if code=="B1":
 						Start=sline[2]
 						check_line=i-4
-						statusdata.SetState(1)
 					elif code=="II":
 						check_line=i
-						statusdata.SetStata(2)
 					elif code=="B2":
-						statusdata.SetState(0)
-						check_line=i
-						Slut=sline[3]
+						check_line=i-4
+						Slut=None   #In prev. versions EndPoint was not stored here... It's not really a big deal...
 					if instrument_names[0] in lines[check_line]:
 						statusdata.SetInstrumentState(0) #foerste inst. baerer hoejden
 					else:

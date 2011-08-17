@@ -71,6 +71,12 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 		self.axisconst=axisconst
 		self.addconst=addconst
 		self.id=id #needed to distinguish events called from diff. instruments...
+		#Stuff needed to get the typical index error from the instrument#
+		self.index_max=30
+		self.index_min=-33
+		self.index_mean=0
+		self.index_std=0
+		self.nmeas=0
 	def PresentYourself(self,short=False): #could be overridden
 		if short:
 			return "Instrument: %s, konstanter: %.5f m %.4f m, type: %s." %(self.name,self.addconst,self.axisconst,self.type)
@@ -86,6 +92,13 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			self.portstatus=True  #flag to signal that the we can connect to instrument.
 			self.thread=TopconThread(con,self.eventhandler,self.logwindow,self.id,self.name)
 			self.SetReadState(True)
+	def AddIndexError(self,index_error): #*Usually* index error should be in seconds...
+		self.nmeas+=1
+		self.index_mean=self.index_mean*(self.nmeas-1)/(self.nmeas)+index_error/self.nmeas
+		if self.nmeas>2:
+			pass #Do something to calc. limits
+	def GetIndexBounds(self):
+		return self.index_min,self.index_max
 
 
 # This thread more or less copied from earlier versions of the program.

@@ -12,7 +12,7 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
 PROGRAM.version="beta 0.1"
-PROGRAM.date="12-08-11"
+PROGRAM.date="17-08-11"
 PROGRAM.type="MTL" #vigtigt signak til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -38,6 +38,10 @@ class MTLmain(Core.MLBase):
 		middlebox=GUI.ButtonBox(self,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
 		basisbox_slut=GUI.ButtonBox(self,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
 		self.buttonboxes=[basisbox_start,middlebox,basisbox_slut]
+		#SET UP EXTRA MENU ITEMS#
+		self.funkmenu.AppendSeparator()
+		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
+		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
 		#EVENT HANDLING SETUP#
 		basisbox_start.button[0].Bind(wx.EVT_BUTTON,self.OnBasis1)
 		basisbox_start.button[1].Bind(wx.EVT_BUTTON,self.OnBasis2)
@@ -62,7 +66,7 @@ class MTLmain(Core.MLBase):
 		instrumentstate=self.statusdata.GetInstrumentState()
 		#Enable buttons according to the current state defined in statusdata#
 		for i in range(3):
-			self.buttonboxes[i].Enable(allowed_actions[i])
+			self.buttonboxes[i].Enable(allowed_actions[i] or DEBUG)
 		if allowed_actions[0]:
 			self.buttonboxes[0].button[2].Enable(instrumentstate>=0)
 	def OnBasis1(self,event):
@@ -97,6 +101,7 @@ class MTLmain(Core.MLBase):
 		resfile.close()
 		self.UpdateStatus()
 	def OnInstrument2Instrument(self,event):
+		win=Instrument2Instrument(self)
 		self.Log(SL)
 		self.Log("II")
 		self.statusdata.AddSetup(1.0,400.0)
@@ -108,7 +113,54 @@ class MTLmain(Core.MLBase):
 		win=MakeBasis(self,self.statusdata.GetInstrumentState())
 		win.InitializeMap()
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
-#-------------------------Various Wx Windows Specialized for MTL -------------------------------------------------#
+class DistancePanel(wx.Panel):
+	def __init__(self,parent):
+		wx.Panel.__init__(self,parent)
+class Sats(wx.Panel):
+	def __init__(self,parent):
+		wx.Panel.__init__(self,parent)
+
+class Instrument2Instrument(GUI.FullScreenWindow):
+	def __init__(self, parent):
+		GUI.FullScreenWindow.__init__(self, parent)
+		self.statusdata=parent.statusdata
+		inames=self.statusdata.GetInstrumentNames()
+		inames=map(lambda x:x+": ",inames)
+		UL=inames+["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:","Mode:"]
+		self.status=GUI.StatusBox2(self,UL,fontsize=14,colsize=8)
+		self.status.Update([])
+		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=12)
+		self.lower=wx.Panel(self)
+		self.dpanel=DistancePanel(self.lower)
+		self.spanel=Sats(self.lower)
+		self.satsstatus=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
+		self.satsstatus.Update([])
+		#EVENT HANDLING SETUP#
+		#self.main.buttons1.knap1.Bind(wx.EVT_BUTTON,self.Afstand)
+		#self.main.buttons1.knap2.Bind(wx.EVT_BUTTON,self.Sats)
+		#self.main.buttons1.knap3.Bind(wx.EVT_BUTTON,self.SletSats)
+		self.main.button[-1].Bind(wx.EVT_BUTTON,self.CloseOK)
+		#self.main.buttons2.knap2.Bind(wx.EVT_BUTTON,self.Fortryd)
+		#LAYOUT#
+		self.CreateRow()
+		self.AddItem(self.status)
+		rsizer=wx.BoxSizer(wx.VERTICAL)
+		rsizer.Add(self.main)
+		rsizer.Add(self.satsstatus)
+		self.AddItem(rsizer)
+		self.AddRow()
+		self.CreateRow()
+		self.AddItem(self.lower,wx.CENTER)
+		self.AddRow()
+		self.spanel.Show(0)
+		self.ShowMe()
+		self.SetDistanceMode(None) #Gaa direkte til afstand
+	def SetDistanceMode(*args):
+		pass
+	def CloseOK(self,event):
+		self.Close()
+
+#-------------------------Various Wx Windows Specialized for MTL and used in MakeBasis -------------------------------------------------#
 
 #Panel til input af basismaalinger....
 class OverfPanel(wx.Panel):
@@ -258,7 +310,8 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
 		self.map.RegisterPointFunction(self.PointNameHandler) #handles left-clicks on points in map - sets name in point box
 		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
-		self.maal=OverfPanel(self,self.setup,-20,20)
+		index_min,index_max=self.instrument.GetIndexBounds()
+		self.maal=OverfPanel(self,self.setup,index_min,index_max)
 		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
 		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=12,colsize=2)
 		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=12,label="Kontrol")
@@ -450,8 +503,9 @@ class MakeBasis(GUI.FullScreenWindow):
 					return OK
 			else:
 				return True
-	def CloseOK(self): #TODO: decide when to make the fbreject test.....!!!!!!
-		s,h1,h2,hdiff=self.setup.Calculate()
+	def CloseOK(self): 
+		#TODO: UPDATE INDEX ERRORS FOR INSTRUMENT!#
+		s,h1,h2,hdiff=self.setup.GetResult()
 		#Perhaps add test for abs(h1-h2)<self.ini.maxdh_basis here....
 		point=self.valg.GetPoint()
 		self.statusdata.AddSetup(hdiff,s)
@@ -461,7 +515,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			if OK:
 				OK=self.MakeHead() #like in MGL - almost
 				if OK:
-					#We need to keep a pointer to the last hdiff and dist....
+					#We need to keep a pointer to the last hdiff and dist.... This is done internally in statusdata....
 					self.statusdata.StartNewStretch()
 				else:
 					self.statusdata.SubtractSetup() #leave function here...
@@ -471,9 +525,12 @@ class MakeBasis(GUI.FullScreenWindow):
 				return
 		else:
 			self.statusdata.SetStart(point)
-			self.WriteData()
+			self.WriteData(point)
 		self.statusdata.SetInstrumentState(self.instrument_number)
 		self.Log(u"Afslutter basism\u00E5ling kl. %s" %Funktioner.Nu())
+		index_errors=self.setup.GetIndexErrors()
+		for i_err in index_errors:
+			self.instrument.AddIndexError(i_err)
 		self.parent.UpdateStatus()
 		self.Close()  
 	def MakeHead(self):
@@ -493,7 +550,7 @@ class MakeBasis(GUI.FullScreenWindow):
 				if not OK: #then escape  #TODO: Check this!!!!!!!!
 					hvd.Destroy()
 					return False
-			self.WriteData()
+			self.WriteData(slut)
 			dato=dato.strip().replace(" ","")
 			tid=tid.strip().replace(" ","")
 			jside=jside.replace(",",".").strip().replace(" ","")
@@ -526,49 +583,38 @@ class MakeBasis(GUI.FullScreenWindow):
 		else:
 			hvd.Destroy()
 			return False
-	def WriteData(self):
+	def WriteData(self,point):
 		resfile=open(self.resfile,"a")
-		resfile.write(";TODO basis\n")
-		resfile.close()
-		return
-		global fullresfilnavn
-		global Start
-		global Slut
-		global hdiff
-		global dist
-		global nopst
-		global Inst1
-		global Inst2
-		resfil=open(fullresfilnavn,"a")
-		space=max(len(Inst1.navn),len(Inst2.navn))+4
-		resfil.write("%*s %*s %*s %*s %s\n" %(-13,"Basis",-space,"Instrument",-8,"Laegte",-10,"Afstand","Hoejdeforskel"))
-		self.Log("Punkt: %s" %self.punkt)
-		self.Log(u"L\u00E6gte: %s\n" %self.laegte)
-		resfil.write("%*s %*s %*s %*s %.4fm\n" %(-13,self.punkt,-space,self.Inst.navn,-8,str(self.laegtenr+1),-10,"%.2fm"%self.dist,self.hdiff))
-		#tup=Prepad(self.maerker,-8)
-		tup=[]
-		for i in range(0,4):
-			tup.append("%.2fm"%self.maerker[i])
-		tup=Prepad(tup,-8)
-		resfil.write("%*s %*s %*s %*s\n" %tup)
-		self.Log("%*s %*s %*s %*s" %tup)
-		tup=Prepad(self.z1gem,-8) #saetter bare -8 foran hvert element
-		resfil.write("%*s %*s %*s %*s "%tup)
-		resfil.write("%.4fm\n" %(self.h1))
-		self.Log("%*s %*s %*s %*s" %tup)
-		resfil.write("%s %s %s %s %.4fm\n" %(tuple(self.z2gem+[self.h2])))
+		space=max(map(len,self.statusdata.GetInstrumentNames()))+4
+		rod_names=[rod.GetName() for rod in self.laegter]
+		rod_name=rod_names[self.valg.GetRod()]
+		rspace=max(map(len,rod_names))
+		dist,h1,h2,hdiff=self.setup.GetResult()
+		resfile.write("%*s %*s %*s %*s %s\n" %(-13,"Basis",-space,"Instrument",-rspace,"Laegte",-10,"Afstand","Hoejdeforskel"))
+		self.Log("Punkt: %s" %point)
+		self.Log(u"L\u00E6gte: %s\n" %rod_name)
+		resfile.write("%*s %*s %*s %*s %.4fm\n" %(-13,point,-space,self.instrument.GetName(),-rspace,rod_name,-10,"%.2fm"%dist,hdiff))
+		tup=tuple(map(lambda x:"%.2fm"%x, self.setup.GetData()[:,0]))
+		resfile.write("%-8s %-8s %-8s %-8s\n" %tup)
+		resfile.write("%-8s %-8s %-8s %-8s "%tuple(self.setup.GetRawData()[:,1].tolist()))
+		resfile.write("%.4fm\n" %(h1))
+		resfile.write("%-8s %-8s %-8s %-8s "%tuple(self.setup.GetRawData()[:,2].tolist()))
+		resfile.write("%.4fm\n" %(h2))
 		if self.sigte==-1:
-			resfil.write("* B1 %s %.3f %.6f\n" %(Start,self.dist,self.hdiff))
+			resfile.write("* B1 %s %.3f %.6f\n" %(point,dist,hdiff))
 		else:
-			resfil.write("* B2 %s %s %.3f %.6f %i %.3f %.6f\n" %(Start,self.Inst.navn,dist-self.dist,hdiff,nopst-1,self.dist,self.hdiff))
-		if self.parent.GPS.alive:
-			x,y,dop=self.parent.GPS.GetPos()
-			if dop<10:
-				resfil.write("GPS: %.1f %.1f %.1f\n" %(y,x,dop))
-		self.Log("%s %s %s %s\n" %(tuple(self.z2gem)))
-		self.Log("Afstand: %.2f m\nH1: %.4f m   H2: %.4f m   Hdiff: %.4f m" %(self.dist,self.h1,self.h2,self.hdiff))
-		resfil.write("\n")
-		resfil.close()
+			resfile.write("* B2 %.3f %.6f\n" %(point,dist,hdiff)) #Well we break the backw. comp. of the file format here... Shouldn't be important.
+		if self.parent.gps.isAlive():
+			try:
+				x,y,dop=self.parent.gps.GetPos() 
+			except:
+				pass
+			else:
+				if dop<30:
+					resfile.write("GPS: %.1f %.1f %.1f\n" %(x,y,dop))
+		self.Log("Afstand: %.2f m\nH1: %.4f m   H2: %.4f m   Hdiff: %.4f m" %(dist,h1,h2,hdiff))
+		resfile.write("\n")
+		resfile.close()
 	
 	def Log(self,text):
 		self.parent.Log(text)
@@ -608,10 +654,14 @@ class MTLBasisSetup(object):
 		#1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
 		self.raw_data=np.zeros((4,3),dtype="<S20") #raw string input from input fields.... 
 		self.real_data=np.zeros((4,3)) #real numbers - angles stored in radians,...
-		self.index_errors=np.zeros((4,)) #array which stores index errors - NEEDED??
+		self.index_errors=np.zeros((4,)) #array which stores index errors 
 		self.validity_mask=np.zeros((4,3),dtype=np.bool) #mask to mark validity of data....
 		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
 		self.aim=aim
+		self.h1=None
+		self.h2=None
+		self.dist=None
+		self.hdiff=None
 	def SetTranslator(self,func):
 		self.zformat_translator=func
 	def Position1Validator(self,val):
@@ -638,8 +688,12 @@ class MTLBasisSetup(object):
 		else:
 			val=float(val)
 		self.real_data[row,col]=val
-	def GetIndexError(self,row):
-		return ((self.real_data[row,1]+self.real_data[row,2]-np.pi)*0.5)*180.0/np.pi*3600.0
+	def GetIndexError(self,row): #for now always returns index error in seconds....
+		ierr=((self.real_data[row,1]+self.real_data[row,2]-np.pi)*0.5)*180.0/np.pi*3600.0
+		self.index_errors[row]=ierr
+		return ierr
+	def GetIndexErrors(self):
+		return self.index_errors
 	def Calculate(self):
 		index_err=(self.real_data[:,1]+self.real_data[:,2]-np.pi)*0.5
 		z_corr=self.real_data[:,1]-index_err  #standard formel fra KES...
@@ -649,14 +703,19 @@ class MTLBasisSetup(object):
 		s2=(M[1]-M[3])/(cot[1]-cot[3])
 		dist=(s1+s2)*0.5
 		#Instrumenthoejder (KES HOVMTL05.BAS) Minus sigte giver det rigtige fortegn!
-		h1=-self.aim*(M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS   # Earth radius
-		h2=-self.aim*(M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS
-		hdiff=(h1+h2)*0.5
-		return dist,h1,h2,hdiff
+		self.h1=-self.aim*(M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS   # Earth radius
+		self.h2=-self.aim*(M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS
+		self.hdiff=(self.h1+self.h2)*0.5
+		self.dist=dist
+		return self.dist,self.h1,self.h2,self.hdiff
 	def GetData(self):
 		return self.real_data
+	def GetRawData(self):
+		return self.raw_data
 	def GetValidity(self):
 		return self.validity_mask
+	def GetResult(self):
+		return self.dist,self.h1,self.h2,self.hdiff
 	
 #----------Initialisation classes, definition of rods etc.-----------------#
 class InstrumentError(Exception):
@@ -685,6 +744,8 @@ class MTLlaegte(object):
 			return False
 	def PresentYourself(self):
 		return "%s:  konstant: %.5f m" %(self.name,self.zeroshift)
+	def GetName(self):
+		return self.name
 
 class MTLinireader(object): #add more error handling!
 	def __init__(self):
