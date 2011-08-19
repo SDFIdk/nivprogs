@@ -23,7 +23,9 @@ DEBUG=True
 RADIUS=6385000.0   #Jordradius.
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
 MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
+MAX_LENGTH_MUTUAL=10000 # Value which determines the max input for the distance fields....
 SL="*"*50
+FONTSIZE=12  #Well, wxWindows should really use this on init - TODO....
 #---------Main Windows defined here--------------------------------------#
 class MTLmain(Core.MLBase):
 	def __init__(self,parent,resfil,instruments,laegter,data,gps,ini,statusdata,size):
@@ -114,8 +116,30 @@ class MTLmain(Core.MLBase):
 		win.InitializeMap()
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 class DistancePanel(wx.Panel):
-	def __init__(self,parent):
+	def __init__(self,parent,instrument_names):
 		wx.Panel.__init__(self,parent)
+		top_line=wx.BoxSizer(wx.HORIZONTAL)
+		bottom_line=wx.BoxSizer(wx.HORIZONTAL)
+		text1=GUI.MyText(self,instrument_names[0],FONTSIZE,style=wx.ALIGN_CENTER)
+		text2=GUI.MyText(self,instrument_names[1],FONTSIZE,style=wx.ALIGN_CENTER)
+		top_line.Add(text1,1,wx.ALL|wx.ALIGN_LEFT)
+		top_line.Add(text2,1,wx.ALL|wx.ALIGN_RIGHT)
+		self.autobutton=GUI.MyButton(self,"AUTO (*)",FONTSIZE)
+		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
+		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
+		bottom_line.Add(self.dfield1,1,wx.ALL,5)
+		bottom_line.Add(self.autobutton,0,wx.ALL,5)
+		bottom_line.Add(self.dfield2,1,wx.ALL,5)
+		self.status=GUI.StatusBox2(self,["Difference:","Middel:"],label="Afstand",colsize=1,fontsize=FONTSIZE)
+		self.status.Update([])
+		self.sizer=wx.BoxSizer(wx.VERTICAL)
+		self.sizer.Add(self.status,0,wx.ALL)
+		self.sizer.Add(top_line,0,wx.ALL)
+		self.sizer.Add(bottom_line,0,wx.ALL)
+		self.SetSizerAndFit(self.sizer)
+		
+			
+			
 class Sats(wx.Panel):
 	def __init__(self,parent):
 		wx.Panel.__init__(self,parent)
@@ -124,15 +148,19 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def __init__(self, parent):
 		GUI.FullScreenWindow.__init__(self, parent)
 		self.statusdata=parent.statusdata
+		self.instruments=self.statusdata.GetInstruments()
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
 		UL=inames+["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:","Mode:"]
-		self.status=GUI.StatusBox2(self,UL,fontsize=14,colsize=8)
+		self.status=GUI.StatusBox2(self,UL,fontsize=14,colsize=4)
 		self.status.Update([])
 		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=12)
 		self.lower=wx.Panel(self)
-		self.dpanel=DistancePanel(self.lower)
+		self.lower.sizer=wx.BoxSizer()
+		self.dpanel=DistancePanel(self.lower,inames)
 		self.spanel=Sats(self.lower)
+		self.lower.sizer.Add(self.dpanel)
+		self.lower.sizer.Add(self.spanel)
 		self.satsstatus=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
 		self.satsstatus.Update([])
 		#EVENT HANDLING SETUP#
@@ -148,15 +176,17 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		rsizer.Add(self.main)
 		rsizer.Add(self.satsstatus)
 		self.AddItem(rsizer)
-		self.AddRow()
+		self.AddRow(wx.ALL,0)
 		self.CreateRow()
 		self.AddItem(self.lower,wx.CENTER)
-		self.AddRow()
-		self.spanel.Show(0)
+		self.AddRow(wx.ALL,1)
+		self.SetDistanceMode() #Gaa direkte til afstand
 		self.ShowMe()
-		self.SetDistanceMode(None) #Gaa direkte til afstand
-	def SetDistanceMode(*args):
-		pass
+	def SetDistanceMode(self):
+		self.spanel.Show(0)
+		self.dpanel.Show()
+		self.lower.SetSizerAndFit(self.lower.sizer)
+		#self.SetSizerAndFit(self.sizer)
 	def CloseOK(self,event):
 		self.Close()
 
@@ -603,7 +633,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		if self.sigte==-1:
 			resfile.write("* B1 %s %.3f %.6f\n" %(point,dist,hdiff))
 		else:
-			resfile.write("* B2 %.3f %.6f\n" %(point,dist,hdiff)) #Well we break the backw. comp. of the file format here... Shouldn't be important.
+			resfile.write("* B2 %s %.3f %.6f\n" %(point,dist,hdiff)) #Well we break the backw. comp. of the file format here... Shouldn't be important.
 		if self.parent.gps.isAlive():
 			try:
 				x,y,dop=self.parent.gps.GetPos() 
