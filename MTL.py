@@ -12,7 +12,7 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
 PROGRAM.version="beta 0.1"
-PROGRAM.date="17-08-11"
+PROGRAM.date="26-08-11"
 PROGRAM.type="MTL" #vigtigt signak til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -122,8 +122,8 @@ class DistancePanel(wx.Panel):
 		bottom_line=wx.BoxSizer(wx.HORIZONTAL)
 		text1=GUI.MyText(self,instrument_names[0],FONTSIZE,style=wx.ALIGN_CENTER)
 		text2=GUI.MyText(self,instrument_names[1],FONTSIZE,style=wx.ALIGN_CENTER)
-		top_line.Add(text1,1,wx.ALL|wx.ALIGN_LEFT)
-		top_line.Add(text2,1,wx.ALL|wx.ALIGN_RIGHT)
+		top_line.Add(text1,1,wx.ALIGN_LEFT|wx.EXPAND)
+		top_line.Add(text2,1,wx.ALIGN_RIGHT|wx.EXPAND)
 		self.autobutton=GUI.MyButton(self,"AUTO (*)",FONTSIZE)
 		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
 		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
@@ -133,9 +133,9 @@ class DistancePanel(wx.Panel):
 		self.status=GUI.StatusBox2(self,["Difference:","Middel:"],label="Afstand",colsize=1,fontsize=FONTSIZE)
 		self.status.Update([])
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
-		self.sizer.Add(self.status,0,wx.ALL)
-		self.sizer.Add(top_line,0,wx.ALL)
-		self.sizer.Add(bottom_line,0,wx.ALL)
+		self.sizer.Add(self.status,1,wx.ALL,5)
+		self.sizer.Add(top_line,0,wx.ALL|wx.EXPAND,5)
+		self.sizer.Add(bottom_line,1,wx.ALL,5)
 		self.SetSizerAndFit(self.sizer)
 		
 			
@@ -151,18 +151,20 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.instruments=self.statusdata.GetInstruments()
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
-		UL=inames+["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:","Mode:"]
-		self.status=GUI.StatusBox2(self,UL,fontsize=14,colsize=4)
-		self.status.Update([])
-		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=12)
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE,label="Status",colsize=1)
+		self.statusbox.Update([])
+		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
+		,fontsize=FONTSIZE)
+		self.resultbox.Update([])
+		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=FONTSIZE)
 		self.lower=wx.Panel(self)
 		self.lower.sizer=wx.BoxSizer()
 		self.dpanel=DistancePanel(self.lower,inames)
 		self.spanel=Sats(self.lower)
 		self.lower.sizer.Add(self.dpanel)
 		self.lower.sizer.Add(self.spanel)
-		self.satsstatus=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
-		self.satsstatus.Update([])
+		#self.satsstatus=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
+		#self.satsstatus.Update([])
 		#EVENT HANDLING SETUP#
 		#self.main.buttons1.knap1.Bind(wx.EVT_BUTTON,self.Afstand)
 		#self.main.buttons1.knap2.Bind(wx.EVT_BUTTON,self.Sats)
@@ -171,15 +173,20 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#self.main.buttons2.knap2.Bind(wx.EVT_BUTTON,self.Fortryd)
 		#LAYOUT#
 		self.CreateRow()
-		self.AddItem(self.status)
-		rsizer=wx.BoxSizer(wx.VERTICAL)
-		rsizer.Add(self.main)
-		rsizer.Add(self.satsstatus)
-		self.AddItem(rsizer)
-		self.AddRow(wx.ALL,0)
+		self.AddItem(self.statusbox,1,wx.ALIGN_LEFT)
+		#rsizer=wx.BoxSizer(wx.VERTICAL)
+		#rsizer.Add(self.main)
+		#rsizer.Add(self.satsstatus)
+		self.AddRow(1,wx.ALL|wx.ALIGN_LEFT,5)
 		self.CreateRow()
-		self.AddItem(self.lower,wx.CENTER)
-		self.AddRow(wx.ALL,1)
+		self.AddItem(self.resultbox,0,wx.ALL|wx.ALIGN_LEFT,5)
+		#self.AddRow(0,wx.ALL|wx.ALIGN_LEFT,5)
+		#self.CreateRow()
+		self.AddItem(self.main,0,wx.ALL,5)
+		self.AddRow(2,wx.ALL|wx.ALIGN_LEFT,5)
+		self.CreateRow()
+		self.AddItem(self.lower)
+		self.AddRow(3,wx.ALL|wx.ALIGN_CENTER,10)
 		self.SetDistanceMode() #Gaa direkte til afstand
 		self.ShowMe()
 	def SetDistanceMode(self):
