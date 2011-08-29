@@ -268,10 +268,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.bfstatus={'back':self.backstatus,'forward':self.forwardstatus} #utility dict for neater access.
 		self.opststatus=GUI.StatusBox2(self,opstitems,colsize=2,fontsize=size-1,label="Opstilling",minlengths=opstminl)
 		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-1,label=u"Str\u00E6kning",minlengths=strkminl)
-		self.backstatus.Update()
-		self.forwardstatus.Update()
-		self.opststatus.Update()
-		self.strkstatus.Update()
+		self.backstatus.UpdateStatus()
+		self.forwardstatus.UpdateStatus()
+		self.opststatus.UpdateStatus()
+		self.strkstatus.UpdateStatus()
 		#Log-field
 		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE,size=(-1,80))
 		self.log.SetFont(GUI.DefaultFont(size-1))
@@ -432,7 +432,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		else: #only start new thread in manual mode...
 			self.aim=aim  #so that OnData knows where to put data
 			self.mmode='auto'
-			self.opststatus.Update(field=-1,text="auto",colour="green")
+			self.opststatus.UpdateStatus(field=-1,text="auto",colour="green")
 			self.Log(u"L\u00E6ser data fra instrumentet...")
 			if self.nmode==1:
 				self.setup.aim[aim].SetRod(self.rods[self.fields[aim].GetRod()]) #set the rod here
@@ -515,7 +515,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		else:
 			self.forward.EnableBottom()
 			self.back.EnableBottom()
-		self.opststatus.Update(field=-1,text="manuel",colour="yellow")
+		self.opststatus.UpdateStatus(field=-1,text="manuel",colour="yellow")
 		if aim in ['back','forward']: #if called from AutoHandler.... otherwise focuscontrolled elsewhere.
 			if self.nmode==1:
 				self.fields[aim].dist.SetFocus()
@@ -561,7 +561,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			else:
 				rt_label="NA"
 				rt_color=None
-			self.bfstatus[aim].Update([sd_label,nr_label,sl_label,rt_label],colours={0:sd_color,2:sl_color,3:rt_color})
+			self.bfstatus[aim].UpdateStatus([sd_label,nr_label,sl_label,rt_label],colours={0:sd_color,2:sl_color,3:rt_color})
 		if True:
 			#Next update opst-statusbox#
 			db=self.setup.back.dist
@@ -578,7 +578,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					ddsumcolor="red"
 				else:
 					ddsumcolor="green"
-				self.strkstatus.Update(field=0,text="%.2f m" %ddsum,colour=ddsumcolor)
+				self.strkstatus.UpdateStatus(field=0,text="%.2f m" %ddsum,colour=ddsumcolor)
 			else:
 				self.statusdata.SetLastDD(0)
 				ddcolor=None
@@ -607,9 +607,9 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.nextbutton.Enable(0)
 			#now we can updata opst-statusbox
 			if self.pmode=='detail':
-				self.opststatus.Update([di_label,dd_label,hd_label],colours={1:ddcolor})
+				self.opststatus.UpdateStatus([di_label,dd_label,hd_label],colours={1:ddcolor})
 			else:
-				self.opststatus.Update([di_label,dd_label,hd_label,hdt_label],colours={1:ddcolor,3:hdt_color})
+				self.opststatus.UpdateStatus([di_label,dd_label,hd_label,hdt_label],colours={1:ddcolor,3:hdt_color})
 	def UpdateStretchBox(self):
 		ddsum=self.statusdata.GetDDSum()
 		if abs(ddsum)>4.0:
@@ -619,7 +619,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		ul=["%.2f m" %ddsum]
 		ul+=["%s" %self.statusdata.GetStart(),"%.2f m" %self.statusdata.GetDistance(),"%.5f m" %self.statusdata.GetHdiff()]
 		ul+=["%i" %self.statusdata.GetSetups()]
-		self.strkstatus.Update(ul,colours={0:dd_color})
+		self.strkstatus.UpdateStatus(ul,colours={0:dd_color})
 	def OnDelete(self,event):
 		if self.mmode!='manual':
 			self.SetManualMode()

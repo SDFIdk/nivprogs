@@ -116,8 +116,11 @@ class MTLmain(Core.MLBase):
 		win.InitializeMap()
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 class DistancePanel(wx.Panel):
-	def __init__(self,parent,instrument_names):
+	def __init__(self,parent,instrument_names,setup,auto_func1,auto_func2):
 		wx.Panel.__init__(self,parent)
+		self.SetAutoMode=auto_func1
+		self.SetSingleAutoMode=auto_func2
+		self.setup=setup
 		top_line=wx.BoxSizer(wx.HORIZONTAL)
 		bottom_line=wx.BoxSizer(wx.HORIZONTAL)
 		text1=GUI.MyText(self,instrument_names[0],FONTSIZE,style=wx.ALIGN_CENTER)
@@ -127,49 +130,159 @@ class DistancePanel(wx.Panel):
 		self.autobutton=GUI.MyButton(self,"AUTO (*)",FONTSIZE)
 		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
 		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
+		self.fields=[self.dfield1,self.dfield2]
+		for i in range(2):
+			field=self.fields[i]
+			next=(i+1)%2
+			field.SetNext(self.fields[next])
+			field.SetNextTab(self.fields[next])
+			field.SetPrev(self.fields[next])
+			field.Bind(wx.EVT_TEXT,self.OnText)
+			field.Bind(wx.EVT_CHAR,self.OnChar)
 		bottom_line.Add(self.dfield1,1,wx.ALL,5)
 		bottom_line.Add(self.autobutton,0,wx.ALL,5)
 		bottom_line.Add(self.dfield2,1,wx.ALL,5)
 		self.status=GUI.StatusBox2(self,["Difference:","Middel:"],label="Afstand",colsize=1,fontsize=FONTSIZE)
-		self.status.Update([])
+		self.status.UpdateStatus([])
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
 		self.sizer.Add(self.status,1,wx.ALL,5)
 		self.sizer.Add(top_line,0,wx.ALL|wx.EXPAND,5)
 		self.sizer.Add(bottom_line,1,wx.ALL,5)
 		self.SetSizerAndFit(self.sizer)
+	def OnText(self,event): 
+		#Validate only the field issuing the event#
+		field=event.GetEventObject()
+		ok=field.Validate()
+		pass #do something here,,,
+		event.Skip()
+	def OnChar(self,event): #easier to handle char events here, rather than via the standard 'keyhandler' setup of MyTextField....
+		key=event.GetKeyCode()
+		field=event.GetEventObject()
+		if key==42: #char '*'
+			self.SetAutoMode(self.fields)
+		elif key==47:#char '/'
+			self.SetSingleAutoMode(field)
+		else:
+			event.Skip() #so that text appears in the field....
 		
-			
-			
-class Sats(wx.Panel):
-	def __init__(self,parent):
-		wx.Panel.__init__(self,parent)
 
+class AutoPanel(wx.Panel):
+	def __init__(self, parent, validator,text=None):
+		self.parent=parent  
+		self.next=None
+		wx.Panel.__init__(self, parent,style=wx.RAISED_BORDER|wx.TAB_TRAVERSAL)
+		self.control1=GUI.MyTextField(self,fontsize=FONTSIZE+2,size=(160,-1))
+		self.autobutton=GUI.MyButton(self,"AUTO(*)",FONTSIZE)
+		self.control2=GUI.MyTextField(self,fontsize=FONTSIZE+2,size=(160,-1))
+		self.control1.SetValidator(validator)
+		self.control2.SetValidator(validator)
+		self.sizer=wx.BoxSizer(wx.HORIZONTAL)
+		text=GUI.MyText(self,text,FONTSIZE)
+		self.sizer.Add(text,0,wx.ALL|wx.ALIGN_CENTER_VERTICAL,5)
+		self.sizer.Add(self.control1,0,wx.ALL,15)
+		self.sizer.Add(self.autobutton,0,wx.ALL,15)
+		self.sizer.Add(self.control2,0,wx.ALL,15)
+		self.fields=[self.control1,self.control2]
+		self.SetSizerAndFit(self.sizer)
+	def Clear(self):
+		for field in self.fields:
+			field.Clear()
+			field.SetBackgroundColour("white")
+	
+
+class SatsPanel(wx.Panel):
+	def __init__(self,parent,instrument_names,setup,auto_func1,auto_func2):
+		wx.Panel.__init__(self,parent)
+		self.setup=setup
+		self.SetAutoMode=auto_func1
+		self.SetSingleAutoMode=auto_func2
+		top_line=wx.BoxSizer(wx.HORIZONTAL)
+		text1=GUI.MyText(self,instrument_names[0],FONTSIZE,style=wx.ALIGN_CENTER)
+		text2=GUI.MyText(self,instrument_names[1],FONTSIZE,style=wx.ALIGN_CENTER)
+		top_line.Add(text1,1,wx.ALIGN_LEFT|wx.EXPAND)
+		top_line.Add(text2,1,wx.ALIGN_RIGHT|wx.EXPAND)
+		self.status=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
+		self.status.UpdateStatus()
+		self.position1=AutoPanel(self,setup.Position1Validator,"1. kikkertstilling:")
+		self.position2=AutoPanel(self,setup.Position2Validator,"2. kikkertstilling:")
+		self.zfields=self.position1.fields+self.position2.fields #list of pointers to z-fields..
+		for row in range(2):
+			for col in range(2):
+				field=self.zfields[col+2*row]
+				field.ij_id=[row,col]
+				field.Bind(wx.EVT_TEXT,self.OnText)
+				field.Bind(wx.EVT_CHAR,self.OnChar)
+				next=(col+2*row+1)%4
+				prev=(next-2)%4
+				field.SetNextReturn(self.zfields[next])
+				field.SetNextTab(self.zfields[next])
+				field.SetPrev(self.zfields[prev])
+		#LAYOUT#
+		self.sizer=wx.BoxSizer(wx.VERTICAL)
+		self.sizer.Add(self.status,1,wx.ALL,5)
+		self.sizer.Add(top_line,0,wx.ALL|wx.EXPAND,5)
+		self.sizer.Add(self.position1,0,wx.ALL,5)
+		self.sizer.Add(self.position2,0,wx.ALL,5)
+		self.SetSizerAndFit(self.sizer)
+	def OnText(self,event): 
+		#Validate only the field issuing the event#
+		field=event.GetEventObject()
+		ok=field.Validate()
+		row,col=field.ij_id
+		self.setup.SetValidity(row,col,ok)
+		if ok:
+			self.setup.SetData(row,col,field.GetValue())
+			row_validity=self.setup.IsValid(row=row)
+			if row_validity:
+				pass
+				#self.columns[3][row].SetValue("%.0f"%self.setup.GetIndexError(row))
+				#self.columns[3][row].Validate()
+			if self.setup.IsValid():
+				#self.parent.UpdateHeightStatus()
+				pass
+		event.Skip()
+	def OnChar(self,event): #easier to handle char events here, rather than via the standard 'keyhandler' setup of MyTextField....
+		key=event.GetKeyCode()
+		field=event.GetEventObject()
+		row,col=field.ij_id
+		if key==42: #char '*'
+			start_field=col+2*row
+			self.SetAutoMode(self.zfields[start_field:])
+		elif key==47:#char '/'
+			self.SetSingleAutoMode(field)
+		else:
+			event.Skip() #so that text appears in the field....
+	
+		
 class Instrument2Instrument(GUI.FullScreenWindow):
 	def __init__(self, parent):
 		GUI.FullScreenWindow.__init__(self, parent)
+		self.setup=MTLTransferSetup()
+		self.mode=0
+		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
+		self.modecolors=["green","red","yellow"]
 		self.statusdata=parent.statusdata
 		self.instruments=self.statusdata.GetInstruments()
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
-		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE,label="Status",colsize=1)
-		self.statusbox.Update([])
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE,label="Status",colsize=1,minlengths=[7,7,11])
+		self.aim=np.array([1,-1])*(1-2*int(self.statusdata.GetInstrumentState()==0)) #Well, I know that a one-liner can be harder to decode - in essense: aim is [1,-1] or [-1,1]
+		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
 		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
 		,fontsize=FONTSIZE)
-		self.resultbox.Update([])
+		self.resultbox.UpdateStatus([])
 		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=FONTSIZE)
 		self.lower=wx.Panel(self)
 		self.lower.sizer=wx.BoxSizer()
-		self.dpanel=DistancePanel(self.lower,inames)
-		self.spanel=Sats(self.lower)
+		self.dpanel=DistancePanel(self.lower,inames,self.setup,self.SetAutoMode,self.SetSingleAutoMode)
+		self.spanel=SatsPanel(self.lower,inames,self.setup,self.SetAutoMode,self.SetSingleAutoMode)
 		self.lower.sizer.Add(self.dpanel)
 		self.lower.sizer.Add(self.spanel)
-		#self.satsstatus=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
-		#self.satsstatus.Update([])
 		#EVENT HANDLING SETUP#
-		#self.main.buttons1.knap1.Bind(wx.EVT_BUTTON,self.Afstand)
-		#self.main.buttons1.knap2.Bind(wx.EVT_BUTTON,self.Sats)
 		#self.main.buttons1.knap3.Bind(wx.EVT_BUTTON,self.SletSats)
 		self.main.button[-1].Bind(wx.EVT_BUTTON,self.CloseOK)
+		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetDistanceMode)
+		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetZMode)
 		#self.main.buttons2.knap2.Bind(wx.EVT_BUTTON,self.Fortryd)
 		#LAYOUT#
 		self.CreateRow()
@@ -187,13 +300,35 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.CreateRow()
 		self.AddItem(self.lower)
 		self.AddRow(3,wx.ALL|wx.ALIGN_CENTER,10)
+		self.UpdateStatus()     
 		self.SetDistanceMode() #Gaa direkte til afstand
 		self.ShowMe()
+	def OnSetZMode(self,event):
+		self.SetZMode()
+	def OnSetDistanceMode(self,event):
+		self.SetDistanceMode()
+		#self.sizer.Layout()
 	def SetDistanceMode(self):
 		self.spanel.Show(0)
 		self.dpanel.Show()
 		self.lower.SetSizerAndFit(self.lower.sizer)
+		#self.sizer.Layout()
+	def SetZMode(self):
+		self.dpanel.Show(0)
+		self.spanel.Show()
+		self.lower.SetSizerAndFit(self.lower.sizer)
 		#self.SetSizerAndFit(self.sizer)
+	def SetAutoMode(self,fields):
+		self.auto_fields=fields
+		self.mode=1
+		self.UpdateStatus()
+	def SetSingleAutoMode(self,field):
+		self.auto_fields=[field]
+		self.mode=2
+		self.UpdateStatus()
+	def UpdateStatus(self):
+		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
+		self.resultbox.UpdateStatus(["1.00000","2.12121","23.121212"])
 	def CloseOK(self,event):
 		self.Close()
 
@@ -352,8 +487,8 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
 		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=12,colsize=2)
 		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=12,label="Kontrol")
-		self.resultbox.Update([])
-		self.controlbox.Update([])
+		self.resultbox.UpdateStatus([])
+		self.controlbox.UpdateStatus([])
 		#EVENT HANDLING SETUP#
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetAutoMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetManualMode)
@@ -477,13 +612,13 @@ class MakeBasis(GUI.FullScreenWindow):
 			field.Enable()
 		self.UpdateStatus()
 	def UpdateStatus(self):
-		self.status.Update([self.instrument.GetName(),Funktioner.Bool2sigte(self.sigte),self.modenames[self.mode]],colours={2:self.modecolors[self.mode]})
+		self.status.UpdateStatus([self.instrument.GetName(),Funktioner.Bool2sigte(self.sigte),self.modenames[self.mode]],colours={2:self.modecolors[self.mode]})
 	def UpdateHeightStatus(self):
 		s,h1,h2,hdiff=self.setup.Calculate()
 		dh=abs(h1-h2)
 		col=Funktioner.State2Col(self.ini.maxdh_basis>=dh)
-		self.controlbox.Update(["%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0)],colours={2:col})
-		self.resultbox.Update(["%.4f m" %s,"%.4f m" %hdiff])
+		self.controlbox.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0)],colours={2:col})
+		self.resultbox.UpdateStatus(["%.4f m" %s,"%.4f m" %hdiff])
 	def TestMode(self):
 		for i in range(0,4):
 			self.maal.columns[0][i].SetValue(str(3-i*0.5))
@@ -683,22 +818,17 @@ def StandardZdistanceTranslator(val): # A validator for input in the format ddd.
 	G=int(sval[0:-5])  #grader
 	return True,np.pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
 
-#THIS is the core class which handles basis setup state and math, the rest is GUI and event handling...... 
-#The class has been prepared for the possibility of handling input in formats other than ddd.mmss, e.g. angles in gon or whatever.... Only need to set relevant translator and validator methods 
-
-class MTLBasisSetup(object):
-	def __init__(self,aim=1):
-		#1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
-		self.raw_data=np.zeros((4,3),dtype="<S20") #raw string input from input fields.... 
-		self.real_data=np.zeros((4,3)) #real numbers - angles stored in radians,...
-		self.index_errors=np.zeros((4,)) #array which stores index errors 
-		self.validity_mask=np.zeros((4,3),dtype=np.bool) #mask to mark validity of data....
+#Base class which validates (and translates) input from z-distance fields
+class MTLSetup(object):
+	def __init__(self,rows,cols,zcol=0):
+		self.Initialize(rows,cols) #Then we can call this method from outside....
+		self.zcol=zcol #column nr. from where columns are z-distance fields (e.g. zcol=1: mrk,pos1,pos2 or  zcol=0: pos1,pos2)
 		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
-		self.aim=aim
-		self.h1=None
-		self.h2=None
-		self.dist=None
-		self.hdiff=None
+	def Initialize(self,rows,cols):
+		self.raw_data=np.zeros((rows,cols),dtype="<S20")
+		self.real_data=np.zeros((rows,cols))
+		self.index_errors=np.zeros((rows,)) #reflects only current "sats"
+		self.validity_mask=np.zeros((rows,cols),dtype=np.bool) #reflects only current "sats"
 	def SetTranslator(self,func):
 		self.zformat_translator=func
 	def Position1Validator(self,val):
@@ -707,12 +837,6 @@ class MTLBasisSetup(object):
 	def Position2Validator(self,val):
 		ok,val=self.zformat_translator(val)
 		return ok and np.pi<=val<=2*np.pi
-	def MarkValidator(self,val): #validates 'marks' from input column 0
-		try:
-			val=float(val)
-		except:
-			return False
-		return self.rod_min<=val<=self.rod_max
 	def SetValidity(self,row,col,validity):
 		self.validity_mask[row,col]=validity
 	def IsValid(self,row=None,col=None):
@@ -720,17 +844,57 @@ class MTLBasisSetup(object):
 	def SetData(self,row,col,val):
 		self.raw_data[row,col]=val
 		#translate#
-		if col>0 and self.zformat_translator is not None:
+		if col>=self.zcol and self.zformat_translator is not None:
 			ok,val=self.zformat_translator(val)
 		else:
 			val=float(val)
 		self.real_data[row,col]=val
 	def GetIndexError(self,row): #for now always returns index error in seconds....
-		ierr=((self.real_data[row,1]+self.real_data[row,2]-np.pi)*0.5)*180.0/np.pi*3600.0
+		ierr=((self.real_data[row,self.zcol]+self.real_data[row,self.zcol+1]-np.pi)*0.5)*180.0/np.pi*3600.0
 		self.index_errors[row]=ierr
 		return ierr
 	def GetIndexErrors(self):
 		return self.index_errors
+	def GetData(self):
+		return self.real_data
+	def GetRawData(self):
+		return self.raw_data
+	def GetValidity(self):
+		return self.validity_mask
+
+class MTLTransferSetup(MTLSetup):
+	def __init__(self,aim=[1,-1]):
+		MTLSetup.__init__(self,2,2,0)
+		self.aim=aim
+		self.satser=[]
+		self.hdiff=None
+		self.dist=None
+		self.restfejl=None
+	def SetDistance(self,dist):
+		self.dist=dist
+	def AddSats(self):
+		self.satser.append(self.raw_data,self.hdiff,self.restfejl)
+		self.Initialize()
+	
+		
+	
+#THIS is the core class which handles basis setup state and math, the rest is GUI and event handling...... 
+#The class has been prepared for the possibility of handling input in formats other than ddd.mmss, e.g. angles in gon or whatever.... Only need to set relevant translator and validator methods 
+
+class MTLBasisSetup(MTLSetup):
+	def __init__(self,aim=1):
+		MTLSetup.__init__(self,4,3,1) #1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
+		self.aim=aim
+		self.h1=None
+		self.h2=None
+		self.dist=None
+		self.hdiff=None
+	def MarkValidator(self,val): #validates 'marks' from input column 0
+		try:
+			val=float(val)
+		except:
+			return False
+		return self.rod_min<=val<=self.rod_max
 	def Calculate(self):
 		index_err=(self.real_data[:,1]+self.real_data[:,2]-np.pi)*0.5
 		z_corr=self.real_data[:,1]-index_err  #standard formel fra KES...
@@ -745,12 +909,6 @@ class MTLBasisSetup(object):
 		self.hdiff=(self.h1+self.h2)*0.5
 		self.dist=dist
 		return self.dist,self.h1,self.h2,self.hdiff
-	def GetData(self):
-		return self.real_data
-	def GetRawData(self):
-		return self.raw_data
-	def GetValidity(self):
-		return self.validity_mask
 	def GetResult(self):
 		return self.dist,self.h1,self.h2,self.hdiff
 	

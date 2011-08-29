@@ -328,9 +328,9 @@ class MLBase(GUI.MainWindow):
 		project=data.GetProject()
 		if len(project)>18:
 			project=project[0:17]+"..."
-		self.status1.Update([Fkt.Dato(),os.path.basename(self.resfile),project,data.GetTemperature()])
-		self.status2.Update([str(data.GetStretches()),"%.2f m" %data.GetDistanceAll(),str(data.GetSetupsAll()),data.GetEnd()])
-		self.status3.Update([data.GetStart(),"%.4f m" %hdiff, str(nopst),"%.2f m"%dist])
+		self.status1.UpdateStatus([Fkt.Dato(),os.path.basename(self.resfile),project,data.GetTemperature()])
+		self.status2.UpdateStatus([str(data.GetStretches()),"%.2f m" %data.GetDistanceAll(),str(data.GetSetupsAll()),data.GetEnd()])
+		self.status3.UpdateStatus([data.GetStart(),"%.4f m" %hdiff, str(nopst),"%.2f m"%dist])
 		self.SetSizer(self.sizer)
 		self.sizer.FitInside(self)
 	def OnEvtLog(self,event):
@@ -574,7 +574,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		for inst in self.instruments:
 			statusline.append(inst.GetName()+":")
 		self.portstatus=GUI.StatusBox2(self,statusline,colsize=1,label="Port-status",fontsize=self.size) # a port statusline in the top
-		self.portstatus.Update()
+		self.portstatus.UpdateStatus()
 		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_RICH2)
 		self.log.SetFont(wx.Font(self.size-1,wx.MODERN,wx.NORMAL,wx.NORMAL))
 		#self.criterium=GUI.EditFields(self,textlabels=["Forkastelseskriterie:"],textvalues=["%.2f %s"%(self.ini.fbtest,self.ini.fbunit)],fontsize=self.size,textsize=100)
@@ -616,7 +616,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		states=[self.gps.TestConnection()]
 		for inst in self.instruments:
 			states.append(inst.TestPort())
-		self.portstatus.Update(states=states)
+		self.portstatus.UpdateStatus(states=states)
 	def OnUpdateButton(self,event):
 		self.log.Clear()
 		self.Log("Initialiserer:")
@@ -1013,8 +1013,8 @@ class MakeHead(GUI.InputDialog):
 		else:
 			test="IKKE FUNDET"
 			testcol=None
-		status.Update(["%.5f m" %statusdata.GetHdiff(),"%.2f m" %statusdata.GetDistance(),"%i" %statusdata.GetSetups()])
-		testbox.Update([test],colours={0:testcol})
+		status.UpdateStatus(["%.5f m" %statusdata.GetHdiff(),"%.2f m" %statusdata.GetDistance(),"%i" %statusdata.GetSetups()])
+		testbox.UpdateStatus([test],colours={0:testcol})
 		self.ekstra=GUI.EditFields(self,["Ekstra information (tryk, vandtemp., etc.):"])
 		self.sizer.Insert(0,status,0,wx.ALL,5)
 		self.sizer.Insert(1,testbox,0,wx.ALL,5)
