@@ -116,11 +116,13 @@ class MTLmain(Core.MLBase):
 		win.InitializeMap()
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 class DistancePanel(wx.Panel):
-	def __init__(self,parent,instrument_names,setup,auto_func1,auto_func2):
+	def __init__(self,parent,instrument_names,setup,auto_func1,auto_func2,update_func):
 		wx.Panel.__init__(self,parent)
 		self.SetAutoMode=auto_func1
 		self.SetSingleAutoMode=auto_func2
+		self.UpdateStatus=update_func
 		self.setup=setup
+		self.parent=parent
 		top_line=wx.BoxSizer(wx.HORIZONTAL)
 		bottom_line=wx.BoxSizer(wx.HORIZONTAL)
 		text1=GUI.MyText(self,instrument_names[0],FONTSIZE,style=wx.ALIGN_CENTER)
@@ -130,6 +132,8 @@ class DistancePanel(wx.Panel):
 		self.autobutton=GUI.MyButton(self,"AUTO (*)",FONTSIZE)
 		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
 		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
+		self.dfield1.ij_id=[0,0]
+		self.dfield2.ij_id=[0,1]
 		self.fields=[self.dfield1,self.dfield2]
 		for i in range(2):
 			field=self.fields[i]
@@ -150,10 +154,19 @@ class DistancePanel(wx.Panel):
 		self.sizer.Add(bottom_line,1,wx.ALL,5)
 		self.SetSizerAndFit(self.sizer)
 	def OnText(self,event): 
+		#The strategy here should be common to all input 'setups' - thus could be put into a parent class#
 		#Validate only the field issuing the event#
 		field=event.GetEventObject()
 		ok=field.Validate()
-		pass #do something here,,,
+		row,col=field.ij_id
+		self.setup.SetValidity(row,col,ok)
+		if ok:
+			self.setup.SetData(row,col,self.fields[col].GetValue())
+			row_validity=self.setup.IsValid(row=row) and self.setup.DistanceTest()
+			if row_validity:
+				dist=self.setup.GetDistance()
+				self.UpdateStatus()
+				#send some signal to parent#
 		event.Skip()
 	def OnChar(self,event): #easier to handle char events here, rather than via the standard 'keyhandler' setup of MyTextField....
 		key=event.GetKeyCode()
@@ -191,11 +204,12 @@ class AutoPanel(wx.Panel):
 	
 
 class SatsPanel(wx.Panel):
-	def __init__(self,parent,instrument_names,setup,auto_func1,auto_func2):
+	def __init__(self,parent,instrument_names,setup,auto_func1,auto_func2,update_func):
 		wx.Panel.__init__(self,parent)
 		self.setup=setup
 		self.SetAutoMode=auto_func1
 		self.SetSingleAutoMode=auto_func2
+		self.UpdateStatus=update_func
 		top_line=wx.BoxSizer(wx.HORIZONTAL)
 		text1=GUI.MyText(self,instrument_names[0],FONTSIZE,style=wx.ALIGN_CENTER)
 		text2=GUI.MyText(self,instrument_names[1],FONTSIZE,style=wx.ALIGN_CENTER)
@@ -274,8 +288,8 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=FONTSIZE)
 		self.lower=wx.Panel(self)
 		self.lower.sizer=wx.BoxSizer()
-		self.dpanel=DistancePanel(self.lower,inames,self.setup,self.SetAutoMode,self.SetSingleAutoMode)
-		self.spanel=SatsPanel(self.lower,inames,self.setup,self.SetAutoMode,self.SetSingleAutoMode)
+		self.dpanel=DistancePanel(self.lower,inames,self.setup,self.SetAutoMode,self.SetSingleAutoMode,self.UpdateHeightStatus)
+		self.spanel=SatsPanel(self.lower,inames,self.setup,self.SetAutoMode,self.SetSingleAutoMode,self.UpdateHeightStatus)
 		self.lower.sizer.Add(self.dpanel)
 		self.lower.sizer.Add(self.spanel)
 		#EVENT HANDLING SETUP#
@@ -328,7 +342,15 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.UpdateStatus()
 	def UpdateStatus(self):
 		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
-		self.resultbox.UpdateStatus(["1.00000","2.12121","23.121212"])
+	def UpdateHeightStatus(self):
+		dist=self.setup.GetDistance()
+		if dist>0:
+			dist="%.2f m" %dist
+		else:
+			dist="NA"
+		self.resultbox.UpdateStatus([dist,"2.12121","23.121212"])
+		if self.mode>0:
+			pass
 	def CloseOK(self,event):
 		self.Close()
 
@@ -818,11 +840,14 @@ def StandardZdistanceTranslator(val): # A validator for input in the format ddd.
 	G=int(sval[0:-5])  #grader
 	return True,np.pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
 
+
+
 #Base class which validates (and translates) input from z-distance fields
 class MTLSetup(object):
-	def __init__(self,rows,cols,zcol=0):
+	def __init__(self,rows,cols,zrow,zcol): #zrow, zcol indicates where z-field subarray starts
 		self.Initialize(rows,cols) #Then we can call this method from outside....
 		self.zcol=zcol #column nr. from where columns are z-distance fields (e.g. zcol=1: mrk,pos1,pos2 or  zcol=0: pos1,pos2)
+		self.zrow=zrow #etc.
 		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
 	def Initialize(self,rows,cols):
 		self.raw_data=np.zeros((rows,cols),dtype="<S20")
@@ -844,7 +869,7 @@ class MTLSetup(object):
 	def SetData(self,row,col,val):
 		self.raw_data[row,col]=val
 		#translate#
-		if col>=self.zcol and self.zformat_translator is not None:
+		if col>=self.zcol and row>self.zrow and self.zformat_translator is not None:
 			ok,val=self.zformat_translator(val)
 		else:
 			val=float(val)
@@ -863,18 +888,26 @@ class MTLSetup(object):
 		return self.validity_mask
 
 class MTLTransferSetup(MTLSetup):
-	def __init__(self,aim=[1,-1]):
-		MTLSetup.__init__(self,2,2,0)
+	def __init__(self,aim=[1,-1],dlimit=0.1):
+		MTLSetup.__init__(self,3,2,1,0) #1. row = distance, 2.row pos 1, 3. row pos 2., z-fields start at row 1 =(row 2)
 		self.aim=aim
 		self.satser=[]
 		self.hdiff=None
 		self.dist=None
+		self.dlimit=dlimit
 		self.restfejl=None
-	def SetDistance(self,dist):
-		self.dist=dist
+	def GetDistance(self):
+		#could really be a translator here, but that might be overdoing it!#
+		if not self.IsValid(row=0):
+			return 0
+		self.dist=(float(self.raw_data[0,0].replace(",","."))+float(self.raw_data[0,1].replace(",",".")))*0.5
+		return self.dist
+	def DistanceTest(self):
+		return self.IsValid(row=0) and abs(float(self.raw_data[0,0])-float(self.raw_data[0,1]))<self.dlimit
 	def AddSats(self):
 		self.satser.append(self.raw_data,self.hdiff,self.restfejl)
 		self.Initialize()
+	
 	
 		
 	
@@ -883,7 +916,7 @@ class MTLTransferSetup(MTLSetup):
 
 class MTLBasisSetup(MTLSetup):
 	def __init__(self,aim=1):
-		MTLSetup.__init__(self,4,3,1) #1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
+		MTLSetup.__init__(self,4,3,0,1) #1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
 		self.aim=aim
 		self.h1=None
 		self.h2=None

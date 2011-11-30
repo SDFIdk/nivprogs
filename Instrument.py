@@ -3,9 +3,10 @@ import threading
 import wx
 import  wx.lib.newevent
 import time
+from math import sqrt
 (LogEvent,EVT_LOG) = wx.lib.newevent.NewEvent()
 (DataEvent,EVT_DATA) = wx.lib.newevent.NewEvent()
-#Last update 26.3.2010
+#Last update 2011-11-30
 class DummyThread(object):
 	def __init__(self):
 		self.alive=False
@@ -76,6 +77,7 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 		self.index_min=-33
 		self.index_mean=0
 		self.index_std=0
+		self.index_var=0
 		self.nmeas=0
 	def PresentYourself(self,short=False): #could be overridden
 		if short:
@@ -95,8 +97,12 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 	def AddIndexError(self,index_error): #*Usually* index error should be in seconds...
 		self.nmeas+=1
 		self.index_mean=self.index_mean*(self.nmeas-1)/(self.nmeas)+index_error/self.nmeas
-		if self.nmeas>2:
-			pass #Do something to calc. limits
+		#not exact - but should converge#
+		self.index_var=(self.index_var*(self.nmeas-1)+(index_error-self.index_mean)**2)/self.nmeas
+		self.index_std=sqrt(self.index_var)
+		if self.nmeas>3:
+			self.index_max=self.index_mean+1.8*self.index_std
+			self.index_min=self.index_max+1.8*self.index_std
 	def GetIndexBounds(self):
 		return self.index_min,self.index_max
 
