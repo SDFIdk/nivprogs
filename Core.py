@@ -551,7 +551,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 	def __init__(self,parent,program,inireader,statusdata): #inireader is a function handle to something reading an ini-file. inipath is used to check if the inifile really exists
 		#set font sizes. Smaller for bad resolution, to enable things to fit on screen...
 		dsize=wx.GetDisplaySize()
-		if dsize[1]<750 or dsize[0]<1000:
+		if dsize[1]<800 or dsize[0]<1200:
 			self.size=10
 		else:
 			self.size=12

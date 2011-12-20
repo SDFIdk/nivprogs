@@ -47,7 +47,7 @@ def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan til
 					Nopst=int(sline[9])
 				except:
 					Nopst=0
-				Slut=line[2]   #Seneste punkt
+				Slut=sline[2]   #Seneste punkt
 				if dato==today1 or dato==today2:
 					if not has_started:
 						statusdata.SetDate(today1)

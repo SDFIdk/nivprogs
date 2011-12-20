@@ -73,10 +73,9 @@ class PlainWindow(wx.Frame):
 class FullScreenWindow(PlainWindow):
 	def __init__(self,parent):
 		PlainWindow.__init__(self,parent)
-		self.vsizer=wx.BoxSizer(wx.VERTICAL)
 		self.hsizer=wx.BoxSizer(wx.HORIZONTAL)
+		self.vsizer=wx.BoxSizer(wx.VERTICAL)
 		self.vsizer.AddStretchSpacer(1) #above
-		sizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.vsizer.AddStretchSpacer(1) #below
 		self.hsizer.AddStretchSpacer(1) #left
 		self.hsizer.Add(self.vsizer,10,wx.EXPAND)
@@ -87,6 +86,8 @@ class FullScreenWindow(PlainWindow):
 		self.Show()
 		self.SetSizerAndFit(self.hsizer)
 		self.ShowFullScreen(1)
+	def LayoutSizer(self):
+		self.hsizer.Layout()
 	def CreateRow(self):
 		self.rowsizer=wx.BoxSizer(wx.HORIZONTAL)
 	def AddItem(self,item,proportion=1,style=wx.ALL,border=5):
