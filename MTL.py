@@ -106,9 +106,8 @@ class MTLmain(Core.MLBase):
 		resfile.close()
 		self.UpdateStatus()
 	def OnInstrument2Instrument(self,event):
-		win=Instrument2Instrument(self)
 		self.Log(SL)
-		self.statusdata.AddSetup(1.0,400.0)
+		win=Instrument2Instrument(self)
 		self.statusdata.SetInstrumentState((self.statusdata.GetInstrumentState()+1)%2)
 		self.Log("Instrument %s now carries the height..." %(self.statusdata.GetInstrumentNames()[self.statusdata.GetInstrumentState()]))
 		self.UpdateStatus()
@@ -133,8 +132,9 @@ class DistancePanel(wx.Panel):
 		top_line.Add(text1,1,wx.ALIGN_LEFT|wx.EXPAND)
 		top_line.Add(text2,1,wx.ALIGN_RIGHT|wx.EXPAND)
 		self.autobutton=GUI.MyButton(self,"AUTO (*)",FONTSIZE)
-		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
-		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(180,-1))
+		wsize=FONTSIZE*12
+		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(wsize,-1),fontsize=FONTSIZE)
+		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(wsize,-1),fontsize=FONTSIZE)
 		#BIND ENTER in field2 to allow going to next state#
 		self.dfield2.Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
 		self.dfield1.ij_id=[0,0]
@@ -151,7 +151,7 @@ class DistancePanel(wx.Panel):
 		bottom_line.Add(self.dfield1,1,wx.ALL,5)
 		bottom_line.Add(self.autobutton,0,wx.ALL,5)
 		bottom_line.Add(self.dfield2,1,wx.ALL,5)
-		self.status=GUI.StatusBox2(self,["Difference:","Middel:"],label="Afstand",colsize=1,fontsize=FONTSIZE)
+		self.status=GUI.StatusBox2(self,["Difference:","Middel:"],label="Afstand",colsize=1,fontsize=FONTSIZE-1)
 		self.status.UpdateStatus([])
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
 		self.sizer.Add(self.status,1,wx.ALL,5)
@@ -160,13 +160,14 @@ class DistancePanel(wx.Panel):
 		self.SetSizerAndFit(self.sizer)
 	def StartUp(self):
 		self.Clear()
+		self.status.Clear()
 		self.Enable()
-		self.status.UpdateStatus([])
 		self.fields[0].SetFocus()
 	def Clear(self):
 		for field in self.fields:
 			field.Clear()
 			field.SetBackgroundColour("white")
+		
 	def UpdateStatus(self):
 		dist=self.setup.GetDistance()
 		diff,ok=self.setup.DistanceTest()
@@ -206,9 +207,10 @@ class AutoPanel(wx.Panel):
 		self.parent=parent  
 		self.next=None
 		wx.Panel.__init__(self, parent,style=wx.RAISED_BORDER|wx.TAB_TRAVERSAL)
-		self.control1=GUI.MyTextField(self,fontsize=FONTSIZE+2,size=(160,-1))
+		wsize=(FONTSIZE+1)*11
+		self.control1=GUI.MyTextField(self,fontsize=FONTSIZE+1,size=(wsize,-1))
 		self.autobutton=GUI.MyButton(self,"AUTO(*)",FONTSIZE)
-		self.control2=GUI.MyTextField(self,fontsize=FONTSIZE+2,size=(160,-1))
+		self.control2=GUI.MyTextField(self,fontsize=FONTSIZE+1,size=(wsize,-1))
 		self.control1.SetValidator(validator)
 		self.control2.SetValidator(validator)
 		self.sizer=wx.BoxSizer(wx.HORIZONTAL)
@@ -238,7 +240,7 @@ class SatsPanel(wx.Panel):
 		text2=GUI.MyText(self,instrument_names[1],FONTSIZE,style=wx.ALIGN_CENTER)
 		top_line.Add(text1,1,wx.ALIGN_LEFT|wx.EXPAND)
 		top_line.Add(text2,1,wx.ALIGN_RIGHT|wx.EXPAND)
-		self.status=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=13)
+		self.status=GUI.StatusBox2(self,["H1:","H2:","Middel:","Restfejl:","Ind1:","Ind2:"],label="Seneste Sats",colsize=2,bold=True,fontsize=FONTSIZE-1)
 		self.status.UpdateStatus()
 		self.position1=AutoPanel(self,setup.Position1Validator,"1. kikkertstilling:")
 		self.position2=AutoPanel(self,setup.Position2Validator,"2. kikkertstilling:")
@@ -325,14 +327,14 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.instruments=self.statusdata.GetInstruments()
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
-		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE,label="Status",colsize=1,minlengths=[7,7,11])
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11])
 		self.aim=np.array([1,-1])*(1-2*int(self.statusdata.GetInstrumentState()==0)) #Well, I know that a one-liner can be harder to decode - in essense: aim is [1,-1] or [-1,1]
 		#define setup class#
 		self.setup=MTLTransferSetup(self.aim,[inst.axisconst for inst in self.instruments],self.ini)
 		# # # #  # # # # #
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
 		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
-		,fontsize=FONTSIZE)
+		,fontsize=FONTSIZE-1)
 		self.resultbox.UpdateStatus([])
 		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=FONTSIZE)
 		self.main.button[1].Enable(0)
@@ -367,11 +369,13 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.CreateRow()
 		self.AddItem(self.lower)
 		self.AddRow(3,wx.ALL|wx.ALIGN_CENTER,10)
-		self.UpdateStatus()     
-		self.SetDistanceMode() #Gaa direkte til afstand
-		self.ShowMe()
+		self.UpdateStatus()
 		#WRITE TO LOG#
 		self.Log(u"Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+		#Gaa direkte til afstand#
+		self.SetDistanceMode() 
+		self.ShowMe()
+		
 	def OnSetZMode(self,event):
 		self.SetZMode()
 	def OnSetDistanceMode(self,event):
@@ -386,20 +390,24 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 				return
 		self.SetDistanceMode()
 	def SetDistanceMode(self):
+		self.Log(u"Starter afstandsm\u00E5ling.")
 		self.mmode=0
 		self.setup.Clear()
 		self.spanel.Show(0)
 		self.dpanel.Show()
+		self.dpanel.StartUp()
 		self.lower.SetSizerAndFit(self.lower.sizer)
 		self.LayoutSizer()
-		self.dpanel.StartUp()
+		
 	def SetZMode(self):
+		self.Log(u"Starter satsm\u00E5ling.")
 		self.mmode=1
 		self.dpanel.Show(0)
 		self.spanel.Show()
+		self.spanel.StartUp()
 		self.lower.SetSizerAndFit(self.lower.sizer)
 		self.LayoutSizer()
-		self.spanel.StartUp()
+		
 	def SetAutoMode(self,fields):
 		self.auto_fields=fields
 		self.mode=1
@@ -424,7 +432,14 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			self.main.SetFocus()
 			self.LayoutSizer()
 	def OnCloseOK(self,event):
-		self.Close()
+		if self.setup.GetNsats()>0:
+			self.Log(u"Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+			hdiff=self.setup.GetTotalHdiff()
+			dist=self.setup.GetDistance()
+			self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.4f m" %(dist,hdiff))
+			self.statusdata.AddSetup(hdiff,dist)
+			self.parent.UpdateStatus()
+			self.Close()
 	def OnCancel(self,event):
 		quit=True
 		valid=self.setup.GetValidity().sum()+self.setup.GetNsats()*4
@@ -572,9 +587,8 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 class MakeBasis(GUI.FullScreenWindow):
 	def __init__(self, parent,instrument_number=0):
 		self.laegter=parent.laegter
-		self.size=parent.size #really a fontsize inherited from startframe
 		dsize=wx.GetDisplaySize() #but we need to check this anyways....
-		if dsize[0]<1200:
+		if dsize[0]<1200: #well not used right now
 			mapproportion=2
 		else:
 			mapproportion=2
@@ -590,8 +604,8 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.setup=MTLBasisSetup(self.sigte)
 		self.instrument=self.statusdata.GetInstruments()[instrument_number]
 		GUI.FullScreenWindow.__init__(self, parent)
-		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "],fontsize=self.size)
-		self.valg=MTLChoiceBox(self,[rod.name for rod in self.laegter],self.size)
+		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "],fontsize=FONTSIZE-1)
+		self.valg=MTLChoiceBox(self,[rod.name for rod in self.laegter],FONTSIZE)
 		startp=self.statusdata.GetEnd()
 		if startp is None or self.sigte==1:
 			startp=""
@@ -600,10 +614,10 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.map.RegisterPointFunction(self.PointNameHandler) #handles left-clicks on points in map - sets name in point box
 		self.main=GUI.ButtonBox2(self,["AUTO(*)","MANUEL","ACCEPTER","AFBRYD"],label="Styring",colsize=2)
 		index_min,index_max=self.instrument.GetIndexBounds()
-		self.maal=OverfPanel(self,self.setup,index_min,index_max,self.size)
+		self.maal=OverfPanel(self,self.setup,index_min,index_max,FONTSIZE) #use global fontsize
 		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
-		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=self.size,colsize=2)
-		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=self.size,label="Kontrol")
+		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=FONTSIZE-1,colsize=2)
+		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=FONTSIZE-1,label="Kontrol")
 		self.resultbox.UpdateStatus([])
 		self.controlbox.UpdateStatus([])
 		#EVENT HANDLING SETUP#
@@ -965,7 +979,7 @@ class MTLSetup(object):
 		val=val.replace(",",".")
 		self.raw_data[row,col]=val
 		#translate#
-		if col>=self.zcol and row>self.zrow and self.zformat_translator is not None:
+		if col>=self.zcol and row>=self.zrow and self.zformat_translator is not None:
 			ok,val=self.zformat_translator(val)
 		else:
 			val=float(val)
@@ -1030,11 +1044,16 @@ class MTLTransferSetup(MTLSetup):
 	def Calculate(self):  #beregn aktuelle sats
 		if not self.IsValid(row=0):
 			return -1,-1,-1,-1,-1,-1,False,False
-		index_errors=(self.real_data[1,:]+self.real_data[2,:]-np.pi)*0.5 #1.st row + 2. row
+		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*np.pi)*0.5 #1.st row + 2. row
 		self.index_errors=index_errors*180.0/np.pi*3600.0 #store in seconds
 		z1c,z2c=self.real_data[1]-index_errors
 		s1,s2=self.real_data[0]
 		k1,k2=self.instrument_consts #axis 1. inst, axis 2. inst
+		if DEBUG:
+			print("Index err: %s" %repr(index_errors*180.0/np.pi))
+			print("Raw: %s" %repr(self.raw_data))
+			print("Dist: %s" %repr(self.real_data[0]))
+			print("Real: %s" %repr(self.real_data[1:,:]*180.0/np.pi))
 		try:
 			z1=tan(k2*sin(z1c))/(s1-k2*cos(z1c))+z1c #Korrigeret for Inst2's prisme-objektiv afst.
 			z2=tan(k1*sin(z2c))/(s2-k1*cos(z2c))+z2c
@@ -1044,11 +1063,12 @@ class MTLTransferSetup(MTLSetup):
 		self.h1=(cos(z1c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
 		self.h2=(cos(z2c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
 		self.hdiff=(self.h1+self.h2)*0.5
-		return self.h1,self.h2,self.hdiff,self.restfejl,self.index_errors[0],self.index_errors[1],self.SatsTest()
+		#perform various tests#
+		self.dh_test=abs(self.h1-self.h2)<self.err_limits.maxdh_mutual*self.dist/100.0 #error pr. 100 m
+		self.rf_test=abs(self.restfejl)<self.err_limits.max_rf
+		return self.h1,self.h2,self.hdiff,self.restfejl,self.index_errors[0],self.index_errors[1],self.dh_test,self.rf_test
 	def SatsTest(self):
-		dh_test=abs(self.h1-self.h2)<self.err_limits.maxdh_setups*self.dist/100.0 #error pr. 100 m
-		rf_test=abs(self.restfejl)<self.err_limits.max_rf
-		return dh_test,rf_test
+		return self.dh_test,self.rf_test
 	def GetTotalHdiff(self):
 		if len(self.satser)>0:
 			return np.mean(self.hdiffs)
@@ -1061,11 +1081,11 @@ class MTLTransferSetup(MTLSetup):
 	def GetStddev(self):
 		if len(self.satser)>1:
 			return np.std(self.hdiffs)
-		return None
+		return -1
 	def GetMaxdev(self):
 		if len(self.satser)>1:
 			return np.max(self.hdiffs)-np.min(self.hdiffs)
-		return None
+		return -1
 	def GetNsats(self):
 		return len(self.satser)
 	def GetStringData(self):
@@ -1097,7 +1117,7 @@ class MTLBasisSetup(MTLSetup):
 			return False
 		return self.rod_min<=val<=self.rod_max
 	def Calculate(self):
-		index_err=(self.real_data[:,1]+self.real_data[:,2]-np.pi)*0.5
+		index_err=(self.real_data[:,1]+self.real_data[:,2]-2*np.pi)*0.5
 		z_corr=self.real_data[:,1]-index_err  #standard formel fra KES...
 		M=self.real_data[:,0]  #only a 'view' not a copy!
 		cot=1.0/np.tan(z_corr)
@@ -1198,7 +1218,7 @@ class MTLinireader(object): #add more error handling!
 				if key=="ftforkast" and len(line)>0:
 					ini.fbtest=float(line[0])
 				if key=="fejlgraenser" and len(line)>0:
-					ini.maxsl=float(line[0])
+					ini.maxdelta_dist=float(line[0])
 					if len(line)>1:
 						ini.maxdh_basis=float(line[1])
 					if len(line)>2:
@@ -1207,6 +1227,8 @@ class MTLinireader(object): #add more error handling!
 						ini.maxdh_setups=float(line[3])
 					if len(line)>4:
 						ini.maxsd_setups=float(line[4])
+					if len(line)>5:
+						ini.max_rf=float(line[5])
 					
 				if key=="laegte" and len(line)>1:
 					name=line[0]
@@ -1224,6 +1246,12 @@ class MTLinireader(object): #add more error handling!
 
 def main():
 	App=wx.App()
+	dsize=wx.GetDisplaySize() #but we need to check this anyways....
+	global FONTSIZE
+	if dsize[0]<1100 or dsize[1]<800: #set default fontsize for labels, input fields etc. - fields set size relative to this base size
+		FONTSIZE=12
+	else:
+		FONTSIZE=14
 	frame=StartFrame(None)
 	frame.Show()
 	App.MainLoop()
