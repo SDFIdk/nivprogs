@@ -416,7 +416,7 @@ class StatusBox(wx.Panel):   #style is a dictionary: item.nr.: [fontsize,bold (1
 		
 #A status box, where number og columns can be specified
 class StatusBox2(wx.Panel):   
-	def __init__(self, parent,list=[],fontsize=12,bold=False,label="Status",colsize=None,minlengths=[]):
+	def __init__(self, parent,list=[],fontsize=12,bold=False,label="Status",colsize=None,minlengths=[],bold_list=[]):
 		self.parent=parent
 		self.list=list
 		self.minlengths=minlengths+(len(list)-len(minlengths))*[2]  #append a lot of 2's
@@ -425,6 +425,7 @@ class StatusBox2(wx.Panel):
 		self.N=len(self.list)
 		self.cols=1
 		self.colsize=self.N
+		self.col_tl=[]
 		if colsize!=None:
 			Nc=colsize
 			if Nc<self.N:
@@ -443,70 +444,82 @@ class StatusBox2(wx.Panel):
 		for j in range(0,self.cols):
 			vsizers.append(wx.BoxSizer(wx.VERTICAL))
 			i=0
+			maxtext=0
 			while n<self.N and i<self.colsize:
-				line=[MyText(self,self.list[n],fs),MyText(self,"%*s"%(-self.minlengths[i],"NA"),fs,bold=bold)]
+				maxtext=max(len(self.list[n]),maxtext)
+				this_is_bold=bold or (n in bold_list)
+				line=[MyText(self,self.list[n],fs),MyText(self,"",fs)]
 				hsizer=wx.BoxSizer(wx.HORIZONTAL)
 				self.text.append(line)
-				self.text[n][1].SetFont(DefaultLogFont(fontsize))
+				self.text[n][1].SetFont(DefaultLogFont(fontsize,True))
+				self.text[n][0].SetFont(DefaultLogFont(fontsize))
 				hsizer.Add(line[0],0,wx.ALL,5)
 				hsizer.Add(line[1],0,wx.ALL,5)
 				vsizers[j].Add(hsizer,0,wx.ALL,5)
 				i+=1
 				n+=1
+			self.col_tl.append(maxtext)
 			self.bsizer.Add(vsizers[j],0,wx.ALL,5)
 		self.sizer.Add(self.bsizer,0,wx.ALL,5)
-		self.SetFont(DefaultLogFont(fontsize))
+		
 	def UpdateStatus(self,inputlist=[],states=None,colours=None,field=None,text=None,label=None,colour=None):    #Hmmm, vist lettere med default vaerdier!!
+		if len(inputlist)==0:
+			inputlist=["NA"]*self.N
+			
 		if states!=None: #dette overruler alt andet!
 			for i in range(0,len(states)):
 				if states[i]:
 					self.text[i][1].SetLabel("OK")
-					self.text[i][1].SetBackgroundColour("green")
+					self.text[i][1].SetForegroundColour("green")
 				else:
 					self.text[i][1].SetLabel("ERR")
-					self.text[i][1].SetBackgroundColour("red")
+					self.text[i][1].SetForegroundColour("red")
 		else:
-			self.list=inputlist
 			if colours!=None:
 				paint=True
 			else:
 				paint=False
-			for i in range(0,len(self.list)):
-				if isinstance(self.list[i],list) and len(self.list[i])==2:
-					self.text[i][0].SetLabel(self.list[i][0])
-					text_label=self.list[i][1]
+			for i in range(0,len(inputlist)):
+				if isinstance(inputlist[i],list) and len(inputlist[i])==2:
+					self.text[i][0].SetLabel(inputlist[i][0])
+					text_label=inputlist[i][1]
 				else:
-					text_label=self.list[i]
+					text_label=inputlist[i]
 				if text_label is None:
 					text_label="NA"
-				space=max(0,self.minlengths[i]-len(text_label))
-				sleft=space/2
-				sright=space-sleft
-				self.text[i][1].SetLabel("%*s%s%*s"%(sleft,"",text_label,sright,""))
+				col_nr=int(i/self.colsize)
+				textl=self.col_tl[col_nr]
+				extra_space=max(0,textl-len(self.list[i]))
+				more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
+				self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"",text_label,more_space,""))
 				if paint and colours.has_key(i):
 					if colours[i] is None:
-						col=BGCOLOR
+						col="black"
 					else:
 						col=colours[i]
-					self.text[i][1].SetBackgroundColour(col)
+					self.text[i][1].SetForegroundColour(col)
 			if field!=None:
 				if text!=None:
-					space=max(0,self.minlengths[field]-len(text))
-					sleft=space/2
-					sright=space-sleft
-					self.text[field][1].SetLabel("%*s%s%*s"%(sleft,"",text,sright,""))
+					col_nr=int(field/self.colsize)
+					textl=self.col_tl[col_nr]
+					extra_space=max(0,textl-len(self.list[field]))
+					more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
+					self.text[field][1].SetLabel("%*s%s%*s"%(extra_space,"",text,more_space,""))
 				if colour!=None:
-					self.text[field][1].SetBackgroundColour(colour)
+					self.text[field][1].SetForegroundColour(colour)
 				else:
-					self.text[field][1].SetBackgroundColour(BGCOLOR)
+					self.text[field][1].SetForegroundColour("black")
 		if label!=None:
 			self.box.SetLabel(label)
 		self.SetSizerAndFit(self.sizer)
 	def Clear(self):
-		global BGCOLOR
 		for i in range(0,self.N):
-			self.text[i][1].SetLabel("%*s"%(-self.minlengths[i],"NA"))
-			self.text[i][1].SetBackgroundColour(BGCOLOR)
+			col_nr=int(i/self.colsize)
+			textl=self.col_tl[col_nr]
+			extra_space=max(0,textl-len(self.list[i]))
+			more_space=max(0,self.minlengths[i]-extra_space-2)
+			self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"","NA",more_space,""))
+			self.text[i][1].SetForegroundColour("black")
 		self.SetSizerAndFit(self.sizer)
 
 

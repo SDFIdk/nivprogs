@@ -5,7 +5,7 @@ from MyModules.MLmap import PanelMap
 from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
 import Instrument 
 import numpy as np
-from math import cos, sin, tan, atan, pi
+import MTLsetup # all MTL math stuff handled here.... This is the real thing!
 import Funktioner
 import FileOps
 import sys
@@ -22,7 +22,6 @@ Bugs rettes til simlk@kms.dk
 DEBUG=True
 #TODO: Make sure that num ouput to file has "," replaced by ".".
 #---------Various Global Vars--------------#
-RADIUS=6385000.0   #Jordradius.
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
 MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
 MAX_LENGTH_MUTUAL=10000 # Value which determines the max input for the distance fields....
@@ -152,17 +151,17 @@ class DistancePanel(wx.Panel):
 		bottom_line.Add(self.autobutton,0,wx.ALL,5)
 		bottom_line.Add(self.dfield2,1,wx.ALL,5)
 		self.status=GUI.StatusBox2(self,["Difference:","Middel:"],label="Afstand",colsize=1,fontsize=FONTSIZE-1)
-		self.status.UpdateStatus([])
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
 		self.sizer.Add(self.status,1,wx.ALL,5)
 		self.sizer.Add(top_line,0,wx.ALL|wx.EXPAND,5)
 		self.sizer.Add(bottom_line,1,wx.ALL,5)
-		self.SetSizerAndFit(self.sizer)
+		
 	def StartUp(self):
 		self.Clear()
 		self.status.Clear()
 		self.Enable()
 		self.fields[0].SetFocus()
+		self.SetSizerAndFit(self.sizer)
 	def Clear(self):
 		for field in self.fields:
 			field.Clear()
@@ -275,12 +274,12 @@ class SatsPanel(wx.Panel):
 		self.zfields[0].SetFocus()
 	def UpdateStatus(self):
 		h1,h2,h,rf,i_err1,i_err2,hdiff_ok,rf_ok=self.setup.Calculate()
-		i_err1="%.0f ''"%i_err1
-		i_err2="%.0f ''"%i_err2
+		i_err1="%.0f''"%i_err1
+		i_err2="%.0f''"%i_err2
 		diff_col=Funktioner.State2Col(hdiff_ok)
 		rf_col=Funktioner.State2Col(rf_ok)
 		colors={0:diff_col,1:diff_col,3:rf_col}
-		self.status.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.4f m" %h,"%.0f ''"%rf,i_err1,i_err2],colours=colors)
+		self.status.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.4f m" %h,"%.0f''"%rf,i_err1,i_err2],colours=colors)
 	def OnEnter(self,event):
 		if self.setup.IsValid(row=1) and self.setup.IsValid(row=2):
 			self.setup.AddSats()
@@ -312,6 +311,76 @@ class SatsPanel(wx.Panel):
 	def Clear(self):
 		self.position1.Clear()
 		self.position2.Clear()
+
+
+class SatsEdit(GUI.TwoButtonDialog):
+	"""Dialog used to select/delete valid/bad setups"""
+	def __init__(self,parent,setup):
+		self.parent=parent
+		self.setup=setup
+		self.changed=False
+		GUI.TwoButtonDialog.__init__(self,parent,title="Redigering.",buttonlabels=["OK","FORTRYD"])
+		keep_mask=setup.GetKeepMask()
+		all=np.ones_like(keep_mask)
+		nsats=keep_mask.size
+		hdiffs=setup.GetHdiffs(all)
+		rfejl=setup.GetRerrors(all)
+		labels=["%i. sats, %.4fm, %.0f''"%(i+1,hdiffs[i],rfejl[i]) for i in range(nsats)]
+		self.lb=wx.CheckListBox(self,choices=labels)
+		for i in range(nsats):
+			self.lb.Check(i,keep_mask[i])
+		self.lb.Bind(wx.EVT_CHECKLISTBOX,self.OnCheck)
+		self.lb.SetFont(GUI.DefaultFont(FONTSIZE-1))
+		self.status=GUI.StatusBox2(self,[u"Middelv\u00E6rdi:","Middelfejl:","Max afvigelse:"],label=u"H\u00F8jdeforskel",minlengths=[8,8,8])
+		self.InsertObject(self.lb)
+		self.InsertObject(self.status)
+		self.UpdateStatus()
+	def OnCheck(self,event):
+		index = event.GetSelection()
+		self.lb.SetSelection(index) 
+		self.UpdateStatus()
+	def OnOK(self,event):
+		nsats=self.setup.GetKeepMask().size #all 'satser'
+		mask=np.zeros((nsats,),dtype=np.bool)
+		for i in range(nsats):
+			if self.lb.IsChecked(i):
+				mask[i]=True
+		nkeep=mask.sum()
+		OK=True
+		if nkeep==0:
+			dlg=GUI.OKdialog(self.parent,u"Bekr\u00E6ft!","Vil du slette alle satser?")
+			dlg.ShowModal()
+			OK=dlg.WasOK()
+			dlg.Destroy()
+		if OK:
+			if nkeep<nsats:
+				self.setup.SetKeepMask(mask)
+				msg=""
+				for i in range(nsats):
+					if not i:
+						msg+="Sats %d er slettet.\n" %(i+1)
+				self.parent.Log(msg)
+				self.changed=True
+			self.Close()
+	def OnCancel(self,event):
+		self.Close()
+	def UpdateStatus(self):
+		nsats=self.setup.GetKeepMask().size #all 'satser'
+		mask=np.zeros((nsats,),dtype=np.bool)
+		for i in range(nsats):
+			if self.lb.IsChecked(i):
+				mask[i]=True
+		nkeep=mask.sum()
+		self.status.Clear()
+		if nkeep==1:
+			self.status.UpdateStatus(["%.4f m"%self.setup.GetTotalHdiff(mask)])
+		elif nkeep>1:
+			mf=self.setup.GetStddev(mask)
+			gen=self.setup.GetTotalHdiff(mask)
+			mx=self.setup.GetMaxdev(mask)
+			colors={2:Funktioner.State2Col(self.setup.MaxDevTest(mask))}
+			self.status.UpdateStatus(["%.4f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
+		self.SetSizerAndFit(self.sizer)
 		
 class Instrument2Instrument(GUI.FullScreenWindow):
 	def __init__(self, parent):
@@ -321,16 +390,16 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.mode=0
 		self.mmode=0  #0 : distances   1: angles, changed in the 2 SetMode fcts. below
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
-		self.modecolors=["green","red","yellow"]
+		self.modecolors=["blue","red","yellow"]
 		#END MODE SETUP#
 		self.statusdata=parent.statusdata
 		self.instruments=self.statusdata.GetInstruments()
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
-		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11])
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11],bold_list=[2])
 		self.aim=np.array([1,-1])*(1-2*int(self.statusdata.GetInstrumentState()==0)) #Well, I know that a one-liner can be harder to decode - in essense: aim is [1,-1] or [-1,1]
 		#define setup class#
-		self.setup=MTLTransferSetup(self.aim,[inst.axisconst for inst in self.instruments],self.ini)
+		self.setup=MTLsetup.MTLTransferSetup(self.aim,[inst.axisconst for inst in self.instruments],self.ini)
 		# # # #  # # # # #
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
 		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
@@ -350,6 +419,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#self.main.buttons1.knap3.Bind(wx.EVT_BUTTON,self.SletSats)
 		self.main.button[4].Bind(wx.EVT_BUTTON,self.OnCancel)
 		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCloseOK)
+		self.main.button[2].Bind(wx.EVT_BUTTON,self.OnCheckSats)
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetDistanceMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetZMode)
 		#self.main.buttons2.knap2.Bind(wx.EVT_BUTTON,self.Fortryd)
@@ -431,6 +501,12 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			self.spanel.Enable(0)
 			self.main.SetFocus()
 			self.LayoutSizer()
+	def OnCheckSats(self,event):
+		#opens up a dialog where 'satser' can be deleted....
+		win=SatsEdit(self,self.setup)
+		win.ShowModal()
+		self.UpdateHeightStatus()
+		win.Destroy()
 	def OnCloseOK(self,event):
 		if self.setup.GetNsats()>0:
 			self.Log(u"Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
@@ -598,13 +674,13 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.mode=0 #modes are 0: manual and 1: auto 2; single auto - i.e. just one field....
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
-		self.modecolors=["green","red","yellow"]
+		self.modecolors=["blue","red","yellow"]
 		self.auto_fields=[] #an ordered list of fields from subpanel to receive data from instrument
 		self.sigte=-2*int((self.statusdata.GetSetups())==0)+1
-		self.setup=MTLBasisSetup(self.sigte)
+		self.setup=MTLsetup.MTLBasisSetup(self.sigte)
 		self.instrument=self.statusdata.GetInstruments()[instrument_number]
 		GUI.FullScreenWindow.__init__(self, parent)
-		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "],fontsize=FONTSIZE-1)
+		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "],fontsize=FONTSIZE-1,bold=True)
 		self.valg=MTLChoiceBox(self,[rod.name for rod in self.laegter],FONTSIZE)
 		startp=self.statusdata.GetEnd()
 		if startp is None or self.sigte==1:
@@ -616,8 +692,8 @@ class MakeBasis(GUI.FullScreenWindow):
 		index_min,index_max=self.instrument.GetIndexBounds()
 		self.maal=OverfPanel(self,self.setup,index_min,index_max,FONTSIZE) #use global fontsize
 		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
-		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=FONTSIZE-1,colsize=2)
-		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=FONTSIZE-1,label="Kontrol")
+		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=FONTSIZE-1,colsize=2,bold=True)
+		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=FONTSIZE-1,label="Kontrol",bold=True)
 		self.resultbox.UpdateStatus([])
 		self.controlbox.UpdateStatus([])
 		#EVENT HANDLING SETUP#
@@ -933,205 +1009,11 @@ class StartFrame(Core.StartFrame):
 		mainframe=MTLmain(None,self.resfile,self.instruments,self.laegter,self.data,self.gps,self.ini,self.statusdata,self.size)
 		mainframe.Show()
 		self.Close()
-#---------------------- Core MTL-classes, state, maths, etc. handled here----------------------------------------------------#
-def StandardZdistanceTranslator(val): # A validator for input in the format ddd.mmss - by using other validators, field 'types' can be changed flexibly
-	sval=val.replace(",",".").strip()
-	digits=""
-	try:
-		fval=float(sval)
-	except:
-		return False,0
-	digits=sval.partition(".")[2]
-	if len(digits)!=4 or int(digits[0:2])>59 or int(digits[2:])>59:
-		return False,0
-	S=int(sval[-2:]) #sekunder
-	M=int(sval[-4:-2]) #minutter
-	G=int(sval[0:-5])  #grader
-	return True,np.pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
 
-
-
-#Base class which validates (and translates) input from z-distance fields
-class MTLSetup(object):
-	def __init__(self,rows,cols,zrow,zcol): #zrow, zcol indicates where z-field subarray starts
-		self.zcol=zcol #column nr. from where columns are z-distance fields (e.g. zcol=1: mrk,pos1,pos2 or  zcol=0: pos1,pos2)
-		self.zrow=zrow #etc.
-		self.Initialize(rows,cols) #Then we can call this method from outside....
-		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
-	def Initialize(self,rows,cols):
-		self.raw_data=np.zeros((rows,cols),dtype="<S20")
-		self.real_data=np.zeros((rows,cols))
-		self.index_errors=np.zeros((rows-self.zrow,)) #reflects only current "sats" -relative to start row for z-fields!!!
-		self.validity_mask=np.zeros((rows,cols),dtype=np.bool) #reflects only current "sats"
-	def SetTranslator(self,func):
-		self.zformat_translator=func
-	def Position1Validator(self,val):
-		ok,val=self.zformat_translator(val)
-		return ok and 0<=val<=np.pi
-	def Position2Validator(self,val):
-		ok,val=self.zformat_translator(val)
-		return ok and np.pi<=val<=2*np.pi
-	def SetValidity(self,row,col,validity):
-		self.validity_mask[row,col]=validity
-	def IsValid(self,row=None,col=None):
-		return self.validity_mask[row,col].all()
-	def SetData(self,row,col,val):
-		val=val.replace(",",".")
-		self.raw_data[row,col]=val
-		#translate#
-		if col>=self.zcol and row>=self.zrow and self.zformat_translator is not None:
-			ok,val=self.zformat_translator(val)
-		else:
-			val=float(val)
-		self.real_data[row,col]=val
-	def GetIndexError(self,row): #for now always returns index error in seconds....
-		ierr=((self.real_data[row,self.zcol]+self.real_data[row,self.zcol+1]-np.pi)*0.5)*180.0/np.pi*3600.0
-		self.index_errors[row]=ierr
-		return ierr
-	def GetIndexErrors(self):
-		return self.index_errors
-	def GetData(self):
-		return self.real_data
-	def GetRawData(self):
-		return self.raw_data
-	def GetValidity(self):
-		return self.validity_mask
-
-class DummyErrs(object):
-	dlimit=0.05
-	hlimit=0.04
-	rlimit=30
-	
-
-
-class MTLTransferSetup(MTLSetup):
-	def __init__(self,aim,instrument_consts=[0.2,0.2],err_limits=DummyErrs()):
-		MTLSetup.__init__(self,3,2,1,0) #1. row = distance, 2.row pos 1, 3. row pos 2., z-fields start at row 1 =(row 2)
-		self.aim=np.array(aim)
-		self.instrument_consts=instrument_consts
-		self.err_limits=err_limits
-		self.InitData()
-	def InitData(self):
-		self.satser=[]
-		self.hdiff=None
-		self.hdiffs=[]
-		self.dist=None
-		self.restfejls=[]
-		self.restfejl=None
-	def Clear(self):
-		self.Initialize(3,2)
-		self.InitData()
-	def GetDistance(self):
-		#could really be a translator here, but that might be overdoing it!#
-		if not self.IsValid(row=0):
-			return 0
-		self.dist=(self.real_data[0,0]+self.real_data[0,1])*0.5
-		return self.dist
-	def DistanceTest(self):
-		if not self.IsValid(row=0):
-			return 1000,False
-		diff=abs((self.real_data[0,0])-float(self.real_data[0,1]))
-		return diff, diff<self.err_limits.maxdelta_dist
-	
-	def AddSats(self):
-		self.satser.append([np.copy(self.raw_data[1:,:]),np.copy(self.real_data[1:,:])])
-		self.restfejls.append(self.restfejl)
-		self.hdiffs.append(self.hdiff)
-		self.raw_data[1:,:]=""
-		self.real_data[1:,:]=0
-		self.validity_mask[1:,:]=False
-		
-	def Calculate(self):  #beregn aktuelle sats
-		if not self.IsValid(row=0):
-			return -1,-1,-1,-1,-1,-1,False,False
-		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*np.pi)*0.5 #1.st row + 2. row
-		self.index_errors=index_errors*180.0/np.pi*3600.0 #store in seconds
-		z1c,z2c=self.real_data[1]-index_errors
-		s1,s2=self.real_data[0]
-		k1,k2=self.instrument_consts #axis 1. inst, axis 2. inst
-		if DEBUG:
-			print("Index err: %s" %repr(index_errors*180.0/np.pi))
-			print("Raw: %s" %repr(self.raw_data))
-			print("Dist: %s" %repr(self.real_data[0]))
-			print("Real: %s" %repr(self.real_data[1:,:]*180.0/np.pi))
-		try:
-			z1=tan(k2*sin(z1c))/(s1-k2*cos(z1c))+z1c #Korrigeret for Inst2's prisme-objektiv afst.
-			z2=tan(k1*sin(z2c))/(s2-k1*cos(z2c))+z2c
-		except:
-			return -1,-1,-1,-1,-1,-1,False,False
-		self.restfejl=(z1+z2-0.87*self.dist/RADIUS-np.pi)*360*60*60/(2*np.pi)  #sekunder
-		self.h1=(cos(z1c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
-		self.h2=(cos(z2c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
-		self.hdiff=(self.h1+self.h2)*0.5
-		#perform various tests#
-		self.dh_test=abs(self.h1-self.h2)<self.err_limits.maxdh_mutual*self.dist/100.0 #error pr. 100 m
-		self.rf_test=abs(self.restfejl)<self.err_limits.max_rf
-		return self.h1,self.h2,self.hdiff,self.restfejl,self.index_errors[0],self.index_errors[1],self.dh_test,self.rf_test
-	def SatsTest(self):
-		return self.dh_test,self.rf_test
-	def GetTotalHdiff(self):
-		if len(self.satser)>0:
-			return np.mean(self.hdiffs)
-		return None
-	def GetHdiff(self):
-		if self.IsValid():
-			#....calc.....#
-			return 0
-		return 0
-	def GetStddev(self):
-		if len(self.satser)>1:
-			return np.std(self.hdiffs)
-		return -1
-	def GetMaxdev(self):
-		if len(self.satser)>1:
-			return np.max(self.hdiffs)-np.min(self.hdiffs)
-		return -1
-	def GetNsats(self):
-		return len(self.satser)
-	def GetStringData(self):
-		data=["%.2f m" %self.GetDistance(),"%d" %len(self.satser)]
-		if len(self.satser)>0:
-			data.append("%.4f m" %self.GetTotalHdiff())
-			if len(self.satser)>1:
-				data.append("%.4f m" %self.GetStddev())
-				data.append("%.4f m" %self.GetMaxdev())
-		return data
 	
 		
 	
-#THIS is the core class which handles basis setup state and math, the rest is GUI and event handling...... 
-#The class has been prepared for the possibility of handling input in formats other than ddd.mmss, e.g. angles in gon or whatever.... Only need to set relevant translator and validator methods 
 
-class MTLBasisSetup(MTLSetup):
-	def __init__(self,aim=1):
-		MTLSetup.__init__(self,4,3,0,1) #1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
-		self.aim=aim
-		self.h1=None
-		self.h2=None
-		self.dist=None
-		self.hdiff=None
-	def MarkValidator(self,val): #validates 'marks' from input column 0
-		try:
-			val=float(val)
-		except:
-			return False
-		return self.rod_min<=val<=self.rod_max
-	def Calculate(self):
-		index_err=(self.real_data[:,1]+self.real_data[:,2]-2*np.pi)*0.5
-		z_corr=self.real_data[:,1]-index_err  #standard formel fra KES...
-		M=self.real_data[:,0]  #only a 'view' not a copy!
-		cot=1.0/np.tan(z_corr)
-		s1=(M[0]-M[2])/(cot[0]-cot[2])
-		s2=(M[1]-M[3])/(cot[1]-cot[3])
-		dist=(s1+s2)*0.5
-		#Instrumenthoejder (KES HOVMTL05.BAS) Minus sigte giver det rigtige fortegn!
-		self.h1=-self.aim*(M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS   # Earth radius
-		self.h2=-self.aim*(M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS
-		self.hdiff=(self.h1+self.h2)*0.5
-		self.dist=dist
-		return self.dist,self.h1,self.h2,self.hdiff
-	def GetResult(self):
-		return self.dist,self.h1,self.h2,self.hdiff
 	
 #----------Initialisation classes, definition of rods etc.-----------------#
 class InstrumentError(Exception):
