@@ -447,7 +447,7 @@ class StatusBox2(wx.Panel):
 			maxtext=0
 			while n<self.N and i<self.colsize:
 				maxtext=max(len(self.list[n]),maxtext)
-				this_is_bold=bold or (n in bold_list)
+				this_is_bold=bold or (n in bold_list) #not used right now
 				line=[MyText(self,self.list[n],fs),MyText(self,"",fs)]
 				hsizer=wx.BoxSizer(wx.HORIZONTAL)
 				self.text.append(line)
@@ -463,9 +463,6 @@ class StatusBox2(wx.Panel):
 		self.sizer.Add(self.bsizer,0,wx.ALL,5)
 		
 	def UpdateStatus(self,inputlist=[],states=None,colours=None,field=None,text=None,label=None,colour=None):    #Hmmm, vist lettere med default vaerdier!!
-		if len(inputlist)==0:
-			inputlist=["NA"]*self.N
-			
 		if states!=None: #dette overruler alt andet!
 			for i in range(0,len(states)):
 				if states[i]:
@@ -474,17 +471,28 @@ class StatusBox2(wx.Panel):
 				else:
 					self.text[i][1].SetLabel("ERR")
 					self.text[i][1].SetForegroundColour("red")
-		else:
+		else: 
+			if field is None:
+				if len(inputlist)==0:
+					inputlist=["NA"]*self.N
+				input_range=range(len(inputlist))
+				field=0
+			else: #well then field should be valid!
+				inputlist=[text]
+				input_range=[field]
+				if colour!=None:
+					colours={field:colour}
 			if colours!=None:
 				paint=True
 			else:
 				paint=False
-			for i in range(0,len(inputlist)):
-				if isinstance(inputlist[i],list) and len(inputlist[i])==2:
-					self.text[i][0].SetLabel(inputlist[i][0])
-					text_label=inputlist[i][1]
+			for i in input_range:
+				input=inputlist[i-field]
+				if isinstance(input,list) and len(input)==2:
+					self.text[i][0].SetLabel(input[0])
+					text_label=input[1]
 				else:
-					text_label=inputlist[i]
+					text_label=input
 				if text_label is None:
 					text_label="NA"
 				col_nr=int(i/self.colsize)
@@ -498,17 +506,6 @@ class StatusBox2(wx.Panel):
 					else:
 						col=colours[i]
 					self.text[i][1].SetForegroundColour(col)
-			if field!=None:
-				if text!=None:
-					col_nr=int(field/self.colsize)
-					textl=self.col_tl[col_nr]
-					extra_space=max(0,textl-len(self.list[field]))
-					more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
-					self.text[field][1].SetLabel("%*s%s%*s"%(extra_space,"",text,more_space,""))
-				if colour!=None:
-					self.text[field][1].SetForegroundColour(colour)
-				else:
-					self.text[field][1].SetForegroundColour("black")
 		if label!=None:
 			self.box.SetLabel(label)
 		self.SetSizerAndFit(self.sizer)
@@ -744,12 +741,12 @@ class EditFields(wx.Panel):
 			field=MyTextField(self,size=(textsize,-1)) 
 			self.field.append(field)
 			if style=='vertical':
-				sizer.Add(text,0,wx.ALL|wx.CENTER,5)
-				sizer.Add(field,0,wx.ALL,5)
+				sizer.Add(text,1,wx.ALL|wx.ALIGN_LEFT,5)
+				sizer.Add(field,1,wx.ALL|wx.ALIGN_RIGHT,5)
 			else:
 				sizer.Add(text,0,wx.ALL|wx.CENTER,10)
 				sizer.Add(field,1,wx.ALL,10)
-			self.sizer.Add(sizer,0,wx.ALL|wx.ALIGN_RIGHT,5)
+			self.sizer.Add(sizer,1,wx.ALL|wx.ALIGN_RIGHT|wx.EXPAND,5)
 		for i in range(0,len(self.field)-1): #Navigation
 			self.field[i].next=self.field[i+1]
 		i=0
@@ -764,12 +761,12 @@ class EditFields(wx.Panel):
 			field=MyNum(self,bounds[i][0],bounds[i][1],size=(numsize,-1)) 
 			self.numfield.append(field)
 			if style=='vertical':
-				sizer.Add(text,0,wx.ALL|wx.CENTER,5) 
-				sizer.Add(field,0,wx.ALL,5)
+				sizer.Add(text,1,wx.ALL|wx.ALIGN_LEFT,5) 
+				sizer.Add(field,1,wx.ALL|wx.ALIGN_RIGHT,5)
 			else:
 				sizer.Add(text,0,wx.ALL|wx.CENTER,10)
 				sizer.Add(field,1,wx.ALL,10)
-			self.sizer.Add(sizer,0,wx.ALL|wx.ALIGN_RIGHT,5)
+			self.sizer.Add(sizer,1,wx.ALL|wx.ALIGN_RIGHT|wx.EXPAND,5)
 			i+=1
 		i=0
 		for value in numvalues:

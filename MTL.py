@@ -12,14 +12,14 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.2"
-PROGRAM.date="2011-12-20"
-PROGRAM.type="MTL" #vigtigt signak til diverse faellesfunktioner for MGL og MTL....
+PROGRAM.version="beta 0.21"
+PROGRAM.date="2012-01-03"
+PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
 Bugs rettes til simlk@kms.dk
 """
-DEBUG=True
+DEBUG="debug" in sys.argv
 #TODO: Make sure that num ouput to file has "," replaced by ".".
 #---------Various Global Vars--------------#
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
@@ -38,25 +38,30 @@ class MTLmain(Core.MLBase):
 		#Define action buttons at bottom of window
 		#The order that buttons appear in should reflect the ordering of self.instruments (and also in statusdata) 
 		basisbuttons=[instrument.name for instrument in instruments]
-		basisbox_start=GUI.ButtonBox(self,basisbuttons+[u"Overf\u00F8r h\u00F8jde"],fontsize=self.size,label="Basis-start",style="vertical")
-		middlebox=GUI.ButtonBox(self,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
-		basisbox_slut=GUI.ButtonBox(self,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
+		lower_panel=wx.Panel(self)
+		basisbox_start=GUI.ButtonBox(lower_panel,basisbuttons+[u"Overf\u00F8r h\u00F8jde"],fontsize=self.size,label="Basis-start",style="vertical")
+		middlebox=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
+		basisbox_slut=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
 		self.buttonboxes=[basisbox_start,middlebox,basisbox_slut]
 		#SET UP EXTRA MENU ITEMS#
 		self.funkmenu.AppendSeparator()
 		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
 		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
+		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hoved i datafilen.")
 		#EVENT HANDLING SETUP#
 		basisbox_start.button[0].Bind(wx.EVT_BUTTON,self.OnBasis1)
 		basisbox_start.button[1].Bind(wx.EVT_BUTTON,self.OnBasis2)
 		basisbox_start.button[2].Bind(wx.EVT_BUTTON,self.OnTransferHeight)
 		middlebox.button[0].Bind(wx.EVT_BUTTON,self.OnInstrument2Instrument)
 		basisbox_slut.button[0].Bind(wx.EVT_BUTTON,self.OnBasisEnd)
+		#extra menu items binded here#
+		self.Bind(wx.EVT_MENU,self.OnEditHead,EditHead)
 		sizer=wx.BoxSizer(wx.HORIZONTAL)
 		sizer.Add(basisbox_start,1,wx.ALL,5)
 		sizer.Add(middlebox,1,wx.ALL,5)
 		sizer.Add(basisbox_slut,1,wx.ALL,5)
-		self.rightsizer.Add(sizer,1,wx.EXPAND|wx.ALL,5)
+		lower_panel.SetSizer(sizer)
+		self.rightsizer.Add(lower_panel,1,wx.EXPAND|wx.ALL,5)
 		self.SetSizer(self.sizer)
 		self.sizer.FitInside(self)
 		basisbox_start.SetFocus()
@@ -71,8 +76,12 @@ class MTLmain(Core.MLBase):
 		#Enable buttons according to the current state defined in statusdata#
 		for i in range(3):
 			self.buttonboxes[i].Enable(allowed_actions[i] or DEBUG)
+			
 		if allowed_actions[0]:
 			self.buttonboxes[0].button[2].Enable(instrumentstate>=0)
+			self.buttonboxes[0].SetFocus()
+		else:
+			self.buttonboxes[1].SetFocus()
 	def OnBasis1(self,event):
 		self.Log(SL)
 		win=MakeBasis(self,0)
@@ -106,14 +115,17 @@ class MTLmain(Core.MLBase):
 		self.UpdateStatus()
 	def OnInstrument2Instrument(self,event):
 		self.Log(SL)
+		if DEBUG and self.statusdata.GetInstrumentState() is None:
+			self.statusdata.SetInstrumentState(0)
 		win=Instrument2Instrument(self)
-		self.statusdata.SetInstrumentState((self.statusdata.GetInstrumentState()+1)%2)
-		self.Log("Instrument %s now carries the height..." %(self.statusdata.GetInstrumentNames()[self.statusdata.GetInstrumentState()]))
-		self.UpdateStatus()
 	def OnBasisEnd(self,event):
 		self.Log(SL)
 		win=MakeBasis(self,self.statusdata.GetInstrumentState())
 		win.InitializeMap()
+	def OnEditHead(self,event):
+		self.EditHead()
+		
+			
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
 class DistancePanel(wx.Panel):
 	""" class handling (i/0) of distance measurements"""
@@ -383,24 +395,26 @@ class SatsEdit(GUI.TwoButtonDialog):
 		self.SetSizerAndFit(self.sizer)
 		
 class Instrument2Instrument(GUI.FullScreenWindow):
+	"""Main window for inst->inst setups"""
 	def __init__(self, parent):
 		GUI.FullScreenWindow.__init__(self, parent)
-		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		#MODES DEFINED HERE#
 		self.mode=0
 		self.mmode=0  #0 : distances   1: angles, changed in the 2 SetMode fcts. below
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
 		self.modecolors=["blue","red","yellow"]
-		#END MODE SETUP#
+		#END MODE SETUP - inherit stuff from parent#
 		self.statusdata=parent.statusdata
+		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
+		self.resfile=parent.resfile
 		self.instruments=self.statusdata.GetInstruments()
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
-		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11],bold_list=[2])
-		self.aim=np.array([1,-1])*(1-2*int(self.statusdata.GetInstrumentState()==0)) #Well, I know that a one-liner can be harder to decode - in essense: aim is [1,-1] or [-1,1]
+		self.aim=self.statusdata.GetInstrumentAims()
 		#define setup class#
 		self.setup=MTLsetup.MTLTransferSetup(self.aim,[inst.axisconst for inst in self.instruments],self.ini)
-		# # # #  # # # # #
+		#define gui stuff #
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11],bold_list=[2])
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
 		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
 		,fontsize=FONTSIZE-1)
@@ -418,7 +432,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#EVENT HANDLING SETUP#
 		#self.main.buttons1.knap3.Bind(wx.EVT_BUTTON,self.SletSats)
 		self.main.button[4].Bind(wx.EVT_BUTTON,self.OnCancel)
-		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCloseOK)
+		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnAccept)
 		self.main.button[2].Bind(wx.EVT_BUTTON,self.OnCheckSats)
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetDistanceMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetZMode)
@@ -499,7 +513,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			self.SetZMode()
 		else:
 			self.spanel.Enable(0)
-			self.main.SetFocus()
+			self.main.button[1].SetFocus()
 			self.LayoutSizer()
 	def OnCheckSats(self,event):
 		#opens up a dialog where 'satser' can be deleted....
@@ -507,15 +521,76 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		win.ShowModal()
 		self.UpdateHeightStatus()
 		win.Destroy()
-	def OnCloseOK(self,event):
+	def OnAccept(self,event):
 		if self.setup.GetNsats()>0:
-			self.Log(u"Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
-			hdiff=self.setup.GetTotalHdiff()
-			dist=self.setup.GetDistance()
-			self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.4f m" %(dist,hdiff))
-			self.statusdata.AddSetup(hdiff,dist)
-			self.parent.UpdateStatus()
-			self.Close()
+			self.CloseOK()
+			
+	def CloseOK(self):
+		self.Log(u"Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+		hdiff=self.setup.GetTotalHdiff()
+		dist=self.setup.GetDistance()
+		self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.4f m" %(dist,hdiff))
+		self.statusdata.GotoNextInstrument() #do this before writing data.....
+		self.WriteData()
+		self.statusdata.AddSetup(hdiff,dist)
+		if DEBUG:
+			self.Log("Instrument %s carries height" %self.statusdata.GetDefiningInstrument().GetName())
+		ierrs=self.setup.GetIndexErrorsAll()
+		insts=self.statusdata.GetInstruments()
+		for row in ierrs: #add index errors.....
+			insts[0].AddIndexError(row[0])
+			insts[1].AddIndexError(row[1])
+		self.parent.UpdateStatus()
+		self.Close()
+	def WriteData(self):
+		resfile=open(self.resfile,"a")
+		Inst1,Inst2=self.statusdata.GetInstruments()
+		keep_mask=self.setup.GetKeepMask()
+		nsats=self.setup.GetNsats()
+		hdiff=self.setup.GetTotalHdiff()
+		dist=self.setup.GetDistance()
+		#Skriv til fil
+		spaces=map(len,self.statusdata.GetInstrumentNames())
+		space=max(spaces)+4
+		space1=spaces[0]+4
+		space2=spaces[1]+4
+		resfile.write("%*s %*s %*s %*s %s\n" %(-space,Inst1.GetName(),-space2,Inst2.GetName(),-10,"Satser",-12,"Afstand","Hoejdeforskel"))
+		resfile.write("%*s %*s %*i %*s %.4fm\n" %(-space,Funktioner.Bool2sigte(self.aim[0]),-space2,Funktioner.Bool2sigte(self.aim[1]),-10,nsats,-12,"%.3fm"%dist,hdiff))
+		#write valid data#
+		satser=self.setup.GetSatser() 
+		hdiffs=self.setup.GetHdiffsRaw()
+		rerrs=self.setup.GetRerrors()
+		for i in range(nsats):
+			if i==0:
+				d1,d2=map(lambda x: "%.3fm" %x,self.setup.GetDistances())
+			else:
+				d1,d2="",""
+			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
+			+"%*s" %(-10,"")+"%.4fm" %hdiffs[i,0]+"\n")
+			resfile.write("%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,d2)+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
+			+"%*s"%(-10,"%.0f''"%rerrs[i])+"%.4fm" %hdiffs[i,1]+"\n")
+		del_mask=np.logical_not(keep_mask)
+		if del_mask.any(): #then write deleted data
+			satser=self.setup.GetSatser(del_mask) 
+			hdiffs=self.setup.GetHdiffsRaw(del_mask)
+			rerrs=self.setup.GetRerrors(del_mask)
+			for i in range(del_mask.sum()):
+				resfile.write(";%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
+				+"%*s" %(-10,"")+"%.4fm" %hdiffs[i,0]+"(SLETTET)\n")
+				resfile.write(";%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
+				+"%*s"%(-10,"%.0f''"%rerrs[i])+"%.4fm" %hdiffs[i,1]+"\n")
+		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
+		resfile.write("* II %s %.3f %.6f\n"%(newinstrument,dist,hdiff))
+		if self.parent.gps.isAlive():
+			try:
+				x,y,dop=self.parent.gps.GetPos() 
+			except:
+				pass
+			else:
+				if dop<30:
+					resfile.write("GPS: %.1f %.1f %.1f\n" %(x,y,dop))
+		resfile.write("\n")
+		resfile.close()
 	def OnCancel(self,event):
 		quit=True
 		valid=self.setup.GetValidity().sum()+self.setup.GetNsats()*4
@@ -620,7 +695,7 @@ class OverfPanel(wx.Panel):
 			event.Skip() #so that text appears in the field....
 	
 		
-#Boks med felt til pkt. og drop-down box til laegtevalg
+#valideringsfkt. til punktnavne
 def ValidatePointName(name): #should perhaps be defined elsewhere
 	if 3<len(name)<12:
 		try:
@@ -630,6 +705,7 @@ def ValidatePointName(name): #should perhaps be defined elsewhere
 		else:
 			return True
 	return False
+	
 class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox......
 	def __init__(self,parent,laegter,fontsize=12):
 		GUI.StuffWithBox.__init__(self,parent,label="Valg",style="vertical")
@@ -939,7 +1015,7 @@ class MakeBasis(GUI.FullScreenWindow):
 					line=Funktioner.Internationale(line)
 					resfile.write(line+"\n") #ikke kommentar-tegn foran mere....
 			hdiff,dist,nopst=self.statusdata.GetStretchData()
-			resfile.write("# %s %s %s %s %.2f %.5f %s %.1f %i\n\n"%(start,slut,dato,tid,dist,hdiff,jside,temp,nopst))
+			resfile.write("# %s %s %s %s %.2f %.5f %s %.1f %d\n\n"%(start,slut,dato,tid,dist,hdiff,jside,temp,nopst))
 			resfile.close()
 			#log to parents log
 			self.parent.Log("Hoved:\nFra %s til %s" %(start,slut))

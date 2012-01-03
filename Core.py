@@ -165,10 +165,14 @@ class MTLStatusData(StatusData):
 			self.instrumentstate=state
 		def GetInstrumentState(self):
 			return self.instrumentstate
+		def GetInstrumentAims(self):
+			return np.array([1,-1])*(1-2*self.instrumentstate) #Well, I know that a one-liner can be harder to decode - in essense: aim is [1,-1] or [-1,1]
 		def GetDefiningInstrument(self):
 			return self.instruments[self.instrumentstate]
 		def GetLastBasis(self):
 			return self._last_stretch[-1]
+		def GotoNextInstrument(self):
+			self.instrumentstate=(self.instrumentstate+1)%2
 			
 			
 class Ini(object):
@@ -274,9 +278,9 @@ class MLBase(GUI.MainWindow):
 		self.logger = Logger(self,size)
 		#Status Bokse#
 		self.status1=GUI.StatusBox2(self,["Dato: ","Fil: ","Projekt: ","Temperatur: "],label="Data",colsize=2,fontsize=self.size)
-		sl=[u"Str\u00E6kninger: ",u"Opm\u00E5lt distance: ","Antal opstillinger: ","Seneste: "]
+		sl=[u"Str\u00E6kninger: ",u"Opm\u00E5lt distance: ","#opstillinger: ","Seneste pkt.: "]
 		self.status2=GUI.StatusBox2(self,sl,label=u"Afsluttede Str\u00E6kninger",colsize=2,fontsize=self.size)
-		sl=["Punkt: ",u"\u2206H: ","Antal opstillinger: ","Afstand: "]
+		sl=["Punkt: ",u"\u2206H: ","#opstillinger: ","Afstand: "]
 		self.status3=GUI.StatusBox2(self,sl,label=u"Aktuel Str\u00E6kning",colsize=2,fontsize=self.size)
 		self.sizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.rightsizer=wx.BoxSizer(wx.VERTICAL)
@@ -529,6 +533,33 @@ class MLBase(GUI.MainWindow):
 	def OnShowFile(self,e):
 		win=GUI.FileWindow(self,"Resultatfil",self.resfile)
 		win.Show()
+	def EditHead(self):
+		heads=FileOps.Hoveder(self.resfile)
+		if len(heads)==0:
+			dlg=GUI.ErrorBox("Ingen hoveder fundet i resultatfilen.")
+			return
+		choices=["Fra %s til %s. J.side: %s" %(head[0],head[1],head[6]) for head in heads]
+		dlg=GUI.MySingleChoiceDialog(self,"Hoveder",u"v\u00E6lg et hovede",choices)
+		dlg.ShowModal()
+		if not dlg.WasOK():
+			dlg.Destroy()
+			return
+		sel=dlg.GetSelection()
+		head=heads[sel]
+		dlg.Destroy()
+		dlg=GUI.InputDialog(self,"Rediger hovede",["Fra:","Til:","dato:","tid:","journalside:"],head[0:4]+[head[6]],["Afstand:","Hdiff:","Temp:",
+		"#opst:"],head[4:6]+head[7:9],[(0,100000),(-10000,10000),(-100,100),(0,1000)])
+		dlg.ShowModal()
+		if not dlg.WasOK():
+			dlg.Destroy()
+			return
+		textvals=dlg.GetTextValues()
+		numvals=dlg.GetNumValues()
+		dlg.Destroy()
+		newhead=textvals[0:4]+numvals[0:2]+[textvals[4]]+numvals[2:]
+		self.Log("Erstatter hovede: %s" %(choices[sel]))
+		#TODO
+		#FileOps.EditHead
 
 class FilPanel(wx.Panel):
 	def __init__(self, parent,size=12):

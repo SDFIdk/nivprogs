@@ -4,6 +4,8 @@ import wx
 import  wx.lib.newevent
 import time
 from math import sqrt
+import sys
+DEBUG="debug" in sys.argv
 (LogEvent,EVT_LOG) = wx.lib.newevent.NewEvent()
 (DataEvent,EVT_DATA) = wx.lib.newevent.NewEvent()
 #Last update 2011-11-30
@@ -102,7 +104,9 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 		self.index_std=sqrt(self.index_var)
 		if self.nmeas>3:
 			self.index_max=self.index_mean+1.8*self.index_std
-			self.index_min=self.index_max+1.8*self.index_std
+			self.index_min=self.index_max-1.8*self.index_std
+			if DEBUG:
+				print "ierr-limits:",self.index_min,self.index_max
 	def GetIndexBounds(self):
 		return self.index_min,self.index_max
 

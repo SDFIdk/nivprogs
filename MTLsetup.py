@@ -61,8 +61,8 @@ class MTLSetup(object):
 		else:
 			val=float(val)
 		self.real_data[row,col]=val
-	def GetIndexError(self,row): #for now always returns index error in seconds....
-		ierr=((self.real_data[row,self.zcol]+self.real_data[row,self.zcol+1]-np.pi)*0.5)*180.0/np.pi*3600.0
+	def GetIndexError(self,row): #for now always returns index error in seconds....Works rowwise, thus not for the transfer setup...
+		ierr=((self.real_data[row,self.zcol]+self.real_data[row,self.zcol+1]-2*np.pi)*0.5)*180.0/np.pi*3600.0
 		self.index_errors[row]=ierr
 		return ierr
 	def GetIndexErrors(self):
@@ -89,22 +89,25 @@ class MTLTransferSetup(MTLSetup):
 		self.err_limits=err_limits
 		self.InitData()
 	def InitData(self):
-		self.satser=[]
+		self.satser=np.empty((0,2,2),dtype='<S20') #for storing raw data
 		self.keep_mask=np.empty((0,),dtype=np.bool) #mask indicating whether to keep or delete a 'sats'
 		self.hdiff=None
-		self.hdiffs=np.empty((0,))
+		self.hdiffs=np.empty((0,2)) #keep h1, h2 for each sats
 		self.dist=None
 		self.restfejls=np.empty((0,))
 		self.restfejl=None
+		self.index_errs_store=np.empty((0,2))
 	def Clear(self):
 		self.Initialize(3,2)
 		self.InitData()
 	def GetDistance(self):
 		#could really be a translator here, but that might be overdoing it!#
 		if not self.IsValid(row=0):
-			return 0
+			return -1
 		self.dist=(self.real_data[0,0]+self.real_data[0,1])*0.5
 		return self.dist
+	def GetDistances(self):
+		return self.real_data[0]
 	def DistanceTest(self):
 		if not self.IsValid(row=0):
 			return 1000,False
@@ -112,12 +115,13 @@ class MTLTransferSetup(MTLSetup):
 		return diff, diff<self.err_limits.maxdelta_dist
 	
 	def AddSats(self):
-		self.satser.append([np.copy(self.raw_data[1:,:]),np.copy(self.real_data[1:,:])])
+		self.satser=np.vstack((self.satser,np.copy(self.raw_data[None,1:,:]))) #add an axis to raw_data
 		self.restfejls=np.append(self.restfejls,self.restfejl)
-		self.hdiffs=np.append(self.hdiffs,self.hdiff)
+		self.hdiffs=np.vstack((self.hdiffs,[self.h1,self.h2]))
 		self.raw_data[1:,:]=""
 		self.real_data[1:,:]=0
 		self.validity_mask[1:,:]=False
+		self.index_errs_store=np.vstack((self.index_errs_store,self.index_errors))
 		self.keep_mask=np.append(self.keep_mask,True)
 		
 	def Calculate(self):  #beregn aktuelle sats
@@ -153,41 +157,40 @@ class MTLTransferSetup(MTLSetup):
 	def GetTotalHdiff(self,mask=None):
 		if mask is None:
 			mask=self.keep_mask
-		if mask.sum()>0:
-			return np.mean(self.hdiffs[mask])
-		return -1
-	def GetHdiff(self):
-		if self.IsValid():
-			#....calc.....#
-			return 0
-		return 0
+		return np.mean(self.hdiffs[mask])
 	def GetHdiffs(self,mask=None):
 		if mask is None:
 			mask=self.keep_mask
-		return self.hdiffs[mask].tolist()
+		return self.hdiffs[mask].sum(axis=1)*0.5
+	def GetHdiffsRaw(self,mask=None):
+		if mask is None:
+			mask=self.keep_mask
+		return self.hdiffs[mask]
+	def GetIndexErrorsAll(self,mask=None):
+		if mask is None:
+			mask=self.keep_mask
+		return self.index_errs_store[mask]
 	def GetRerrors(self,mask=None):
 		if mask is None:
 			mask=self.keep_mask
-		return self.restfejls[mask].tolist()
+		return self.restfejls[mask]
 	def GetStddev(self,mask=None):
 		if mask is None:
 			mask=self.keep_mask
-		if mask.sum()>1:
-			return np.std(self.hdiffs[mask])
-		return -1
+		return np.std(self.GetHdiffs(mask))
 	def GetMaxdev(self,mask=None):
 		if mask is None:
 			mask=self.keep_mask
-		if mask.sum()>1:
-			return np.max(self.hdiffs[mask])-np.min(self.hdiffs[mask])
-		return -1
+		hdiffs=self.GetHdiffs(mask)
+		return hdiffs.max()-hdiffs.min()
 	def GetNsats(self):
 		return np.sum(self.keep_mask)
 	def GetStringData(self):
-		data=["%.2f m" %self.GetDistance(),"%d" %self.GetNsats()]
-		if len(self.satser)>0:
+		nsats=self.GetNsats()
+		data=["%.2f m" %self.GetDistance(),"%d" %nsats]
+		if nsats>0:
 			data.append("%.4f m" %self.GetTotalHdiff())
-			if len(self.satser)>1:
+			if nsats>1:
 				data.append("%.4f m" %self.GetStddev())
 				data.append("%.4f m" %self.GetMaxdev())
 		return data
@@ -195,7 +198,10 @@ class MTLTransferSetup(MTLSetup):
 		self.keep_mask=mask
 	def GetKeepMask(self):
 		return self.keep_mask
-		
+	def GetSatser(self,mask=None):
+		if mask is None:
+			mask=self.keep_mask
+		return self.satser[mask]
 
 
 
