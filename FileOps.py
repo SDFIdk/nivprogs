@@ -1,12 +1,14 @@
-import os
+import os,sys
 import win32ui
 import win32con
 import time
 import Funktioner
+import shutil
 ATTACH_MSG=";Tilslutter til fil..."
+DEBUG="debug" in sys.argv
 #En faelles funktion til laesning af MTL/MGL resultatfiler....
 #Returnerer ErDetEnResFil, ErDenOK, msg			
-def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan tilslutte til baade en ny og en gammel MTL-fil....
+def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check at vi kan tilslutte til baade en ny og en gammel MTL-fil....
 	projekt="Ikke fundet."
 	msg=""
 	f=open(resfile,"r")
@@ -26,8 +28,8 @@ def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan til
 	f.close()
 	#Tjek MTL header here#
 	if program=="MTL":
-		instrument_names=statusdata.GetInstrumentNames()
-		if not TjekMTLHeader(lines,statusdata.GetInstruments()):
+		instrument_names=[inst.GetName() for inst in instruments]
+		if not TjekMTLHeader(lines,instruments):
 			msg+="Instrumenter defineret i resultatfilen er IKKE kompatible med instrumenter i ini-filen!\n"
 	#loop igennem linier for at laese header og hoveder#
 	for linenumber in range(1,len(lines)):
@@ -96,6 +98,7 @@ def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan til
 						Start=sline[-1]
 					elif code=="B2":
 						Slut=sline[-1]
+					statusdata.AddSetup(hdiff,dist,ddist)
 				elif program=="MTL" and code in ["II","B1","B2"]:
 					dist=float(sline[-2])
 					hdiff=float(sline[-1])
@@ -107,6 +110,8 @@ def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan til
 					elif code=="B2":
 						check_line=i-4
 						Slut=None   #In prev. versions EndPoint was not stored here... It's not really a big deal...
+					if DEBUG:
+						print instrument_names,len(lines),check_line,code
 					if instrument_names[0] in lines[check_line]:
 						statusdata.SetInstrumentState(0) #foerste inst. baerer hoejden
 					else:
@@ -115,7 +120,7 @@ def ReadResultFile(resfile,statusdata,program="MGL"): #TODO: check at vi kan til
 							msg+=u"\nKan ikke finde aktuelle instrumentnavne i resultatfilen.\n"
 							msg+=u"H\u00F8jdeb\u00E6rende instrument m\u00E5ske ikke sat OK."
 							mtl_have_warned=True
-				statusdata.AddSetup(hdiff,dist,ddist)
+					statusdata.AddSetup(hdiff,dist)
 				if code=="B1":
 					statusdata.SetStart(Start)
 				elif code=="B2": #Dette betyder at sidste hoved ikke naaede at blive skrevet da programmet crashede....
@@ -151,8 +156,10 @@ def TjekMTLHeader(lines,instruments):
 				sline=line[i:].split()
 				try:
 					addconst=float(sline[1])
-					axisconst=float(sline[2])
+					axisconst=float(sline[3])
 				except:
+					if DEBUG:
+						print sline
 					return False
 				else:
 					if instruments[nfound].addconst==addconst and instruments[nfound].axisconst==axisconst:
@@ -170,44 +177,87 @@ def TjekHeader(fname,program_name): #majet, majet simpel funktion, som bare ser 
 	if program_name.lower() in line.lower():
 		return True
 	return False
-	
-def SletTilSenesteHoved(filnavn,directory):
-	resfilnavn=os.path.join(directory,filnavn)
-	copy=os.path.join(directory,"copy.res")
+#We waste memory here - gives less code and a res-file is usually a lot smaller than 1MB	
+def DeleteToLastHead(resfilnavn):
+	copy=os.path.splitext(resfilnavn)[0]+"_backup.res"
+	if os.path.exists(copy):
+		os.remove(copy)
+	shutil.copy(resfilnavn,copy)
 	f=open(resfilnavn,"r") #virker vist her med 'r'-mode selvom f.seek() bruges...
-	tegn="X"
-	pos=f.tell()
-	line="X"
-	Nh=0
-	while len(line)>0:
-		line=f.readline()
-		if (not line.isspace()) and len(line)>0:
-			tegn=line.split()[0]
-			if tegn=="#":
-				pos=f.tell()
-				Nh+=1
+	lines=f.readlines()
 	f.close()
-	if Nh>0: #hvis vi fandt ikke slettede hoveder, det burde status-tjek inden kald dog altid soerge for
-		g=open(copy,"w")
-		f=open(resfilnavn)
-		while f.tell()!=pos:
-			line=f.readline()
-			g.write(line)
-		for line in f: #skriv nu resten af linierne med ; foran!
-			docomment=True
-			if line.isspace():
-				docomment=False
-			elif line.strip()[0]==";":
-				docomment=False
-			if docomment:
-				g.write(";"+line)
-			else:
-				g.write(line)
-	
-		g.close()
+	for i in xrange(1,len(lines)+1):
+		sline=lines[len(lines)-i].split()
+		if len(sline)>0 and sline[0]=="#":
+			break
+	keep=len(lines)-i+1
+	f=open(resfilnavn,"w")
+	for i in xrange(len(lines)):
+		line=lines[i]
+		if i<keep or line.isspace():
+			f.write(line)
+		else:
+			f.write(";"+line)
+	f.close()
+
+def DeleteLastAction(resfilnavn):
+	copy=os.path.splitext(resfilnavn)[0]+"_backup.res"
+	if os.path.exists(copy):
+		os.remove(copy)
+	shutil.copy(resfilnavn,copy)
+	f=open(resfilnavn,"r") #virker vist her med 'r'-mode selvom f.seek() bruges...
+	lines=f.readlines()
+	f.close()
+	nactions=0
+	i=1
+	while i<len(lines) and nactions<2:
+		sline=lines[len(lines)-i].split()
+		if len(sline)>0 and sline[0]=="*":
+			nactions+=1
+		i+=1
+	keep=len(lines)-i+2
+	f=open(resfilnavn,"w")
+	for j in xrange(len(lines)):
+		line=lines[j]
+		if j<keep or line.isspace():
+			f.write(line)
+		else:
+			f.write(";"+line)
+	f.close()
+			
+def EditHead(resfilnavn,head_nr,newhead):
+	copy=os.path.splitext(resfilnavn)[0]+"_backup.res"
+	if os.path.exists(copy):
+		os.remove(copy)
+	shutil.copy(resfilnavn,copy)
+	f=open(resfilnavn,"r") #virker vist her med 'r'-mode selvom f.seek() bruges...
+	lines=f.readlines()
+	f.close()
+	newline=FormatHead(newhead)
+	found=0
+	linenr=None
+	for i in xrange(len(lines)):
+		line=lines[i]
+		sline=line.split()
+		if len(sline)>0 and sline[0]=="#":
+			if found==head_nr:
+				linenr=i
+				break
+			found+=1
+	if linenr is not None:
+		keep=lines[linenr]
+		lines[linenr]=newline
+		lines=lines[:linenr]+[";"+keep]+lines[linenr:]
+		f=open(resfilnavn,"w")
+		for line in lines:
+			f.write(line)
 		f.close()
-		os.remove(resfilnavn)
-		os.rename(copy,resfilnavn)
+	elif DEBUG:
+		print "edit_head",found,linenr,newline
+			
+
+def FormatHead(data):
+	return "# %s %s %s %s %.2f %.6f %s %.1f %d\n\n" %tuple(data)
 	
 def Hoveder(fullfile):
 	f=open(fullfile,"r")
@@ -235,99 +285,9 @@ def LaesSidsteHoved(fullfile):
 
 	
 		
-def SletSenesteHandling(filnavn,directory,Inst1,Inst2):
-	resfilnavn=os.path.join(directory,filnavn)
-	copy=os.path.join(directory,"kopi.res")
-	f=open(resfilnavn,"r") #virker med 'r'-mode? tilsyneladende!
-	pos=f.tell()
-	lastpos=pos
-	N=0
-	d=0
-	h=0
-	D=0
-	H=0
-	nopst=0
-	punkt="NA"
-	type="NA"
-	line="X"
-	Nh=0 #antal hoveder
-	while len(line)>0:    #Skanner hele filen, men den er heldigvis ikke stor :-)#Blot lettere fra et programmerings-synspunkt
-		line=f.readline()	  
-		if len(line)>0 and not line.isspace():
-			if line.split()[0]=="*":
-				#print line
-				gem=line
-				if N==0:
-					lastpos=f.tell() #skulle tage vare paa situationen hvor * er slut paa headeren...
-				else:
-					lastpos=pos
-				pos=f.tell()
-				
-				N+=1
-			elif line.split()[0]=="#":
-				Nh+=1
-				lasthead=f.tell()
-	#print f.tell(),"pos slut"	
-	#Laes sidste maaling:
-	if N>1:  #saa er der flere end bare header slut *-en. Det ordnes nu ogsaa af status-tjek inden kald.
-		
-		line=gem
-		#print pos, lastpos
-		saveline=line
-		#print saveline
-		line=line.split()
-		d=float(line[-2])
-		h=float(line[-1])
-		type=line[1]
-		if type=="II":
-			if saveline.find(Inst1.navn)!=-1: #navnet paa det instrument, der IKKE skal vaere hoejdebaerende skrives. Hmmm...
-				Inst1.hstate=0
-				Inst2.hstate=1
-			else:
-				Inst1.hstate=1
-				Inst2.hstate=0
-					
-		elif type=="B1":
-			Inst1.hstate=0
-			Inst2.hstate=0
-			if Nh>0:
-				lastpos=lasthead #da det er en B1'er skal hovedet med, hvis det findes!
-		else:
-			
-			punkt=line[2]
-			D=float(line[-5]) #bedre at taelle bagfra, da det ikke vides hvor mange led der er i instrumentnavnet!
-			H=float(line[-4])
-			nopst=int(line[-3])
-			if saveline.find(Inst1.navn)!=-1: #navnet paa det instrument, der skal vaere hoejdebaerende skrives!!
-				Inst1.hstate=1
-				Inst2.hstate=0
-			else:
-				Inst1.hstate=0
-				Inst2.hstate=1
-			
-	f.close()
-	if N>1:
-		f=open(resfilnavn,"r")
-		g=open(copy,"w")
-		while f.tell()!=lastpos:
-			line=f.readline()
-			g.write(line)
-		for line in f: #skriv nu resten af linierne med ; foran!
-			docomment=True
-			if line.isspace():
-				docomment=False
-			elif line.strip()[0]==";":
-				docomment=False
-			if docomment:
-				g.write(";"+line)
-			else:
-				g.write(line)
-		f.close()
-		g.close()
-		os.remove(resfilnavn)
-		os.rename(copy,resfilnavn)
+
 	
-	return d,h,type,D,H,nopst,punkt
+	
 
 def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soegemode, mode3: test
 	f=open(resfile,"rb") #'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!

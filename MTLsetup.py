@@ -1,5 +1,6 @@
 #Core module which handles all the essential math for the MTL program
 #simlk, jan. 2012
+#fixed the old 'basis bug', 2012-01-04
 
 import numpy as np
 from math import cos, sin, tan, atan, pi
@@ -231,8 +232,9 @@ class MTLBasisSetup(MTLSetup):
 		s2=(M[1]-M[3])/(cot[1]-cot[3])
 		dist=(s1+s2)*0.5
 		#Instrumenthoejder (KES HOVMTL05.BAS) Minus sigte giver det rigtige fortegn!
-		self.h1=-self.aim*(M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS   # Earth radius
-		self.h2=-self.aim*(M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS
+		#important bugfix: () must include the correction term!!!!
+		self.h1=-self.aim*((M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS)   # Earth radius
+		self.h2=-self.aim*((M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS)
 		self.hdiff=(self.h1+self.h2)*0.5
 		self.dist=dist
 		return self.dist,self.h1,self.h2,self.hdiff

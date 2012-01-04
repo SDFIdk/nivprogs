@@ -12,8 +12,8 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.21"
-PROGRAM.date="2012-01-03"
+PROGRAM.version="beta 0.22"
+PROGRAM.date="2012-01-04"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -26,7 +26,7 @@ MAX_ROD=30.0      #Maximum rod size accepted in input fields
 MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
 MAX_LENGTH_MUTUAL=10000 # Value which determines the max input for the distance fields....
 SL="*"*50
-FONTSIZE=12  #Well, wxWindows should really use this on init - TODO....
+FONTSIZE=12  
 #---------Main Windows defined here--------------------------------------#
 class MTLmain(Core.MLBase):
 	""" Main frame of MTL-prog. Derived from Core.MLBase """
@@ -56,6 +56,9 @@ class MTLmain(Core.MLBase):
 		basisbox_slut.button[0].Bind(wx.EVT_BUTTON,self.OnBasisEnd)
 		#extra menu items binded here#
 		self.Bind(wx.EVT_MENU,self.OnEditHead,EditHead)
+		self.Bind(wx.EVT_MENU,self.OnDeleteToLastHead,DeleteToLastHead)
+		self.Bind(wx.EVT_MENU,self.OnDeleteLastAction,DeleteLast)
+		#end extra menu items   #
 		sizer=wx.BoxSizer(wx.HORIZONTAL)
 		sizer.Add(basisbox_start,1,wx.ALL,5)
 		sizer.Add(middlebox,1,wx.ALL,5)
@@ -78,7 +81,7 @@ class MTLmain(Core.MLBase):
 			self.buttonboxes[i].Enable(allowed_actions[i] or DEBUG)
 			
 		if allowed_actions[0]:
-			self.buttonboxes[0].button[2].Enable(instrumentstate>=0)
+			self.buttonboxes[0].button[2].Enable(instrumentstate>=0 and (self.statusdata.GetLastBasis() is not None))
 			self.buttonboxes[0].SetFocus()
 		else:
 			self.buttonboxes[1].SetFocus()
@@ -122,8 +125,9 @@ class MTLmain(Core.MLBase):
 		self.Log(SL)
 		win=MakeBasis(self,self.statusdata.GetInstrumentState())
 		win.InitializeMap()
-	def OnEditHead(self,event):
-		self.EditHead()
+	
+		
+		
 		
 			
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
@@ -532,7 +536,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.4f m" %(dist,hdiff))
 		self.statusdata.GotoNextInstrument() #do this before writing data.....
 		self.WriteData()
-		self.statusdata.AddSetup(hdiff,dist)
+		self.statusdata.AddSetup(hdiff,dist) #signal code for setup type
 		if DEBUG:
 			self.Log("Instrument %s carries height" %self.statusdata.GetDefiningInstrument().GetName())
 		ierrs=self.setup.GetIndexErrorsAll()

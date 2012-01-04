@@ -25,6 +25,7 @@ else:
 RESDIR=BASEDIR+"/"+"resultatfiler"
 RESDIR_SHORT="./resultatfiler" #to be shown on screen
 FORKAST=RESDIR+"/"+"forkast.sqlite"
+SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
 #Ini and status data container classes
@@ -34,7 +35,7 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 	def Clear(self):
 		self._Clear()
 	def _Clear(self):
-		self._setups=np.empty((0,2))
+		self._setups=np.empty((0,2)) #hdiff,dist,type
 		self._last_stretch=np.empty((0,2)) #det er nu nemmere at holde data i hukommelsen - dette er seneste skridt mod at holde alt i huk!
 		self.Nopst=0 #Alle opst.
 		self.Nstraek=0
@@ -46,6 +47,11 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		self.dato=None
 		self.starttime=0
 		self.projekt="Ikke defineret."
+	def GotoNextInstrument(): #implemented for mtl-statusdata
+		pass
+	def ClearCurrentStretch(self):
+		self._setups=np.empty((0,2))
+		self.startpunkt=None
 	def SetStartTime(self,stime):
 		self.starttime=stime
 	def SetDate(self,dato):
@@ -170,7 +176,9 @@ class MTLStatusData(StatusData):
 		def GetDefiningInstrument(self):
 			return self.instruments[self.instrumentstate]
 		def GetLastBasis(self):
-			return self._last_stretch[-1]
+			if self._last_stretch.shape[0]>0:
+				return self._last_stretch[-1][0:2]
+			return None
 		def GotoNextInstrument(self):
 			self.instrumentstate=(self.instrumentstate+1)%2
 			
@@ -326,6 +334,8 @@ class MLBase(GUI.MainWindow):
 		if self.gps.isAlive():
 			self.gps.join()
 		event.Skip()
+	def UpdateStatus(self): #should be overruled bu subclasses
+		self.UpdateStatus()
 	def _UpdateStatus(self):
 		data=self.statusdata
 		hdiff,dist,nopst=data.GetStretchData()
@@ -533,6 +543,19 @@ class MLBase(GUI.MainWindow):
 	def OnShowFile(self,e):
 		win=GUI.FileWindow(self,"Resultatfil",self.resfile)
 		win.Show()
+	#These methods not activated in Core class#
+	def OnEditHead(self,e):
+		self.EditHead()
+	def OnDeleteToLastHead(self,e):
+		if self.statusdata.GetSetups()>0:
+			self.DeleteToLastHead()
+		else:
+			GUI.ErrorBox(self,u"Der er ingen m\u00E5linger efter seneste hovede.")
+	def OnDeleteLastAction(self,e):
+		if self.statusdata.GetSetups()>0:
+			self.DeleteLastAction()
+		else:
+			GUI.ErrorBox(self,u"Kan ikke slette f\u00F8r seneste hovede.\nRediger selv i datafilen og tilslut.") 
 	def EditHead(self):
 		heads=FileOps.Hoveder(self.resfile)
 		if len(heads)==0:
@@ -544,7 +567,7 @@ class MLBase(GUI.MainWindow):
 		if not dlg.WasOK():
 			dlg.Destroy()
 			return
-		sel=dlg.GetSelection()
+		sel=int(dlg.GetSelection())
 		head=heads[sel]
 		dlg.Destroy()
 		dlg=GUI.InputDialog(self,"Rediger hovede",["Fra:","Til:","dato:","tid:","journalside:"],head[0:4]+[head[6]],["Afstand:","Hdiff:","Temp:",
@@ -558,8 +581,27 @@ class MLBase(GUI.MainWindow):
 		dlg.Destroy()
 		newhead=textvals[0:4]+numvals[0:2]+[textvals[4]]+numvals[2:]
 		self.Log("Erstatter hovede: %s" %(choices[sel]))
-		#TODO
-		#FileOps.EditHead
+		FileOps.EditHead(self.resfile,sel,newhead)
+	def DeleteToLastHead(self):
+		self.statusdata.ClearCurrentStretch()
+		FileOps.DeleteToLastHead(self.resfile)
+		self.Log(SL)
+		self.Log("Sletter til seneste hovede. Tjek evt. resultatfil i menupunkt 'rediger'.")
+		self.UpdateStatus()
+	def DeleteLastAction(self):
+		nopst=self.statusdata.GetSetups()
+		if nopst==0:
+			return
+		if nopst==1:
+			self.statusdata.ClearCurrentStretch()
+		elif nopst>1:
+			self.statusdata.GotoNextInstrument()
+			self.statusdata.SubtractSetup()
+		FileOps.DeleteLastAction(self.resfile)
+		self.Log(SL)
+		self.Log(u"Sletter seneste m\u00E5ling. Tjek evt. resultatfil i menupunkt 'rediger'.")
+		self.UpdateStatus()
+	
 
 class FilPanel(wx.Panel):
 	def __init__(self, parent,size=12):
@@ -670,6 +712,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			#Setup GPS#
 			self.gps=GPS.GpsThread(None,self.ini.gpsport-1,self.ini.gpsbaud) #parent should be None here - because the real parent
 			self.data=DataClass.PointData(self.ini.database)  #is the MLBase-frame which gets the gps as input. 
+			
 	def LogStatus(self):
 		for inst in self.instruments:
 			self.Log(inst.PresentYourself())
@@ -777,9 +820,9 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		else:
 			dlg.Destroy()
 	def AddToFile(self):
-		try:
-			isres,isok,msg=FileOps.ReadResultFile(self.resfile,self.statusdata,self.program.type)  #was self.filereader(self.resfile,self.statusdata)
-		except Exception,msg:
+		if True:#try:
+			isres,isok,msg=FileOps.ReadResultFile(self.resfile,self.statusdata,self.instruments,self.program.type)  #was self.filereader(self.resfile,self.statusdata)
+		else: #except Exception,msg:
 			GUI.ErrorBox(self,u"Fejl under l\u00E6sning af fil:\n %s\nMuligvis er den forkert formateret." %str(msg))
 			return
 		if isres:
@@ -790,7 +833,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			imsg+=u"Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
 			if data.GetSetups()>0:
 				imsg+=u"Uafsluttet str\u00E6kning:\n"
-				imsg+=u"Fra: %s, #opst: %i, #afstand: %.2f m" %(data.GetStart(),data.GetSetups(),data.GetDistance())
+				imsg+=u"Fra: %s, #opst: %i, afstand: %.2f m\n" %(data.GetStart(),data.GetSetups(),data.GetDistance())
 			msg=imsg+msg+"\n\nVil du tilslutte til filen?"
 			dlg=GUI.OKdialog(self,u"Bem\u00E6rk!",msg)
 			dlg.ShowModal()
