@@ -4,10 +4,11 @@ import numpy as np
 import os
 import FileOps
 #Last fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
-def MTLtest(diff,dist,parameter):
+def MTLtest(hdiffin,found,dist,parameter):
 	dist=dist/1000.0
+	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
 	DLIM=0.2 #km
-	if dist<0.2:
+	if dist<DLIM:
 		FKLIN=(np.sqrt(DLIM)*parameter-0.3)/DLIM
 		return np.abs(diff*1000)-FKLIN*dist+0.3
 	else:

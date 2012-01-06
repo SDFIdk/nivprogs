@@ -83,10 +83,10 @@ class DummyErrs(object):
 
 
 class MTLTransferSetup(MTLSetup):
-	def __init__(self,aim,instrument_consts=[0.2,0.2],err_limits=DummyErrs()):
+	def __init__(self,aim,instrument_consts,err_limits=DummyErrs()):
 		MTLSetup.__init__(self,3,2,1,0) #1. row = distance, 2.row pos 1, 3. row pos 2., z-fields start at row 1 =(row 2)
 		self.aim=np.array(aim)
-		self.instrument_consts=instrument_consts
+		self.instrument_consts=np.array(instrument_consts) #row 0: first inst, row 1: second inst, col 0: add const, col 1: axis const
 		self.err_limits=err_limits
 		self.InitData()
 	def InitData(self):
@@ -102,18 +102,17 @@ class MTLTransferSetup(MTLSetup):
 		self.Initialize(3,2)
 		self.InitData()
 	def GetDistance(self):
+		#Raw distances are stored in real and raw_data - 'get' methods will apply distance correction#
 		#could really be a translator here, but that might be overdoing it!#
-		if not self.IsValid(row=0):
-			return -1
-		self.dist=(self.real_data[0,0]+self.real_data[0,1])*0.5
+		self.dist=self.GetDistances().mean()
 		return self.dist
 	def GetDistances(self):
-		return self.real_data[0]
+		#Raw distances are stored in real and raw_data - 'get' methods will apply distance correction#
+		return self.real_data[0]+self.instrument_consts[:,0]
 	def DistanceTest(self):
-		if not self.IsValid(row=0):
-			return 1000,False
-		diff=abs((self.real_data[0,0])-float(self.real_data[0,1]))
-		return diff, diff<self.err_limits.maxdelta_dist
+		s1,s2=self.GetDistances()
+		diff=abs(s1-s2)
+		return diff, diff<self.err_limits.maxdelta_dist*self.dist/100.0
 	
 	def AddSats(self):
 		self.satser=np.vstack((self.satser,np.copy(self.raw_data[None,1:,:]))) #add an axis to raw_data
@@ -131,8 +130,8 @@ class MTLTransferSetup(MTLSetup):
 		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*np.pi)*0.5 #1.st row + 2. row
 		self.index_errors=index_errors*180.0/np.pi*3600.0 #store in seconds
 		z1c,z2c=self.real_data[1]-index_errors
-		s1,s2=self.real_data[0]
-		k1,k2=self.instrument_consts #axis 1. inst, axis 2. inst
+		s1,s2=self.GetDistances()
+		k1,k2=self.instrument_consts[:,1] #axis 1. inst, axis 2. inst
 		if DEBUG:
 			print("Index err: %s" %repr(index_errors*180.0/np.pi))
 			print("Raw: %s" %repr(self.raw_data))
@@ -149,10 +148,10 @@ class MTLTransferSetup(MTLSetup):
 		self.hdiff=(self.h1+self.h2)*0.5
 		#perform various tests#
 		self.dh_test=abs(self.h1-self.h2)<self.err_limits.maxdh_mutual*self.dist/100.0 #error pr. 100 m
-		self.rf_test=abs(self.restfejl)<self.err_limits.max_rf
+		self.rf_test=abs(self.restfejl)<self.err_limits.max_rf*self.dist/100.0
 		return self.h1,self.h2,self.hdiff,self.restfejl,self.index_errors[0],self.index_errors[1],self.dh_test,self.rf_test
 	def SatsTest(self):
-		return self.dh_test,self.rf_test
+		return self.dh_test and self.rf_test
 	def MaxDevTest(self,mask=None):
 		return self.GetMaxdev(mask)<self.err_limits.maxdh_setups*self.dist/100.0
 	def GetTotalHdiff(self,mask=None):

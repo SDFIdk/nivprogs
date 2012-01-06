@@ -9,18 +9,19 @@ import MTLsetup # all MTL math stuff handled here.... This is the real thing!
 import Funktioner
 import FileOps
 import sys
+import Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
 PROGRAM.version="beta 0.22"
-PROGRAM.date="2012-01-04"
+PROGRAM.date="2012-01-05"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
 Bugs rettes til simlk@kms.dk
 """
 DEBUG="debug" in sys.argv
-#TODO: Make sure that num ouput to file has "," replaced by ".".
+#TODO: Make sure that num ouput to file has "," replaced by ".". ++ DONE
 #---------Various Global Vars--------------#
 MAX_ROD=30.0      #Maximum rod size accepted in input fields
 MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
@@ -298,7 +299,6 @@ class SatsPanel(wx.Panel):
 		self.status.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.4f m" %h,"%.0f''"%rf,i_err1,i_err2],colours=colors)
 	def OnEnter(self,event):
 		if self.setup.IsValid(row=1) and self.setup.IsValid(row=2):
-			self.setup.AddSats()
 			self.UpdateParentStatus()
 		else:
 			event.Skip()
@@ -396,7 +396,7 @@ class SatsEdit(GUI.TwoButtonDialog):
 			mx=self.setup.GetMaxdev(mask)
 			colors={2:Funktioner.State2Col(self.setup.MaxDevTest(mask))}
 			self.status.UpdateStatus(["%.4f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
-		self.SetSizerAndFit(self.sizer)
+		self.SetSizer(self.sizer)
 		
 class Instrument2Instrument(GUI.FullScreenWindow):
 	"""Main window for inst->inst setups"""
@@ -416,7 +416,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		inames=map(lambda x:x+": ",inames)
 		self.aim=self.statusdata.GetInstrumentAims()
 		#define setup class#
-		self.setup=MTLsetup.MTLTransferSetup(self.aim,[inst.axisconst for inst in self.instruments],self.ini)
+		self.setup=MTLsetup.MTLTransferSetup(self.aim,[[inst.addconst,inst.axisconst] for inst in self.instruments],self.ini)
 		#define gui stuff #
 		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11],bold_list=[2])
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
@@ -507,7 +507,23 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def UpdateStatus(self):
 		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
 		self.LayoutSizer()
+	def PromptUser(self,msg):
+		dlg=GUI.OKdialog(self,u"Fors\u00E6t?",msg+u"\nVil du fors\u00E6tte?")
+		dlg.ShowModal()
+		ok=dlg.WasOK()
+		dlg.Destroy()
+		return ok
 	def UpdateHeightStatus(self): #name is a bit 'misvisende' since general status is really handled here....
+		if self.mmode==0:
+			diff,ok=self.setup.DistanceTest()
+			msg=u"Stor forskel mellem afstandsm\u00E5linger: %.3f m" %abs(diff)
+		else:
+			ok=self.setup.SatsTest()
+			msg=u"Den aktuelle sats opfylder ikke fejlkriterierne!"
+		if not ok:
+			ok=self.PromptUser(msg)
+			if not ok:
+				return
 		data=self.setup.GetStringData()
 		self.resultbox.UpdateStatus(data)
 		self.main.button[1].Enable(self.setup.IsValid(row=0))
@@ -516,6 +532,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		if self.mmode==0:
 			self.SetZMode()
 		else:
+			self.setup.AddSats()
 			self.spanel.Enable(0)
 			self.main.button[1].SetFocus()
 			self.LayoutSizer()
@@ -585,6 +602,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 				+"%*s"%(-10,"%.0f''"%rerrs[i])+"%.4fm" %hdiffs[i,1]+"\n")
 		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
 		resfile.write("* II %s %.3f %.6f\n"%(newinstrument,dist,hdiff))
+		resfile.write("; ukorrigerede afst.: %.3f %.3f\n" %tuple(self.setup.GetData()[0].tolist()))
 		if self.parent.gps.isAlive():
 			try:
 				x,y,dop=self.parent.gps.GetPos() 
@@ -674,8 +692,10 @@ class OverfPanel(wx.Panel):
 		ok=field.Validate()
 		row,col=field.ij_id
 		self.setup.SetValidity(row,col,ok)
-		if ok:
-			self.setup.SetData(row,col,self.columns[col][row].GetValue())
+		text=field.GetValue()
+		proceed=self.parent.InputAction(text)
+		if ok and proceed:
+			self.setup.SetData(row,col,text)
 			row_validity=self.setup.IsValid(row=row)
 			if row_validity:
 				self.columns[3][row].SetValue("%.0f"%self.setup.GetIndexError(row))
@@ -799,9 +819,6 @@ class MakeBasis(GUI.FullScreenWindow):
 		sizer_right.Add(self.main,1,wx.ALL,5)
 		self.AddItem(sizer_right,1,wx.ALL,5)
 		self.AddRow(2,wx.CENTER|wx.ALL|wx.EXPAND)
-		#self.CreateRow()
-		#self.AddItem(self.resultbox,1,wx.ALL|wx.ALIGN_LEFT,5)
-		#self.AddRow(0,wx.ALL)
 		self.CreateRow()
 		self.AddItem(self.maal,1)
 		self.AddItem(self.controlbox,1)
@@ -913,8 +930,8 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.maal.columns[2][i].SetValue(str(271.4949-i))
 	def DoSketch(self):
 		msg=Sketch.sketch
-		self.Log("Doing sketch....!")
-		dlg=MyLongMessageDialog(self,"You asked for it!",msg)
+		self.Log("Doing sketch :-)")
+		dlg=GUI.MyLongMessageDialog(self,"You asked for it!",msg)
 		dlg.ShowModal()
 		dlg.Destroy()
 	def OnData(self,event):
@@ -1074,7 +1091,14 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.Log("Afstand: %.2f m\nH1: %.4f m   H2: %.4f m   Hdiff: %.4f m" %(dist,h1,h2,hdiff))
 		resfile.write("\n")
 		resfile.close()
-	
+	def InputAction(self,text): #called from subpanel containing text fields. Test for input with special significance...
+		if "test" in text:
+			self.TestMode()
+			return False
+		if "monty" in text:
+			self.DoSketch()
+			return False
+		return True
 	def Log(self,text):
 		self.parent.Log(text)
 
@@ -1179,19 +1203,18 @@ class MTLinireader(object): #add more error handling!
 					instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
 				if key=="ftforkast" and len(line)>0:
 					ini.fbtest=float(line[0])
-				if key=="fejlgraenser" and len(line)>0:
+				if key=="maxdelta_dist" and len(line)>0:
 					ini.maxdelta_dist=float(line[0])
-					if len(line)>1:
-						ini.maxdh_basis=float(line[1])
-					if len(line)>2:
-						ini.maxdh_mutual=float(line[2])
-					if len(line)>3:
-						ini.maxdh_setups=float(line[3])
-					if len(line)>4:
-						ini.maxsd_setups=float(line[4])
-					if len(line)>5:
-						ini.max_rf=float(line[5])
-					
+				if key=="maxdh_basis" and len(line)>0:
+					ini.maxdh_basis=float(line[0])
+				if key=="maxdh_sats" and len(line)>0:
+					ini.maxdh_mutual=float(line[0])
+				if key=="maxdh_satser" and len(line)>0:
+					ini.maxdh_setups=float(line[0])
+				if key=="maxsd_satser" and len(line)>0:
+					ini.maxsd_setups=float(line[0])
+				if key=="max_restfejl" and len(line)>0:
+					ini.max_rf=float(line[0])
 				if key=="laegte" and len(line)>1:
 					name=line[0]
 					zeroshift=float(line[1])

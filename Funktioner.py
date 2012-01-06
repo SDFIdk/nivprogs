@@ -31,7 +31,7 @@ def L1(x,y): #2-d max-norm
 
 def State2Col(x):
 	if x:
-		return "green"
+		return "blue"
 	else:
 		return "red"
 def State2msg(x):

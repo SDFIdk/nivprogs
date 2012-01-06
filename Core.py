@@ -559,7 +559,7 @@ class MLBase(GUI.MainWindow):
 	def EditHead(self):
 		heads=FileOps.Hoveder(self.resfile)
 		if len(heads)==0:
-			dlg=GUI.ErrorBox("Ingen hoveder fundet i resultatfilen.")
+			dlg=GUI.ErrorBox(self,"Ingen hoveder fundet i resultatfilen.")
 			return
 		choices=["Fra %s til %s. J.side: %s" %(head[0],head[1],head[6]) for head in heads]
 		dlg=GUI.MySingleChoiceDialog(self,"Hoveder",u"v\u00E6lg et hovede",choices)
