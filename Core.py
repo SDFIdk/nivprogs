@@ -781,7 +781,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 				else:
 					self.fil.field1.Clear()
 			else:
-				InitResultFile(self.resfile,m1,m2,bsk)
+				self.InitResultFile(self.resfile,m1,m2,bsk)
 				self.StartProgram()
 	
 	def InitResultFile(self,fname,m1="a",m2="b",bsk="test"):

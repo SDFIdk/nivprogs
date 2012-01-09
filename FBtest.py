@@ -3,16 +3,26 @@ import MyModules.GUIclasses2 as GUI
 import numpy as np
 import os
 import FileOps
-#Last fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
-def MTLtest(hdiffin,found,dist,parameter):
+#fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
+# Last edit: 2012-01-09 fixed mtl test. Unified.
+#Rejcection criteria reflects a model variance for meas. of a strectch, should correpond to a variance of half the parameter used in the test. 
+def MTL_var_model(dist,parameter):
 	dist=dist/1000.0
-	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
 	DLIM=0.2 #km
 	if dist<DLIM:
 		FKLIN=(np.sqrt(DLIM)*parameter-0.3)/DLIM
-		return np.abs(diff*1000)-FKLIN*dist+0.3
+		return (FKLIN*dist+0.3)**2
 	else:
-		return np.abs(diff*1000)-parameter*np.sqrt(dist)
+		return (parameter**2*dist)
+
+def MGL_var_model(dist,parameter):
+	dist=dist/1000.0
+	return dist*(parameter**2)+0.1**2   #add a centering err....
+	
+def Test(hdiffin,found,dist,parameter,var_model):
+	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
+	return diff*1000-np.sqrt(((1+1.0/found.size)*0.5)*var_model(dist,parameter))
+
 def MGLtest(hdiffin,found,dist,parameter):
 	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
 	test=diff*1000-np.sqrt((((1+1.0/found.size)*0.5)*parameter**2*(dist/1000.0)+0.1**2)) #add "centering-error". Also reflects the number of found. 
@@ -21,9 +31,9 @@ def MGLtest(hdiffin,found,dist,parameter):
 class FBreject(object): 
 	def __init__(self,database,program="MGL",parameter=2.0):
 		if program=="MGL":
-			self.testfunction=MGLtest
+			self.var_model=MGL_var_model
 		else:
-			self.testfunction=MTLtest
+			self.var_model=MTL_var_model
 		self.parameter=parameter
 		self.initialized=False
 		self.found=False
@@ -50,7 +60,7 @@ class FBreject(object):
 			else:
 				if data is not None and len(data)>0:
 					found=np.array(data)
-					test=self.testfunction(hdiff,found[:,0],np.mean(found[:,1]),self.parameter)
+					test=Test(hdiff,found[:,0],np.mean(found[:,1]),self.parameter,self.var_model)
 					isok=test<0
 					self.found=True
 					self.wasok=isok

@@ -487,21 +487,20 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		if self.mode==0:
 			self.instruments[id].Kill()
 			return
-		if code=="E":
+		if code=="E" and self.mode>0:
+			Core.SoundBadData()
 			GUI.ErrorBox(self,val)
 			self.SetManualMode() #end contorol here
 			return
-		elif code=="<":
-			if self.mmode!=1:
-				GUI.ErrorBox(self,u"Forventede ikke en vinkelm\u00E5ling!")
-				self.SetManualMode() #end control here
-				return
-		elif code=="?":
-			if self.mmode!=0:
-				GUI.ErrorBox(self,u"Forventede ikke en afstandsm\u00E5ling!")
-				self.SetManualMode() #end control here
-				return
+		elif (code=="<" and self.mmode==0) or (code=="?" and self.mmode==1):
+			Core.SoundBadData()
+			msg=[u"Forventede en afstandsm\u00E5ling!",u"Forventede en vinkelm\u00E5ling!"][self.mmode]
+			msg+="\nSendt fra instrument: %s" %val
+			GUI.ErrorBox(self,msg)
+			self.SetManualMode() #end control here
+			return
 		if len(self.auto_fields[id])>0:
+			Core.SoundGoodData()
 			field=self.auto_fields[id][-1]
 			field.SetValue(val)
 			field.Enable()
@@ -596,6 +595,8 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			ok=self.PromptUser(msg)
 			if not ok:
 				return
+		if self.mmode>0:
+			self.setup.AddSats()
 		data=self.setup.GetStringData()
 		self.resultbox.UpdateStatus(data)
 		self.main.button[1].Enable(self.setup.IsValid(row=0))
@@ -604,7 +605,6 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		if self.mmode==0:
 			self.SetZMode()
 		else:
-			self.setup.AddSats()
 			self.spanel.Enable(0)
 			self.main.button[1].SetFocus()
 			self.LayoutSizer()
@@ -904,7 +904,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.Log("Sigte: %s, instrument: %s" %(Funktioner.Bool2sigte(self.sigte),self.instrument.GetName()))
 		#TEST INSTRUMENT#
 		if not self.instrument.TestPort():
-			GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
+			#GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
 			self.Log(u"Kunne ikke \u00E5bne instrumentets com-port...")
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
 		if self.parent.gps.isAlive():
@@ -1043,6 +1043,7 @@ class MakeBasis(GUI.FullScreenWindow):
 					return True
 				else:
 					msg=u"Forkastelseskriterie for frem og tilbage-m\u00E5lte str\u00E6kninger overksredet med %.1f mm.\n" %diff
+					self.Log(msg)
 					msg+=u"Vil du godkende m\u00E5lingen?"
 					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
 					dlg.ShowModal()
@@ -1050,6 +1051,7 @@ class MakeBasis(GUI.FullScreenWindow):
 					dlg.Destroy()
 					return OK
 			else:
+				self.Log("%s til %s ikke fundet i forkastelsesdatabasen." %(data.GetEnd(),data.GetStart()))
 				return True
 	def CloseOK(self): 
 		#TODO: UPDATE INDEX ERRORS FOR INSTRUMENT!#
