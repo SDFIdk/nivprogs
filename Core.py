@@ -678,7 +678,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		self.SetSize(dsize)
 		self.SetSizer(self.sizer)
 		self.sizer.FitInside(self)
-		self.Show()
+		#self.Show()
 		self.Center()
 		#Get status and print stuff in log
 		self.Log("Initialiserer:")
@@ -781,22 +781,26 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 				else:
 					self.fil.field1.Clear()
 			else:
-				resfil=open(RESDIR+"/"+fname,"w")
-				#Start resultatfil#
-				resfil.write("%*s %s %s %s\n"%(-19,"Program:",self.program.name,self.program.version,self.program.date))
-				resfil.write("%*s %s\n"%(-19,"Filnavn:",fname))
-				resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk))
-				resfil.write("%*s %s %s\n" %(-19,"Dato og tid:",Fkt.Dato(),Fkt.Nu()))
-				resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1,m2))
-				for instrument in self.instruments:
-					resfil.write("%s\n" %instrument.PresentYourself(short=True))
-				resfil.write("Laegter:\n")
-				for laegte in self.laegter:
-					resfil.write("%s\n" %laegte.PresentYourself())
-				resfil.write("* Slut paa header\n")
-				self.statusdata.SetProject(bsk)
-				resfil.close()
+				InitResultFile(self.resfile,m1,m2,bsk)
 				self.StartProgram()
+	
+	def InitResultFile(self,fname,m1="a",m2="b",bsk="test"):
+		resfil=open(fname,"w")
+		#Start resultatfil#
+		resfil.write("%*s %s %s %s\n"%(-19,"Program:",self.program.name,self.program.version,self.program.date))
+		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname))
+		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk))
+		resfil.write("%*s %s %s\n" %(-19,"Dato og tid:",Fkt.Dato(),Fkt.Nu()))
+		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1,m2))
+		for instrument in self.instruments:
+			resfil.write("%s\n" %instrument.PresentYourself(short=True))
+		resfil.write("Laegter:\n")
+		for laegte in self.laegter:
+			resfil.write("%s\n" %laegte.PresentYourself())
+		resfil.write("* Slut paa header\n")
+		self.statusdata.SetProject(bsk)
+		resfil.close()
+		
 	def StartProgram(self): #should be overridden by subclass -append is a flag to see if we are appending to a file
 		pass
 	def OnAddToFile(self,event):

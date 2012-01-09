@@ -151,6 +151,8 @@ class DistancePanel(wx.Panel):
 		wsize=FONTSIZE*12
 		self.dfield1=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(wsize,-1),fontsize=FONTSIZE)
 		self.dfield2=GUI.MyNum(self,0,MAX_LENGTH_MUTUAL,digitlength=3,size=(wsize,-1),fontsize=FONTSIZE)
+		#BIND autobutton#
+		self.autobutton.Bind(wx.EVT_BUTTON,self.OnAutoButton)
 		#BIND ENTER in field2 to allow going to next state#
 		self.dfield2.Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
 		self.dfield1.ij_id=[0,0]
@@ -211,11 +213,13 @@ class DistancePanel(wx.Panel):
 		key=event.GetKeyCode()
 		field=event.GetEventObject()
 		if key==42: #char '*'
-			self.SetAutoMode(self.fields)
+			self.SetAutoMode([self.fields[0]],[self.fields[1]]) #becuase SetAutoMode expects a 2 columns of fields .....
 		elif key==47:#char '/'
-			self.SetSingleAutoMode(field)
+			self.SetSingleAutoMode(field,field.ij_id[1])
 		else:
 			event.Skip() #so that text appears in the field....
+	def OnAutoButton(self,event):
+		self.SetAutoMode([self.fields[0]],[self.fields[1]])
 		
 
 class AutoPanel(wx.Panel):
@@ -260,10 +264,12 @@ class SatsPanel(wx.Panel):
 		self.status.UpdateStatus()
 		self.position1=AutoPanel(self,setup.Position1Validator,"1. kikkertstilling:")
 		self.position2=AutoPanel(self,setup.Position2Validator,"2. kikkertstilling:")
-		self.zfields=self.position1.fields+self.position2.fields #list of pointers to z-fields..
+		self.rows=[self.position1.fields,self.position2.fields]
+		self.cols=np.array(self.rows,dtype=object).transpose().tolist()
 		for row in range(2):
 			for col in range(2):
-				field=self.zfields[col+2*row]
+				field=self.rows[row][col]
+				#this id is rellay internal to this class - so we are free to choose any suitable indexing....
 				field.ij_id=[row+1,col] #+1 beacuse dist fields also indexed in setup
 				if row==0:
 					field.SetValidator(setup.Position1Validator)
@@ -271,13 +277,18 @@ class SatsPanel(wx.Panel):
 					field.SetValidator(setup.Position2Validator)
 				field.Bind(wx.EVT_TEXT,self.OnText)
 				field.Bind(wx.EVT_CHAR,self.OnChar)
-				next=(col+2*row+1)%4
-				prev=(next-2)%4
-				field.SetNextReturn(self.zfields[next])
-				field.SetNextTab(self.zfields[next])
-				field.SetPrev(self.zfields[prev])
+				next_row=(row+(col>0))%2
+				next_col=(col+1)%2
+				prev_row=(row+(col==0))%2
+				prev_col=(col+1)%2
+				field.SetNextReturn(self.rows[next_row][next_col])
+				field.SetNextTab(self.rows[next_row][next_col])
+				field.SetPrev(self.rows[prev_row][prev_col])
+		#EVENT BINDING#
+		self.position1.autobutton.Bind(wx.EVT_BUTTON,self.OnAutoButton)
+		self.position2.autobutton.Bind(wx.EVT_BUTTON,self.OnAutoButton)
 		#EVENT BINDING ON LAST RETURN#
-		self.zfields[-1].Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
+		self.rows[1][1].Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
 		#LAYOUT#
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
 		self.sizer.Add(self.status,1,wx.ALL,5)
@@ -288,7 +299,7 @@ class SatsPanel(wx.Panel):
 	def StartUp(self):
 		self.Clear()
 		self.Enable()
-		self.zfields[0].SetFocus()
+		self.rows[0][0].SetFocus()
 	def UpdateStatus(self):
 		h1,h2,h,rf,i_err1,i_err2,hdiff_ok,rf_ok=self.setup.Calculate()
 		i_err1="%.0f''"%i_err1
@@ -318,12 +329,13 @@ class SatsPanel(wx.Panel):
 		field=event.GetEventObject()
 		row,col=field.ij_id
 		if key==42: #char '*'
-			start_field=col+2*row
-			self.SetAutoMode(self.zfields[start_field:])
+			self.SetAutoMode(self.cols[0][row-1:],self.cols[1][row-1:])
 		elif key==47:#char '/'
-			self.SetSingleAutoMode(field)
+			self.SetSingleAutoMode(field,field.ij_id[1])
 		else:
 			event.Skip() #so that text appears in the field....
+	def OnAutoButton(self,event):
+		self.SetAutoMode(self.cols[0],self.cols[1])
 	def Clear(self):
 		self.position1.Clear()
 		self.position2.Clear()
@@ -405,6 +417,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#MODES DEFINED HERE#
 		self.mode=0
 		self.mmode=0  #0 : distances   1: angles, changed in the 2 SetMode fcts. below
+		self.auto_fields=[[],[]] #two 'columns' to store fields for 'auto mode' in.
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
 		self.modecolors=["blue","red","yellow"]
 		#END MODE SETUP - inherit stuff from parent#
@@ -412,6 +425,9 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.resfile=parent.resfile
 		self.instruments=self.statusdata.GetInstruments()
+		for instrument in self.instruments:
+			instrument.SetLogWindow(self)
+			instrument.SetEventHandler(self)
 		inames=self.statusdata.GetInstrumentNames()
 		inames=map(lambda x:x+": ",inames)
 		self.aim=self.statusdata.GetInstrumentAims()
@@ -434,13 +450,13 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.lower.sizer.Add(self.dpanel)
 		self.lower.sizer.Add(self.spanel)
 		#EVENT HANDLING SETUP#
-		#self.main.buttons1.knap3.Bind(wx.EVT_BUTTON,self.SletSats)
+		self.Bind(Instrument.EVT_LOG,self.OnInstLog)
+		self.Bind(Instrument.EVT_DATA,self.OnData)
 		self.main.button[4].Bind(wx.EVT_BUTTON,self.OnCancel)
 		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnAccept)
 		self.main.button[2].Bind(wx.EVT_BUTTON,self.OnCheckSats)
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetDistanceMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetZMode)
-		#self.main.buttons2.knap2.Bind(wx.EVT_BUTTON,self.Fortryd)
 		#LAYOUT#
 		self.CreateRow()
 		self.AddItem(self.statusbox,1,wx.ALIGN_LEFT)
@@ -463,7 +479,36 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#Gaa direkte til afstand#
 		self.SetDistanceMode() 
 		self.ShowMe()
-		
+	def OnInstLog(self,event):
+		self.Log(event.text)
+	def OnData(self,event):
+		id=event.id
+		code,val=event.value
+		if self.mode==0:
+			self.instruments[id].Kill()
+			return
+		if code=="E":
+			GUI.ErrorBox(self,val)
+			self.SetManualMode() #end contorol here
+			return
+		elif code=="<":
+			if self.mmode!=1:
+				GUI.ErrorBox(self,u"Forventede ikke en vinkelm\u00E5ling!")
+				self.SetManualMode() #end control here
+				return
+		elif code=="?":
+			if self.mmode!=0:
+				GUI.ErrorBox(self,u"Forventede ikke en afstandsm\u00E5ling!")
+				self.SetManualMode() #end control here
+				return
+		if len(self.auto_fields[id])>0:
+			field=self.auto_fields[id][-1]
+			field.SetValue(val)
+			field.Enable()
+			self.auto_fields[id]=self.auto_fields[:-1]
+		if len(self.auto_fields[0])==0 and len(self.auto_fields[1])==0:
+			self.UpdateHeightStatus()
+			self.SetManualMode() #or something else
 	def OnSetZMode(self,event):
 		self.SetZMode()
 	def OnSetDistanceMode(self,event):
@@ -495,14 +540,41 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.spanel.StartUp()
 		self.lower.SetSizerAndFit(self.lower.sizer)
 		self.LayoutSizer()
-		
-	def SetAutoMode(self,fields):
-		self.auto_fields=fields
-		self.mode=1
+	def SetManualMode(self):
+		if self.mode==0:
+			return
+		self.Log(u"Skifter til 'manuel mode'. Afbryder instrumentl\u00E6sning.")
+		self.mode=0
+		for inst in self.instruments:
+			inst.Kill()
+		for col in self.auto_fields:
+			for field in col:
+				field.Enable()
+		self.auto_fields=[[],[]]
 		self.UpdateStatus()
-	def SetSingleAutoMode(self,field):
-		self.auto_fields=[field]
+	def SetAutoMode(self,col1,col2):
+		if self.mode>0:
+			self.SetManualMode()
+			return
+		self.Log("Skifter til 'auto mode'.")
+		self.auto_fields=[col1,col2]
+		for col in self.auto_fields:
+			for field in col:
+				field.Enable(0)
+		self.mode=1
+		for instrument in self.instruments:
+			instrument.ReadData()
+		self.UpdateStatus()
+	def SetSingleAutoMode(self,field,col):
+		if self.mode>0:
+			self.SetManualMode()
+			return
+		self.auto_fields=[[],[]]
+		self.auto_fields[col]=[field]
+		self.Log("Skifter til 'single auto mode'.")
+		field.Enable(0)
 		self.mode=2
+		self.instruments[col].ReadData()
 		self.UpdateStatus()
 	def UpdateStatus(self):
 		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
@@ -1238,7 +1310,12 @@ def main():
 	else:
 		FONTSIZE=14
 	frame=StartFrame(None)
-	frame.Show()
+	if DEBUG:
+		frame.resfile="test.txt"
+		frame.InitResultFile(frame.resfile)
+		frame.StartProgram()
+	else:
+		frame.Show()
 	App.MainLoop()
 	sys.exit()
 
