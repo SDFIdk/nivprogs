@@ -141,7 +141,41 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 	return True,(not has_extra_lines),msg
 			
 				
-				
+def MTLPlotData(fname):
+	f=open(fname)
+	temps=[]
+	r_errs=[]
+	ind1=[]
+	ind2=[]
+	dists=[]
+	line="X"
+	nopst=0
+	current_temp=None
+	while len(line)>0:  #loeb igennem filen nu
+		line=f.readline()
+		sline=line.split()
+		if line.find("Satser")!=-1 and line.find("Afstand")!=-1 and line.strip()[0]!=";": #ikke slettede...
+			nopst+=1
+			line=f.readline().split()
+			N=int(line[2])
+			d=float(line[3].replace("m",""))
+			for i in range(N):
+				line1=f.readline().split()
+				line2=f.readline().split()
+				z11=line1[-3]
+				z12=line1[-2]
+				z21=line2[-4]
+				z22=line2[-3]
+				r_errs.append([nopst,int(line2[-2].replace("''",""))])
+				ind1.append((nopst,(Funktioner.Dec2Grad(z11)+Funktioner.Dec2Grad(z12)-360)/2.0*60*60)) #I sekunder
+				ind2.append((nopst,(Funktioner.Dec2Grad(z21)+Funktioner.Dec2Grad(z22)-360)/2.0*60*60))
+			dists.append((nopst,d))
+			if current_temp is not None:
+				temps.append((nopst,current_temp))
+		if len(sline)>0 and sline[0]=="#":
+			current_temp=float(sline[-2])
+	f.close()
+	return dists,temps,r_errs,ind1,ind2				
 				
 			
 # This is only essential in case someone tries to attach to a resfile with instruments defined in a different way than the current instruments!
@@ -169,6 +203,37 @@ def TjekMTLHeader(lines,instruments):
 		if nfound==2:
 			break
 	return (nfound==2)
+
+def GetInstrumentNames(fname,program="MTL"):
+	f=open(fname,"r")
+	program=program.lower()
+	names=[]
+	line=f.readline()
+	fprogram=False
+	nread=1
+	while len(line)>0:
+		if not fprogram and program in line.lower():
+			fprogram=True
+		if not fprogram:
+			if nread>500:
+				break
+			else:
+				line=f.readline()
+				nread+=1
+				continue
+		if "Instrumenter:" in line:
+			line=f.readline()
+			names.append(line.split(":")[0].strip())
+			line=f.readline()
+			names.append(line.split(":")[0].strip())
+		elif "Instrument:" in line:
+			names.append(line.split()[1].split(",")[0].strip())
+		if len(names)>1 or (len(names)==1 and program=="mgl"):
+			break
+		line=f.readline()
+	
+	f.close()
+	return names
 
 def TjekHeader(fname,program_name): #majet, majet simpel funktion, som bare ser efter programnavn i foerste linie af en fil....
 	f=open(fname,"r")

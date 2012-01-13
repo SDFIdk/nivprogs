@@ -8,13 +8,13 @@ import numpy as np
 import MTLsetup # all MTL math stuff handled here.... This is the real thing!
 import Funktioner
 import FileOps
-import sys
+import sys,os
 import Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.22"
-PROGRAM.date="2012-01-05"
+PROGRAM.version="beta 0.23"
+PROGRAM.date="2012-01-13"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -49,6 +49,8 @@ class MTLmain(Core.MLBase):
 		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
 		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
 		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hoved i datafilen.")
+		self.anamenu.AppendSeparator()
+		FileAnalysis=self.anamenu.Append(wx.ID_ANY,u"Analyse plot","Plot analyse af data i resultatfil.")
 		#EVENT HANDLING SETUP#
 		basisbox_start.button[0].Bind(wx.EVT_BUTTON,self.OnBasis1)
 		basisbox_start.button[1].Bind(wx.EVT_BUTTON,self.OnBasis2)
@@ -59,6 +61,7 @@ class MTLmain(Core.MLBase):
 		self.Bind(wx.EVT_MENU,self.OnEditHead,EditHead)
 		self.Bind(wx.EVT_MENU,self.OnDeleteToLastHead,DeleteToLastHead)
 		self.Bind(wx.EVT_MENU,self.OnDeleteLastAction,DeleteLast)
+		self.Bind(wx.EVT_MENU,self.OnFileAnalysis,FileAnalysis)
 		#end extra menu items   #
 		sizer=wx.BoxSizer(wx.HORIZONTAL)
 		sizer.Add(basisbox_start,1,wx.ALL,5)
@@ -126,7 +129,49 @@ class MTLmain(Core.MLBase):
 		self.Log(SL)
 		win=MakeBasis(self,self.statusdata.GetInstrumentState())
 		win.InitializeMap()
-	
+	def OnFileAnalysis(self,event):
+		fname=Core.GetFile(self,u"V\u00E6lg en resultatfil",Core.RESDIR)
+		if len(fname)==0:
+			return
+		self.Log(SL)
+		self.Log(u"L\u00E6ser %s" %fname)
+		instnames=FileOps.GetInstrumentNames(fname,PROGRAM.type)
+		if len(instnames)!=2:
+			self.Log("Tilsyneladende ikke en MTL-resultatfil!")
+			GUI.ErrorBox(self,"Tilsyneladende ikke en MTL-resultatfil!")
+			return
+		dists,temps,r_errs,ind1,ind2=FileOps.MTLPlotData(fname)
+		if len(dists)==0:
+			GUI.ErrorBox(self,"Ingen gensidige opstillinger fundet i filen.")
+			return
+		self.Log("Fandt %d gensidige opstillinger i %s, plotter data...." %(len(dists),fname))
+		theplot=GUI.MultiPlotFrame(self,title=u"Plots af m\u00E5linger i %s." %fname)
+		#plot index_errs#
+		theplot.plotter[0].SetEnableLegend(True)
+		ind1=np.array(ind1)
+		ind2=np.array(ind2)
+		pind1=GUI.plot.PolyMarker(ind1,colour="blue",size=1,legend=instnames[0],marker='square')
+		pind2=GUI.plot.PolyMarker(ind2,colour="red",size=1,legend=instnames[1],marker='cross')
+		graphics=[pind1,pind2]
+		gc = GUI.plot.PlotGraphics(graphics,"Indeksfejl v. gensidige opstillinger","Opstilling","Indeksfejl ['']")
+		theplot.plotter[0].Draw(gc)
+		#plot dist#
+		line = GUI.plot.PolyLine(dists, colour='blue', width=2)
+		markers=GUI.plot.PolyMarker(dists,colour="red",size=1,marker='cross')
+		gc=GUI.plot.PlotGraphics([line,markers],"Afstand v. gensidige opstillinger","Opstilling","Afstand [m]")
+		theplot.plotter[1].Draw(gc)
+		#plot r_errs#
+		#line = GUI.plot.PolyLine(r_errs, colour='blue', width=2)
+		markers=GUI.plot.PolyMarker(r_errs,colour="red",size=1,marker='square')
+		gc=GUI.plot.PlotGraphics([markers],"Restfejl v. gensidige opstillinger","Opstilling","Restfejl ['']")
+		theplot.plotter[2].Draw(gc)
+		#plot temp#
+		line = GUI.plot.PolyLine(temps, colour='blue', width=2)
+		markers=GUI.plot.PolyMarker(temps,colour="red",size=1,marker='cross')
+		gc=GUI.plot.PlotGraphics([line,markers],"Temperatur v. gensidige opstillinger","Opstilling","Temp [C]")
+		theplot.plotter[3].Draw(gc)
+		#show plot#
+		theplot.Show()
 		
 		
 		
@@ -878,6 +923,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.instrument.SetEventHandler(self)
 		self.Bind(Instrument.EVT_LOG,self.OnInstLog)
 		self.Bind(Instrument.EVT_DATA,self.OnData)
+		self.Bind(wx.EVT_CLOSE,self.OnEVTClose) #in order to detach gps
 		#LAYOUT#
 		self.UpdateStatus()
 		self.CreateRow()
@@ -906,6 +952,11 @@ class MakeBasis(GUI.FullScreenWindow):
 		if not self.instrument.TestPort():
 			#GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
 			self.Log(u"Kunne ikke \u00E5bne instrumentets com-port...")
+	def OnEVTClose(self,event):
+		if self.parent.gps.isAlive():
+			self.map.DetachGPS()
+			self.parent.map.AttachGPS(self.parent.gps)
+		event.Skip()
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
 		if self.parent.gps.isAlive():
 			self.parent.map.DetachGPS()
@@ -1277,6 +1328,8 @@ class MTLinireader(object): #add more error handling!
 					instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
 				if key=="ftforkast" and len(line)>0:
 					ini.fbtest=float(line[0])
+					if len(line)>0:
+						ini.fbunit=line[1]
 				if key=="maxdelta_dist" and len(line)>0:
 					ini.maxdelta_dist=float(line[0])
 				if key=="maxdh_basis" and len(line)>0:

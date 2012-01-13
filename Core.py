@@ -24,11 +24,21 @@ else:
 	MMDIR=sys.prefix+"\\mcontent\\"
 RESDIR=BASEDIR+"/"+"resultatfiler"
 RESDIR_SHORT="./resultatfiler" #to be shown on screen
-FORKAST=RESDIR+"/"+"forkast.sqlite"
+FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"
+FORKAST_MTL=RESDIR+"/"+"forkast_mtl.sqlite"
+FORKAST=FORKAST_MGL
 SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
 #Ini and status data container classes
+def SetTestFile(program="MGL"):
+	global FORKAST
+	program=program.upper()
+	if "MTL" in program:
+		FORKAST=FORKAST_MTL
+	else:
+		FORKAST=FORKAST_MGL
+		
 class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 	def __init__(self):
 		self.Clear()
@@ -252,6 +262,7 @@ class MLBase(GUI.MainWindow):
 		MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
 		TTgraph=self.anamenu.Append(wx.ID_ANY,"&Temperatur-Tid","Graf over temperatur efter opstart.")
+		FBgraph=self.anamenu.Append(wx.ID_ANY,u"Plot frem-tilbage testkriterie","Plot af testkriterie.")
 		#Rediger-Menu#
 		ShowFile=self.funkmenu.Append(wx.ID_ANY,"Vis resultatfil","Viser resultatfilen i et nyt vindue.")
 		SkrivJS=self.funkmenu.Append(wx.ID_ANY,"Udskriv journalside","Udksriver journalsider fra datafilen.")
@@ -277,6 +288,7 @@ class MLBase(GUI.MainWindow):
 		self.Bind(wx.EVT_MENU,self.OnCompareHdiff,CompareHdiff)
 		self.Bind(wx.EVT_MENU,self.OnSumHeights,SumHeights)
 		self.Bind(wx.EVT_MENU,self.OnTTgraph,TTgraph)
+		self.Bind(wx.EVT_MENU,self.OnFBgraph,FBgraph)
 		self.Bind(wx.EVT_MENU,self.OnShowFile,ShowFile)
 		self.Bind(wx.EVT_MENU,self.OnSkrivJS,SkrivJS)
 		self.Bind(wx.EVT_MENU,self.OnTjekPunkter,TjekPunkter)
@@ -414,8 +426,7 @@ class MLBase(GUI.MainWindow):
 			self.Log("Punktdatabase ikke tilsluttet.")
 	def OnMakeReject(self,event):
 		files=SelectResultFiles(self,self.program.type)
-		if len(files)==0:
-			return
+		self.Log("%d filer valgt. Danner database." %len(files))
 		if self.fbtest is not None:
 			self.fbtest.Disconnect()
 			self.fbtest=None
@@ -435,7 +446,7 @@ class MLBase(GUI.MainWindow):
 		self.AttachFBtest()
 	def AttachFBtest(self):
 		try:
-			self.fbtest=FBtest.FBreject(FORKAST,self.program.type,self.ini.fbtest)
+			self.fbtest=FBtest.FBreject(FORKAST,self.program.type,self.ini.fbtest,self.ini.fbunit)
 		except:
 			self.fbtest=None
 		else:
@@ -460,6 +471,25 @@ class MLBase(GUI.MainWindow):
 	def OnTTgraph(self,event):
 		theplot=GUI.PlotFrame(self,title="Temperaturgraf")
 		theplot.PlotData(self.statusdata.Ttimes,self.statusdata.Temps,"Temperatur v. tid",'Timer efter opstart '+self.statusdata.GetTimeString())
+	def OnFBgraph(self,event):
+		theplot=GUI.PlotFrame(self,title="Forkastelseskriterie")
+		theplot.plotter.SetEnableLegend(True)
+		unit=self.ini.fbunit
+		par=self.ini.fbtest
+		n=5
+		step=par*0.2
+		plot_range=[par+step*i for i in range(-2,n-2)]
+		graphics=[]
+		colors=["blue","red","green","black","orange","cyan","pink"]
+		next=0
+		for param in plot_range:
+			col=colors[next % len(colors)]
+			data=FBtest.GetPlotData(self.program.type,param,unit)
+			line = GUI.plot.PolyLine(data, colour=col, width=1,legend="%.2f %s" %(param,unit))
+			graphics.append(line)
+			next+=1
+		gc = GUI.plot.PlotGraphics(graphics,"Plot af forkastelseskriterie","Afstand [m]","Tolerance [mm]")
+		theplot.plotter.Draw(gc)
 	def OnWriteComment(self,e):
 		dlg=GUI.InputDialog(self,"Skriv kommentar i fil",["Kommentar:"])
 		dlg.ShowModal()
@@ -634,8 +664,9 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		self.program=program
 		self.data=None
 		self.inireader=inireader #handle to function reading ini-file
-		#self.filereader=filereader #handle to function reading resultfiles
 		self.statusdata=statusdata
+		#Set FBtest database#
+		SetTestFile(program.type)
 		#Init the Frame#
 		wx.Frame.__init__(self,parent,title=program.name)
 		#Appeareance
@@ -760,7 +791,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			dlg.ShowModal()
 			if dlg.WasOK():
 				files=SelectResultFiles(self,self.program.type)
-				if len(files)>0:
+				if len(files)>-1: #always do it!
 					OK,ndone,ndoubles=FBtest.MakeRejectData(files,FORKAST)
 					if OK:
 						self.Log(u"Forkastelseskriterie-database genereret med %i str\u00E6kninger." %ndone)
@@ -1031,6 +1062,20 @@ def SelectResultFiles(win,program="MGL"):
 	else:
 		dlg.Destroy()
 		return []
+
+#class used to fetch a file#
+def GetFile(win,msg="Select a file:",defaultDir=None,style=wx.FD_OPEN,wildcard="*.*"):
+	if defaultDir is not None:
+		dlg= wx.FileDialog(win, msg,defaultDir,wildcard=wildcard,style=style)
+	else:
+		dlg= wx.FileDialog(win, msg,wildcard=wildcard,style=style)
+	if dlg.ShowModal()==wx.ID_OK:
+		filename=dlg.GetPath()
+	else:
+		filename=-1
+	dlg.Destroy()
+	return filename
+
 #Logging class
 class Logger(wx.Panel):
 	def __init__(self,parent,fs=10):

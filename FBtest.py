@@ -6,6 +6,10 @@ import FileOps
 #fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
 # Last edit: 2012-01-09 fixed mtl test. Unified.
 #Rejcection criteria reflects a model variance for meas. of a strectch, should correpond to a variance of half the parameter used in the test. 
+def MTL_var_model_linear(dist,parameter):
+	dist=dist/1000.0
+	return (dist*parameter+0.1)**2
+	
 def MTL_var_model(dist,parameter):
 	dist=dist/1000.0
 	DLIM=0.2 #km
@@ -17,7 +21,7 @@ def MTL_var_model(dist,parameter):
 
 def MGL_var_model(dist,parameter):
 	dist=dist/1000.0
-	return dist*(parameter**2)+0.1**2   #add a centering err....
+	return (np.sqrt(dist)*parameter+0.05)**2   #add a centering err....
 	
 def Test(hdiffin,found,dist,parameter,var_model):
 	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
@@ -29,11 +33,14 @@ def MGLtest(hdiffin,found,dist,parameter):
 	#print diff,dist,parameter,found.size,test
 	return test
 class FBreject(object): 
-	def __init__(self,database,program="MGL",parameter=2.0):
+	def __init__(self,database,program="MGL",parameter=2.0,unit="ne"):
 		if program=="MGL":
 			self.var_model=MGL_var_model
 		else:
-			self.var_model=MTL_var_model
+			if unit=="ne":
+				self.var_model=MTL_var_model
+			else:
+				self.var_model=MTL_var_model_linear
 		self.parameter=parameter
 		self.initialized=False
 		self.found=False
@@ -92,6 +99,17 @@ class FBreject(object):
 			self.connection.close()
 		except:
 			pass
+def GetPlotData(program="MGL",parameter=2.0,unit="ne"):
+	if program=="MGL":
+		var_model=MGL_var_model
+	else:
+		if unit=="ne":
+			var_model=MTL_var_model
+		else:
+			var_model=MTL_var_model_linear
+	dists=np.arange(0,1500,10)
+	out=np.sqrt(map(lambda x: var_model(x,parameter), dists))
+	return np.column_stack((dists,out))
 
 def MakeRejectData(resfiles,databasename):
 	con=sqlite3.connect(databasename)

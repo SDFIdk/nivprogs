@@ -6,7 +6,7 @@ import  wx.lib.newevent
 (GPSEvent,EVT_GPS) = wx.lib.newevent.NewEvent()
 (KillEvent,EVT_KILL_GPS) = wx.lib.newevent.NewEvent()
 (LogEvent,EVT_LOG) = wx.lib.newevent.NewEvent()
-if len(sys.argv)>1 and sys.argv[1]=="gps_test":
+if "gps_test" in sys.argv:
 	import gps_test as serial
 else:
 	import serial
