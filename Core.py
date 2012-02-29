@@ -27,6 +27,7 @@ RESDIR_SHORT="./resultatfiler" #to be shown on screen
 FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"
 FORKAST_MTL=RESDIR+"/"+"forkast_mtl.sqlite"
 FORKAST=FORKAST_MGL
+IS_PRECISION=False #precision mode means special options in "MakeHead"
 SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
@@ -38,6 +39,7 @@ def SetTestFile(program="MGL"):
 		FORKAST=FORKAST_MTL
 	else:
 		FORKAST=FORKAST_MGL
+
 		
 class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 	def __init__(self):
@@ -1116,13 +1118,17 @@ class MakeHead(GUI.InputDialog):
 		textlabels=["Fra:","Til:","Dato:","Tid:","Journalside:"]
 		textvals=[statusdata.GetStart(),statusdata.GetEnd(),dato,tid]
 		numlabels=["Temperatur:"]
+		bounds=[(-40,45)]
+		if IS_PRECISION: #global var defined at top of this module
+			numlabels.append("Asfalttemp.:")
+			bounds.append((-40,80))
 		try:
 			float(temp)
 		except:
 			numvals=[]
 		else:
 			numvals=[temp]
-		GUI.InputDialog.__init__(self,parent,"Hoved",textlabels,textvals,numlabels,numvals,bounds=[(-40,45)],pedantic=True)
+		GUI.InputDialog.__init__(self,parent,"Hoved",textlabels,textvals,numlabels,numvals,bounds=bounds,pedantic=True)
 		status=GUI.StatusBox2(self,[u"H\u00F8jdeforskel:","Afstand:","#Opst:"],colsize=1,label=u"Str\u00E6kning")
 		testbox=GUI.StatusBox2(self,["Frem-tilbage test:"],label="Forkastelseskriterie")
 		if test is not None:

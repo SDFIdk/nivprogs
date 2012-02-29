@@ -808,7 +808,11 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		hvd=Core.MakeHead(self,self.statusdata,Funktioner.Dato(),Funktioner.Nu(),temp=temp,test=test)
 		hvd.ShowModal()
 		if hvd.WasOK():
-			start,slut,dato,tid,jside,temp,ekstra=hvd.GetValues()
+			asphalt_temp=None
+			vals=hvd.GetValues()
+			start,slut,dato,tid,jside,temp,ekstra=vals[:7]
+			if len(vals)>6:
+				asphalt_temp=vals[7]
 			if start!=self.statusdata.GetStart() or slut!=self.statusdata.GetEnd():
 				self.statusdata.slutpunkt=slut #if edited save this
 				self.statusdata.startpunkt=start
@@ -826,6 +830,8 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					line=Funktioner.Internationale(line)
 					resfile.write(line+"\n") #ikke kommentar-tegn foran mere....
 			hdiff,dist,nopst=self.statusdata.GetStretchData()
+			if asphalt_temp is not None:
+				resfile.write("AT: %.2f\n" %asphalt_temp)
 			resfile.write("# %s %s %s %s %.2f %.5f %s %.1f %i\n\n"%(start,slut,dato,tid,dist,hdiff,jside,temp,nopst))
 			resfile.close()
 			#log to parents log

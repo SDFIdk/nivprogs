@@ -166,10 +166,11 @@ class MTLmain(Core.MLBase):
 		gc=GUI.plot.PlotGraphics([markers],"Restfejl v. gensidige opstillinger","Opstilling","Restfejl ['']")
 		theplot.plotter[2].Draw(gc)
 		#plot temp#
-		line = GUI.plot.PolyLine(temps, colour='blue', width=2)
-		markers=GUI.plot.PolyMarker(temps,colour="red",size=1,marker='cross')
-		gc=GUI.plot.PlotGraphics([line,markers],"Temperatur v. gensidige opstillinger","Opstilling","Temp [C]")
-		theplot.plotter[3].Draw(gc)
+		if len(temps)>0:
+			line = GUI.plot.PolyLine(temps, colour='blue', width=2)
+			markers=GUI.plot.PolyMarker(temps,colour="red",size=1,marker='cross')
+			gc=GUI.plot.PlotGraphics([line,markers],"Temperatur v. gensidige opstillinger","Opstilling","Temp [C]")
+			theplot.plotter[3].Draw(gc)
 		#show plot#
 		theplot.Show()
 		
