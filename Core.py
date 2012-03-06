@@ -276,6 +276,7 @@ class MLBase(GUI.MainWindow):
 		CompareHdiff=self.anamenu.Append(wx.ID_ANY,u"Sammenlign h\u00F8jdeforskelle",u"Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
 		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
 		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie database","Viser data i forkastelseskriteriedatabasen.")
+		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,u"Outlier analyse",u"Foretag en outlier analyse af str\u00E6kninger.") 
 		#SetProjectFiles=self.anamenu.Append(wx.ID_ANY,u"Definer projekt-resultatfiler",u"Definer resultatfiler til frem/tilbage test.")
 		#MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
@@ -309,6 +310,7 @@ class MLBase(GUI.MainWindow):
 		self.Bind(wx.EVT_MENU,self.OnCompareHdiff,CompareHdiff)
 		self.Bind(wx.EVT_MENU,self.OnSumHeights,SumHeights)
 		self.Bind(wx.EVT_MENU,self.OnShowFBdata,ShowFBdata)
+		self.Bind(wx.EVT_MENU,self.OnOutlierAnalysis,OutlierAnalysis)
 		self.Bind(wx.EVT_MENU,self.OnTTgraph,TTgraph)
 		self.Bind(wx.EVT_MENU,self.OnFBgraph,FBgraph)
 		self.Bind(wx.EVT_MENU,self.OnShowFile,ShowFile)
@@ -508,8 +510,24 @@ class MLBase(GUI.MainWindow):
 		self.ShowFBdata()
 		
 	def ShowFBdata(self):
-		self.Log(self.fbtest.GetData())
-		
+		if self.fbtest is None:
+			GUI.ErrorBox(self,"Forkastelsesdatabase ikke defineret!")
+			return
+		dlg=GUI.MyLongMessageDialog(self,"Forkastelseskriterie-database",self.fbtest.GetData(),size=(800,-1))
+		dlg.ShowModal()
+		dlg.Destroy()
+	
+	def OnOutlierAnalysis(self,event):
+		if self.fbtest is None:
+			GUI.ErrorBox(self,"Forkastelsesdatabase ikke defineret!")
+			return
+		OK,msg=self.fbtest.OutlierAnalysis()
+		if OK:
+			GUI.Message(self,msg,"Outlier Analyse")
+			return
+		dlg=GUI.MyLongMessageDialog(self,"Frem-tilbage/outlier Analyse",msg,size=(800,-1))
+		dlg.ShowModal()
+		dlg.Destroy()
 			
 	def OnMeasTemp(self,e):
 		#fullresfilnavn=self.ini.fullrespath

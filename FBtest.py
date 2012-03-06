@@ -58,7 +58,7 @@ class FBreject(object):
 			s=self.database[key]
 			data+="%s->%s: dist: %.2f m\n" %(key[0],key[1],s.dist)
 			for i in range(len(s.hdiffs)):
-				data+="%.2f %s %s\n" %(s.hdiffs[i],s.times[i].isoformat(),s.jpages[i])
+				data+="dh: %.4f m tid: %s j-side: %s\n" %(s.hdiffs[i],s.times[i].isoformat().replace("T",","),s.jpages[i])
 		return data
 	def GetDatabase(self):
 		return self.database
@@ -137,6 +137,69 @@ class FBreject(object):
 		else:
 			
 				return True
+	def OutlierAnalysis(self):
+		data=self.database.copy()
+		msg=""
+		noutliers=0
+		nbad=0
+		keys=data.keys()
+		for key_forward in keys:
+			l_msg="%s->%s:" %key_forward
+			key_back=(key_forward[1],key_forward[0])
+			if not key_forward in data: #could happen since we delete stuff below
+				continue
+			s_forward=data[key_forward]
+			hdiffs_all=np.array(s_forward.hdiffs)
+			nforward=len(s_forward.hdiffs)
+			dists=[s_forward.dist]
+			nback=0
+			if key_back in data:
+				s_back=data[key_back]
+				nback=len(s_back.hdiffs)
+				if nback>0:
+					dists.append(s_back.dist)
+					hdiffs_all=np.append(hdiffs_all,np.array(s_back.hdiffs)*-1.0)
+			d=np.mean(dists)
+			l_msg+=u" m\u00E5lt %d gange frem og %d gange tilbage." %(nforward,nback)
+			report=False
+			if len(hdiffs_all)>1:
+				std_dev=np.std(hdiffs_all,ddof=1)
+				m=np.mean(hdiffs_all)
+				diff=Test(std_dev,d,self.parameter,self.var_model)
+				is_ok=diff<0
+				if not is_ok:
+					nbad+=1
+					report=True
+					l_msg+="\nForkastelseskriterie IKKE overholdt, forskel: %.2f mm" %diff
+				if len(hdiffs_all)>2:
+					dh=np.fabs(hdiffs_all-m)
+					I=np.where(np.fabs(dh)>2*std_dev)[0]
+					if I.size>0:
+						noutliers+=1
+						report=True
+						l_msg+="\nOutliere:"
+						for i in I:
+							if i>nforward-1:
+								i-=nforward
+								s=s_back
+							else:
+								s=s_forward
+							l_msg+=u"\nHdiff: %.4f m, m\u00E5lt %s, journalside: %s" %(s.hdiffs[i],s.times[i].isoformat().replace("T"," "),s.jpages[i])
+				if report:
+					msg+="\n"+"*"*60+"\n"+l_msg
+				
+				
+			#Finally delete that entry#
+			del data[key_forward]
+			if nback>0:
+				del data[key_back]
+		nprob=noutliers+nbad
+		if nprob==0:
+			return True,u"Ingen problemer fundet"
+		lmsg=u"%*s %d\n" %(-42,u"#overtr\u00E6delser af forkastelseskriterie:",nbad)
+		lmsg+=u"%*s %d\n" %(-42,"#outliere:",noutliers)
+		return False,lmsg+msg
+			
 	def IsInitialized(self):
 		return self.initialized
 	def GetNumber(self):
