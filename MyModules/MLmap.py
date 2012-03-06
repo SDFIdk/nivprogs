@@ -146,7 +146,7 @@ class MapFrame(wx.Frame):
 		#STATE VARS and DATA
 		self.stayalive=True #flag to turn off, when you really wanna close the window
 		#Setting up the panel at the bottom of the frame
-		self.bottompanel=GUI.ButtonPanel(self,["SKJUL","ZOOM IND","ZOOM UD","GPS-CENTR.","PUNKTER","PKT.NAVNE","SLET PKT.","RESET","TEGN NET"])
+		self.bottompanel=GUI.ButtonPanel(self,["SKJUL","ZOOM IND","ZOOM UD","GPS-CENTR.","PUNKTER","PKT.NAVNE","SLET PKT.","RESET"])
 		self.button=self.bottompanel.button
 		self.modebutton=self.button[3]
 		self.button[0].Bind(wx.EVT_BUTTON,self.OnHide)
@@ -157,7 +157,6 @@ class MapFrame(wx.Frame):
 		self.button[5].Bind(wx.EVT_BUTTON,self.OnToggleNames)
 		self.button[6].Bind(wx.EVT_BUTTON,self.OnClearPoints)
 		self.button[7].Bind(wx.EVT_BUTTON,self.OnReset)
-		self.button[8].Bind(wx.EVT_BUTTON,self.OnDrawNet)
 		#Set up the MapWindow
 		self.Map=BasePanel(self,dataclass,mapdirs,size=size,focus=False)
 		#SETTING UP THE SIZER#
@@ -183,13 +182,6 @@ class MapFrame(wx.Frame):
 		self.Close()
 	def OnHide(self,event):
 		self.Show(0)
-	def OnDrawNet(self,event):
-		s_lines,d_lines=self.parent.GetNetData()
-		if len(s_lines[0])>0: 
-			self.Map.Map.MapPanel.DrawLines(s_lines[0],s_lines[1],color=wx.BLUE)
-		if len(d_lines[0])>0:
-			self.Map.Map.MapPanel.DrawLines(d_lines[0],d_lines[1],color=wx.RED)
-		self.Map.Map.MapPanel.DrawScreen()
 	def OnGetPoints(self,event):
 		self.Map.GetPoints()
 	def OnClearPoints(self,event):
