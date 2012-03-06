@@ -44,11 +44,7 @@ class MTLmain(Core.MLBase):
 		middlebox=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
 		basisbox_slut=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
 		self.buttonboxes=[basisbox_start,middlebox,basisbox_slut]
-		#SET UP EXTRA MENU ITEMS#
-		self.funkmenu.AppendSeparator()
-		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
-		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
-		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hoved i datafilen.")
+		
 		self.anamenu.AppendSeparator()
 		FileAnalysis=self.anamenu.Append(wx.ID_ANY,u"Analyse plot","Plot analyse af data i resultatfil.")
 		#EVENT HANDLING SETUP#
@@ -58,9 +54,6 @@ class MTLmain(Core.MLBase):
 		middlebox.button[0].Bind(wx.EVT_BUTTON,self.OnInstrument2Instrument)
 		basisbox_slut.button[0].Bind(wx.EVT_BUTTON,self.OnBasisEnd)
 		#extra menu items binded here#
-		self.Bind(wx.EVT_MENU,self.OnEditHead,EditHead)
-		self.Bind(wx.EVT_MENU,self.OnDeleteToLastHead,DeleteToLastHead)
-		self.Bind(wx.EVT_MENU,self.OnDeleteLastAction,DeleteLast)
 		self.Bind(wx.EVT_MENU,self.OnFileAnalysis,FileAnalysis)
 		#end extra menu items   #
 		sizer=wx.BoxSizer(wx.HORIZONTAL)
@@ -1246,17 +1239,6 @@ class StartFrame(Core.StartFrame):
 
 	
 #----------Initialisation classes, definition of rods etc.-----------------#
-class InstrumentError(Exception):
-	def __init__(self,msg="Kunne ikke definere instrumentet!"):
-		self.msg=msg
-	def __str__(self):
-		return self.msg
-		
-class LaegteError(Exception):
-	def __init__(self,msg=""):
-		self.msg=msg
-	def __str__(self):
-		return self.msg
 
 class MTLlaegte(object):
 	def __init__(self,name=None,zeroshift=0,zone_low=0,zone_high=0,orientation=1):
@@ -1278,82 +1260,49 @@ class MTLlaegte(object):
 
 
 
-class MTLinireader(object): #add more error handling!
+class MTLinireader(Core.IniReader): #add more error handling!
 	def __init__(self):
-		self.path=BASEDIR+"/MTL.ini"
-	def Read(self):
-		#default vaerdier#
-		ini=Core.Ini()
-		ini.fbtest=4.0 #frem-tilbage forkast
-		ini.fbunit="ne"
-		ini.maxdh_basis=0.001 #max. forskel mellem h1 og h2 ved basis, 
-		ini.maxdelta_dist=0.05 #max. afv. mellem afst, maalinger
-		ini.max_rf=20 #maks. restfejl foer advarsel...
+		Core.IniReader.__init__(self,BASEDIR+"/MTL.ini",2,1)
+		self.ini.fbtest=4.0 #frem-tilbage forkast
+		self.ini.fbunit="ne"
+		self.ini.maxdh_basis=0.001 #max. forskel mellem h1 og h2 ved basis, 
+		self.ini.maxdelta_dist=0.05 #max. afv. mellem afst, maalinger
+		self.ini.max_rf=20 #maks. restfejl foer advarsel...
 		#FLG. Fejl er afstandsafhaengige. FEJL pr. 100m,#
-		ini.maxdh_mutual=0.001 #max. forskel mellem maalt dh ved gensidige sigter,
-		ini.maxdh_setups=0.005 #max. afv. mellem satser, 
-		ini.maxsd_setups=0.007 #max. stdafv. ved flere satser
-		ini.gpsport=-1 
-		ini.gpsbaud=-1
-		ini.mapdirs=[]
-		ini.database=None
-		ini.instport=5 
-		ini.instbaud=9600
-		instruments=[]
-		laegter=[]
-		f=open(self.path,"r")
-		line=Funktioner.RemRem(f)
-		while len(line)>0:
-				i=line.find(":")
-				if i!=-1:
-					key=line[:i].strip()
-				line=line[i+1:].split()
-				if key=="gps" and len(line)>0:
-					ini.gpsport=int(line[0])
-					if len(line)>1:
-						ini.gpsbaud=int(line[1])
-				if key=="kortmappe" and len(line)>0:
-					mapdir=line[0]
-					if mapdir[-1] not in ["/","\\"]:
-						mapdir+="/"
-					ini.mapdirs.append(mapdir)
-				if key=="database" and len(line)>0:
-					ini.database=line[0]
-				if key=="instrument" and len(line)>3:
-					instrumentname=line[0]
-					addconst=float(line[1])
-					axisconst=float(line[2])
-					instrumentport=int(line[3])
-					instrumentbaud=int(line[4])
-					instrumenttype=line[5]
-					instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
-				if key=="ftforkast" and len(line)>0:
-					ini.fbtest=float(line[0])
-					if len(line)>0:
-						ini.fbunit=line[1]
-				if key=="maxdelta_dist" and len(line)>0:
-					ini.maxdelta_dist=float(line[0])
-				if key=="maxdh_basis" and len(line)>0:
-					ini.maxdh_basis=float(line[0])
-				if key=="maxdh_sats" and len(line)>0:
-					ini.maxdh_mutual=float(line[0])
-				if key=="maxdh_satser" and len(line)>0:
-					ini.maxdh_setups=float(line[0])
-				if key=="maxsd_satser" and len(line)>0:
-					ini.maxsd_setups=float(line[0])
-				if key=="max_restfejl" and len(line)>0:
-					ini.max_rf=float(line[0])
-				if key=="laegte" and len(line)>1:
-					name=line[0]
-					zeroshift=float(line[1])
-					laegter.append(MTLlaegte(name,zeroshift))
-				line=Funktioner.RemRem(f)
-		f.close()
-		if len(instruments)<2: 
-			raise InstrumentError("Instrumenter ikke defineret i ini-filen!")
-		if len(laegter)<1:
-			raise LaegteError("Der er ikke defineret mindst een laegte i ini-filen")
-		return ini,instruments,laegter
+		self.ini.maxdh_mutual=0.001 #max. forskel mellem maalt dh ved gensidige sigter,
+		self.ini.maxdh_setups=0.005 #max. afv. mellem satser, 
+		self.ini.maxsd_setups=0.007 #max. stdafv. ved flere satser
+		self.ini.instport=5 
+		self.ini.instbaud=9600
+	def CheckAdditionalKeys(self,key,line):
+		if key=="instrument" and len(line)>3:
+			instrumentname=line[0]
+			addconst=float(line[1])
+			axisconst=float(line[2])
+			instrumentport=int(line[3])
+			instrumentbaud=int(line[4])
+			instrumenttype=line[5]
+			self.instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
+		
+		if key=="maxdelta_dist" and len(line)>0:
+			self.ini.maxdelta_dist=float(line[0])
+		if key=="maxdh_basis" and len(line)>0:
+			self.ini.maxdh_basis=float(line[0])
+		if key=="maxdh_sats" and len(line)>0:
+			self.ini.maxdh_mutual=float(line[0])
+		if key=="maxdh_satser" and len(line)>0:
+			self.ini.maxdh_setups=float(line[0])
+		if key=="maxsd_satser" and len(line)>0:
+			self.ini.maxsd_setups=float(line[0])
+		if key=="max_restfejl" and len(line)>0:
+			self.ini.max_rf=float(line[0])
+		if key=="laegte" and len(line)>1:
+			name=line[0]
+			zeroshift=float(line[1])
+			self.laegter.append(MTLlaegte(name,zeroshift))
+	
+		
+		
 	
 		
 

@@ -16,30 +16,40 @@ import FBtest
 import glob
 import sqlite3
 BASEDIR=os.getcwd()
+DEBUG="debug" in sys.argv
 try:
 	sys.frozen
 except:
 	MMDIR=BASEDIR+"/"+"mcontent"+"/" 
 else:
 	MMDIR=sys.prefix+"\\mcontent\\"
-RESDIR=BASEDIR+"/"+"resultatfiler"
-RESDIR_SHORT="./resultatfiler" #to be shown on screen
-FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"
-FORKAST_MTL=RESDIR+"/"+"forkast_mtl.sqlite"
-FORKAST=FORKAST_MGL
+RESDIR=os.path.join(BASEDIR,"resultatfiler")
+RESDIR_SHORT=os.path.basename(RESDIR) #to be shown on screen
+#FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"
+#FORKAST_MTL=RESDIR+"/"+"forkast_mtl.sqlite"
+#FORKAST=FORKAST_MGL
 IS_PRECISION=False #precision mode means special options in "MakeHead"
+PRECISION_LIMIT=2.5
 SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
-#Ini and status data container classes
-def SetTestFile(program="MGL"):
-	global FORKAST
-	program=program.upper()
-	if "MTL" in program:
-		FORKAST=FORKAST_MTL
-	else:
-		FORKAST=FORKAST_MGL
 
+def SetPrecisionMode(ini,program="MGL"):
+	global IS_PRECISION
+	if ini.fbunit=="ne" and ini.fbtest<PRECISION_LIMIT and program.upper()=="MGL":
+		IS_PRECISION=True
+	else:
+		IS_PRECISION=False
+	return IS_PRECISION
+#def SetTestFile(program="MGL"):
+#	global FORKAST
+#	program=program.upper()
+#	if "MTL" in program:
+#		FORKAST=FORKAST_MTL
+#	else:
+#		FORKAST=FORKAST_MGL
+
+#Ini and status data container classes
 		
 class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 	def __init__(self):
@@ -198,11 +208,13 @@ class MTLStatusData(StatusData):
 class Ini(object):
 	def __init__(self):
 		self.mapdirs=[]
-		self.gpsport=8
-		self.gpsbaud=4800
+		self.gpsport=-1
+		self.gpsbaud=-1
 		self.database=None
-		self.fbtest=None
+		self.fbtest=3.5
 		self.fbunit="ne"
+		self.project_files=[] #defines files relevant for current project - set up in main window
+		self.fb_use_all=False
 
 class ProgramType(object):
 	def __init__(self):
@@ -236,8 +248,10 @@ class MLBase(GUI.MainWindow):
 			statusdata.SetDate(Fkt.Dato())
 		self.starttime=time.asctime()
 		self.ini=ini
+		self.fbtest=None #will be set up below
 		self.statusdata=statusdata #statusdata-klasse, der opbevarer 'status' data
-		self.resfile=resfile  #resultatfil (klasse med navn og filpointer)
+		self.resfile=resfile  #resultatfil 
+		self.ini.project_files=[resfile]
 		self.program=programtype
 		self.size=size
 		self.mwindow=GUI.DummyWindow() #both MGL and MTL progs should have a mwindow with a map attr. (when shown)
@@ -261,15 +275,20 @@ class MLBase(GUI.MainWindow):
 		self.anamenu.AppendSeparator()
 		CompareHdiff=self.anamenu.Append(wx.ID_ANY,u"Sammenlign h\u00F8jdeforskelle",u"Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
 		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
-		MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
+		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie database","Viser data i forkastelseskriteriedatabasen.")
+		#SetProjectFiles=self.anamenu.Append(wx.ID_ANY,u"Definer projekt-resultatfiler",u"Definer resultatfiler til frem/tilbage test.")
+		#MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
 		TTgraph=self.anamenu.Append(wx.ID_ANY,"&Temperatur-Tid","Graf over temperatur efter opstart.")
 		FBgraph=self.anamenu.Append(wx.ID_ANY,u"Plot frem-tilbage testkriterie","Plot af testkriterie.")
 		#Rediger-Menu#
 		ShowFile=self.funkmenu.Append(wx.ID_ANY,"Vis resultatfil","Viser resultatfilen i et nyt vindue.")
 		SkrivJS=self.funkmenu.Append(wx.ID_ANY,"Udskriv journalside","Udksriver journalsider fra datafilen.")
-		#self.RedHoved=funkmenu.Append(wx.ID_ANY,"Rediger et hoved","Rediger et hoved i datafilen.")
-		#self.SletHoved=funkmenu.Append(wx.ID_ANY,"Slet et hoved","Slet et hoved i datafilen.")
+		#SET UP EXTRA MENU ITEMS#
+		self.funkmenu.AppendSeparator()
+		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
+		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
+		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hoved i datafilen.")
 		TjekPunkter=self.funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
 		TjekJsider=self.funkmenu.Append(wx.ID_ANY,"Tjek journalsider","Tjek journalsider i datafil(er).")
 		# Creating the menubar.
@@ -289,13 +308,18 @@ class MLBase(GUI.MainWindow):
 		self.Bind(wx.EVT_MENU,self.OnWriteComment,WriteComment)
 		self.Bind(wx.EVT_MENU,self.OnCompareHdiff,CompareHdiff)
 		self.Bind(wx.EVT_MENU,self.OnSumHeights,SumHeights)
+		self.Bind(wx.EVT_MENU,self.OnShowFBdata,ShowFBdata)
 		self.Bind(wx.EVT_MENU,self.OnTTgraph,TTgraph)
 		self.Bind(wx.EVT_MENU,self.OnFBgraph,FBgraph)
 		self.Bind(wx.EVT_MENU,self.OnShowFile,ShowFile)
 		self.Bind(wx.EVT_MENU,self.OnSkrivJS,SkrivJS)
 		self.Bind(wx.EVT_MENU,self.OnTjekPunkter,TjekPunkter)
-		self.Bind(wx.EVT_MENU,self.OnMakeReject,MakeReject)
+		#self.Bind(wx.EVT_MENU,self.OnMakeReject,MakeReject)
 		self.Bind(wx.EVT_MENU,self.OnTjekJsider,TjekJsider)
+		self.Bind(wx.EVT_MENU,self.OnEditHead,EditHead)
+		self.Bind(wx.EVT_MENU,self.OnDeleteToLastHead,DeleteToLastHead)
+		self.Bind(wx.EVT_MENU,self.OnDeleteLastAction,DeleteLast)
+		#self.Bind(wx.EVT_MENU,self.OnSetProjectFiles,SetProjectFiles)
 		#Logging#
 		self.logger = Logger(self,size)
 		#Status Bokse#
@@ -326,11 +350,11 @@ class MLBase(GUI.MainWindow):
 		self._UpdateStatus()
 		#set and log status.
 		self.Log("%s %s igangsat %s." %(self.program.name,self.program.version,self.starttime))
-		if not os.path.exists(FORKAST):
-			self.Log("Forkastelsekriterie-database findes ikke. Generer den via menupunkt.")
-			self.fbtest=None
-		else:
-			self.AttachFBtest()
+		#if not os.path.exists(FORKAST):
+		#	self.Log("Forkastelsekriterie-database findes ikke. Generer den via menupunkt.")
+		#	self.fbtest=None
+		#else:
+		self.AttachFBtest()
 		#if self.gps.alive: #flag to see if all is OK, isAlive() could return True because the thread has not terminated yet...
 		#	self.Log("GPS-enheden er tilsluttet port %i." %self.ini.gpsport)
 		#else: 
@@ -408,6 +432,38 @@ class MLBase(GUI.MainWindow):
 		self.map.Show()
 		self.map.Maximize(0)
 		self.map.Center()
+	def GetNetData(self):
+		if self.fbtest is None or self.data is None:
+			return [],[]
+		lines=self.fbtest.GetDatabase().keys()
+		stations=map( lambda x:x[0],lines)
+		stations.extend(map(lambda x:x[1],lines))
+		stations=map(Numformat2Pointname,stations)
+		unique_stations=list(set(stations))
+		data=self.data.GetManyCoordinates(unique_stations)
+		s_lines=[np.empty((0,2)),np.empty((0,2))]
+		d_lines=[np.empty((0,2)),np.empty((0,2))]
+		s_data=dict()
+		for station,x,y in data:
+			s_data[Pointname2Numformat(station)]=(x,y)
+		for line in lines:
+			s1,s2=line
+			if s_data.has_key(s1) and s_data.has_key(s2):
+				fromp=s_data[s1]
+				top=s_data[s2]
+				if (s2,s1) in lines:
+					d_lines[0]=np.vstack((d_lines[0],fromp))
+					d_lines[1]=np.vstack((d_lines[1],top))
+				else:
+					s_lines[0]=np.vstack((s_lines[0],fromp))
+					s_lines[1]=np.vstack((s_lines[1],top))
+		return s_lines,d_lines
+					
+					
+				
+		
+		
+			
 	#-------ANALYSEFUNKTIONER------------#
 	def OnSumHeights(self,e):
 		AnalyserNet(self,self.resfile)
@@ -427,37 +483,34 @@ class MLBase(GUI.MainWindow):
 		else:
 			self.Log("Punktdatabase ikke tilsluttet.")
 	def OnMakeReject(self,event):
-		files=SelectResultFiles(self,self.program.type)
-		self.Log("%d filer valgt. Danner database." %len(files))
-		if self.fbtest is not None:
-			self.fbtest.Disconnect()
-			self.fbtest=None
-		if os.path.exists(FORKAST):
-			try:
-				os.remove(FORKAST)
-			except:
-				GUI.ErrorBox(self,u"Kunne ikke slette den tidligere database.\nM\u00E5ske bruges den af en anden proces")
-				return
+		#deprecated#
+		pass
+	def OnSetProjectFiles(self,event):
+		#deprecated#
+		pass
+	def AttachFBtest(self,resfiles=None):
+		if resfiles is None:
+			if self.ini.fb_use_all:
+				resfiles=GetResultFiles(self.program.type)
 			else:
-				self.Log("Fjerner tidligere databasefil.")
-		OK,ndone,nerr=FBtest.MakeRejectData(files,FORKAST)
-		if OK:
-			self.Log(u"Forkastelseskriterie-database genereret med %i str\u00E6kninger." %ndone)
-		else:
-			self.Log("Kunne ikke generere databasen.")
-		self.AttachFBtest()
-	def AttachFBtest(self):
-		try:
-			self.fbtest=FBtest.FBreject(FORKAST,self.program.type,self.ini.fbtest,self.ini.fbunit)
-		except:
-			self.fbtest=None
-		else:
-			if self.fbtest.IsInitialized():
-				self.Log(u"Forkastelseskriterie-database tilsluttet med %i str\u00E6kninger." %self.fbtest.GetNumber())
-			else:
-				self.fbtest=None
-		if self.fbtest is None:
-			self.Log("Kunne ikke tilsutte til Forkastelseskriterie-databasen.")
+				resfiles=[self.resfile]
+		data,nerrors=FBtest.MakeRejectData(resfiles)
+		self.fbtest=FBtest.FBreject(data,self.program.type,self.ini.fbtest,self.ini.fbunit)
+		self.Log(u"Dannede forkastelseskriterie database med %d resultatfil(er) og %d str\u00E6kninger." %(len(resfiles),len(data)))
+		if nerrors>0:
+			self.Log(u"%d fejl i l\u00E6sning af filer ved dannelse af database..." %nerrors)
+		if DEBUG:
+			self.Log("%s" %repr(resfiles))
+			self.Log(repr(data))
+			self.ShowFBdata()
+		self.ini.project_files=resfiles #might be useful!
+	def OnShowFBdata(self,event):
+		self.ShowFBdata()
+		
+	def ShowFBdata(self):
+		self.Log(self.fbtest.GetData())
+		
+			
 	def OnMeasTemp(self,e):
 		#fullresfilnavn=self.ini.fullrespath
 		tframe=GUI.InputDialog(self,title=u"Temperaturm\u00E5ling",numlabels=["Temperatur: "],bounds=[(-50,55)],pedantic=True)
@@ -668,7 +721,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		self.inireader=inireader #handle to function reading ini-file
 		self.statusdata=statusdata
 		#Set FBtest database#
-		SetTestFile(program.type)
+		#SetTestFile(program.type)
 		#Init the Frame#
 		wx.Frame.__init__(self,parent,title=program.name)
 		#Appeareance
@@ -745,7 +798,13 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			#Setup GPS#
 			self.gps=GPS.GpsThread(None,self.ini.gpsport-1,self.ini.gpsbaud) #parent should be None here - because the real parent
 			self.data=DataClass.PointData(self.ini.database)  #is the MLBase-frame which gets the gps as input. 
-			
+		#decide whether precision_mode should be set#
+		SetPrecisionMode(self.ini,self.program.type)
+		if DEBUG:
+			for key in self.ini.__dict__.keys():
+				print key,self.ini.__dict__[key]
+		
+		
 	def LogStatus(self):
 		for inst in self.instruments:
 			self.Log(inst.PresentYourself())
@@ -758,8 +817,8 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		for laegte in self.laegter:
 			self.Log("%s" %laegte.PresentYourself())
 		self.Log(u"Forkastelseskriterie for frem-tilbage str\u00E6kninger: %.2f %s" %(self.ini.fbtest,self.ini.fbunit))
-		if os.path.exists(FORKAST):
-			self.Log("Datafil til forkastelseskriterie fundet.")
+		if IS_PRECISION:
+			self.Log(u"Der m\u00E5les i pr\u00E6cisions-tilstand.")
 		for mappe in self.ini.mapdirs:
 			if mappe[-1] not in ["/","\\"]:
 					mappe+="/"
@@ -786,18 +845,13 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 				msg=u"kunne ikke \u00E5bnes!"
 				style="RED"
 			self.Log("%s: port %i %s" %(inst.GetName(),inst.GetPort(),msg),style=style)
-		if not os.path.exists(FORKAST):
-			msg=u"Filen %s til test af forkastelsekriterie for frem-tilbage m\u00E5linger findes ikke.\n" %os.path.basename(FORKAST)
-			msg+="Vil du danne filen?"
-			dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
-			dlg.ShowModal()
-			if dlg.WasOK():
-				files=SelectResultFiles(self,self.program.type)
-				if len(files)>-1: #always do it!
-					OK,ndone,ndoubles=FBtest.MakeRejectData(files,FORKAST)
-					if OK:
-						self.Log(u"Forkastelseskriterie-database genereret med %i str\u00E6kninger." %ndone)
-			dlg.Destroy()
+		resfiles=GetResultFiles()
+		if self.ini.fb_use_all:
+			self.Log("Bruger ALLE %d resultatfiler i %s til frem/tilbage-test." %(len(resfiles),RESDIR_SHORT))
+		else:
+			self.Log("Bruger kun den aktuelle resultatfil til frem/tilbage-test.")
+		self.Log("Dette kan reguleres i ini-filen....")
+		
 	def OnStart(self,event):
 		self.startstate=(self.maalere.Validate() and self.fil.Validate())
 		if self.startstate:
@@ -830,6 +884,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		resfil.write("Laegter:\n")
 		for laegte in self.laegter:
 			resfil.write("%s\n" %laegte.PresentYourself())
+		resfil.write("%*s %.2f %s\n" %(-19,"Forkastelseskriterie:",self.ini.fbtest,self.ini.fbunit))
 		resfil.write("* Slut paa header\n")
 		self.statusdata.SetProject(bsk)
 		resfil.close()
@@ -1042,12 +1097,17 @@ class MySumDialog(GUI.TwoButtonDialog):
 		self.result1.SetLabel("Sum: %.4f m" %sum)
 		self.result2.SetLabel(u"Sum/sqrt(afst): %.4f m/sqrt(km)" %(sum/dist*1000))
 
-def SelectResultFiles(win,program="MGL"):
+
+def GetResultFiles(program="MGL"):
 	allfiles=glob.glob(RESDIR+"/*")
 	goodfiles=[]
-	for file in allfiles:
-		if FileOps.TjekHeader(file,program):
-			goodfiles.append(file)
+	for fname in allfiles:
+		if FileOps.TjekHeader(fname,program):
+			goodfiles.append(fname)
+	return goodfiles
+
+def SelectResultFiles(win,program="MGL"):
+	goodfiles=GetResultFiles()
 	if len(goodfiles)==0:
 		GUI.ErrorBox(win,u"Programmet s\u00F8ger efter filer i %s, men kunne ikke finde nogen %s-resultatfiler!"  %(RESDIR_SHORT,program))
 		return []
@@ -1112,6 +1172,8 @@ class Logger(wx.Panel):
 		self.log.AppendText(text)
 	def Write(self,text):
 		self.log.AppendText(text)
+		
+		
 #class to enter 'hoved' data into:
 class MakeHead(GUI.InputDialog):
 	def __init__(self,parent,statusdata,dato,tid,jside="",temp=None,test=None):
@@ -1175,6 +1237,80 @@ def JsideValidator(value):
 				return True
 			else:
 				return False
+				
+
+#---------------------------------------------#
+# Ini reader base class                          #
+#----------------------------------------------#
+
+class InstrumentError(Exception):
+	def __init__(self,msg="Kunne ikke definere instrumentet!"):
+		self.msg=msg
+	def __str__(self):
+		return self.msg
+		
+class LaegteError(Exception):
+	def __init__(self,msg=""):
+		self.msg=msg
+	def __str__(self):
+		return self.msg
+
+
+class IniReader(object):
+	def __init__(self,path,n_inst,min_laegter=1):
+		self.path=path
+		self.ini=Ini()
+		self.laegter=[]
+		self.instruments=[]
+		self.n_inst=n_inst
+		self.min_laegter=min_laegter
+	def Read(self):
+		f=open(self.path,"r")
+		line=Fkt.RemRem(f)
+		while len(line)>0:
+			i=line.find(":")
+			if i!=-1:
+				key=line[:i].strip()
+			else:
+				line=Fkt.RemRem(f)
+				continue
+			line=line[i+1:].split()
+			if key=="gps" and len(line)>0:
+				self.ini.gpsport=int(line[0])
+				if len(line)>1:
+					self.gpsbaud=int(line[1])
+			if key=="kortmappe" and len(line)>0:
+				mapdir=line[0]
+				if mapdir[-1] not in ["/","\\"]:
+					mapdir+="/"
+				self.ini.mapdirs.append(mapdir)
+			if key=="database" and len(line)>0:
+				self.ini.database=line[0]
+			if key=="ftforkast" and len(line)>0:
+				self.ini.fbtest=float(line[0])
+				if len(line)>1:
+					self.ini.fbunit=line[1]
+			if key=="ft_brug_alle":
+				if len(line)>0:
+					try:
+						ok=int(line[0])
+					except:
+						pass
+					else:
+						self.ini.fb_use_all=bool(ok)
+			self.CheckAdditionalKeys(key,line)
+			line=Fkt.RemRem(f)
+		f.close()
+		if len(self.instruments)!=self.n_inst: 
+			raise InstrumentError("Korrekt antal instrumenter ikke defineret i ini-filen!")
+		if len(self.laegter)<self.min_laegter:
+			raise LaegteError("Der er ikke defineret mindst %d laegte i ini-filen" %self.min_laegter)
+		return self.ini,self.instruments,self.laegter
+	def CheckAdditionalKeys(self,key,line):
+		#override this method in subclass#
+		pass
+	
+
 
 #-------------------------------------#
 # Sound Alert  

@@ -162,11 +162,21 @@ class PointData(object):
 		else:
 			x,y=None,None
 		return x,y
+	def GetManyCoordinates(self,names): #hs-names by default
+		#nametype=self._GetNameType(names[0])
+		sql_list="("
+		for name in names[:-1]:
+			sql_list+='"%s",' %name
+		sql_list+='"%s")' %names[-1]
+		self.cur.execute("select hsnavn,easting,northing from main where hsnavn in %s"%sql_list)
+		data=self.cur.fetchall()
+		return data
+		
 	def Locate(self,x1,x2,y1,y2,lost=0,nametype=0):
 		self.selected=None #always unselect the special point here
 		if not self.INITIALIZED:
 			return
-		if (x1,x2,y1,y2,lost,nametype)==self.lastfetch: #then we already have data
+		if (x1,x2,y1,y2,lost,nametype)==self.lastfetch and self.located_np>0: #then we already have data
 			return
 		self.lastfetch=(x1,x2,y1,y2,lost,nametype)
 		if not TestOverlap(x1,x2,y1,y2,self.x1,self.x2,self.y1,self.y2):
@@ -267,6 +277,7 @@ class PointData(object):
 		self.located=np.array([],dtype=self.dtype)
 		self.located_np=0
 		self.selected=None
+		self.lastfetch=None
 		self.lx1,self.lx2,self.ly1,self.ly2=-1,-1,-1,-1
 		self.maxedout=False
 	def Disconnect(self):

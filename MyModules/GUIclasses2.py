@@ -1056,3 +1056,8 @@ def ErrorBox(window,msg):
 	dlg=MyMessageDialog(window,msg=msg,title="Fejl!")
 	dlg.ShowModal()
 	dlg.Destroy()
+
+def Message(window,msg,title=u"Bem\u00E6rk:"):
+	dlg=MyMessageDialog(window,msg=msg,title=title)
+	dlg.ShowModal()
+	dlg.Destroy()

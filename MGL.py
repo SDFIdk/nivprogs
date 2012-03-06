@@ -740,21 +740,20 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			return True
 		else:
 			data=self.statusdata
-			found,OK,diff,nfound=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
-			#self.Log(repr(found)+repr(OK)+repr(diff)+repr(nfound))
+			found,OK,diff,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
 			if found:
 				if OK:
-					self.Log(u"Fremm\u00E5ling fundet, forkastelseskriterie overholdt.")
+					self.Log(msg)
 					return True
 				else:
-					msg=u"Forkastelseskriterie for frem og tilbage-m\u00E5lte str\u00E6kninger overksredet med %.1f mm.\n" %diff
-					msg+=u"Vil du godkende m\u00E5lingen?"
+					msg+=u"\nVil du godkende m\u00E5lingen?"
 					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
 					dlg.ShowModal()
 					OK=dlg.WasOK()
 					dlg.Destroy()
 					return OK
 			else:
+				self.Log(msg)
 				return True
 	def GoToDouble(self):
 		self.forward.DisableTop()
@@ -810,9 +809,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		if hvd.WasOK():
 			asphalt_temp=None
 			vals=hvd.GetValues()
-			start,slut,dato,tid,jside,temp,ekstra=vals[:7]
-			if len(vals)>6:
-				asphalt_temp=vals[7]
+			if len(vals)==8:
+				start,slut,dato,tid,jside,temp,asphalt_temp,ekstra=vals
+			else:
+				start,slut,dato,tid,jside,temp,ekstra=vals
 			if start!=self.statusdata.GetStart() or slut!=self.statusdata.GetEnd():
 				self.statusdata.slutpunkt=slut #if edited save this
 				self.statusdata.startpunkt=start
@@ -1162,95 +1162,42 @@ def main():
 	frame.Show()
 	App.MainLoop()
 	sys.exit()
-class InstrumentError(Exception):
-	def __init__(self,msg="Kunne ikke definere instrumentet!"):
-		self.msg=msg
-	def __str__(self):
-		return self.msg
+
 		
-class LaegteError(Exception):
-	def __init__(self,msg=""):
-		self.msg=msg
-	def __str__(self):
-		return self.msg
-		
-class MGLinireader(object): #add more error handling!
+class MGLinireader(Core.IniReader): #add more error handling!
 	def __init__(self):
-		self.path=BASEDIR+"/MGL.ini"
-	def Read(self):
-		#default vaerdier#
-		self.fbtest=3.0 #frem-tilbage forkast
-		self.fbunit="ne"
-		self.maxdd=2.0 #max. afst. forsk.
-		self.maxsl=50 #max. sigtel.
-		self.maxsd=0.00012 #max inst. sd
-		self.maxhd=0.00050 #max forskel mellem sigter i praes.-mode
-		self.gpsport=-1 
-		self.gpsbaud=-1
-		self.mapdirs=[]
-		self.database=None
-		self.instport=5 
-		self.instbaud=9600
-		self.instrument=None
-		self.laegter=[]
-		f=open(self.path,"r")
-		line=Funktioner.RemRem(f)
-		while len(line)>0:
-				i=line.find(":")
-				if i!=-1:
-					key=line[:i].strip()
-				line=line[i+1:].split()
-				if key=="gps" and len(line)>0:
-					self.gpsport=int(line[0])
-					if len(line)>1:
-						self.gpsbaud=int(line[1])
-				if key=="kortmappe" and len(line)>0:
-					mapdir=line[0]
-					if mapdir[-1] not in ["/","\\"]:
-						mapdir+="/"
-					self.mapdirs.append(mapdir)
-				if key=="database" and len(line)>0:
-					self.database=line[0]
-				if key=="instrument" and len(line)>3:
-					instrumenttype=line[1]
-					instrumentname=line[0]
-					instrumentport=int(line[2])
-					instrumentbaud=int(line[3])
-					if instrumenttype.lower().find("dini")!=-1:
-						self.instrument=Instrument.DINI(instrumentname,instrumentport,instrumentbaud,instrumenttype)
-				if key=="ftforkast" and len(line)>0:
-					self.fbtest=float(line[0])
-				if key=="fejlgraenser" and len(line)>0:
-					self.maxsl=float(line[0])
-					if len(line)>1:
-						self.maxdd=float(line[1])
-					if len(line)>2:
-						self.maxsd=float(line[2])
-					if len(line)>3:
-						self.maxhd=float(line[3])
-				if key=="laegte" and len(line)>3:
-					name=line[0]
-					zone_low=float(line[1])
-					zone_high=float(line[2])
-					zeroshift=float(line[3])
-					self.laegter.append(MGLlaegte(name,zone_low,zone_high,zeroshift))
-				line=Funktioner.RemRem(f)
-		Ini=Core.Ini()
-		Ini.gpsbaud=self.gpsbaud
-		Ini.gpsport=self.gpsport
-		Ini.mapdirs=self.mapdirs
-		Ini.database=self.database
-		Ini.fbtest=self.fbtest
-		Ini.fbunit=self.fbunit
-		Ini.maxdd=self.maxdd
-		Ini.maxsl=self.maxsl
-		Ini.maxsd=self.maxsd
-		Ini.maxhd=self.maxhd
-		if self.instrument is None:
-			raise InstrumentError("Instrument ikke defineret i ini-filen!")
-		if len(self.laegter)<2:
-			raise LaegteError(u"Der er ikke defineret mindst to laegter i ini-filen") #trouble with unicode here....???
-		return Ini,[self.instrument],self.laegter
+		Core.IniReader.__init__(self,BASEDIR+"/MGL.ini",1,1)
+		self.ini.fbtest=3.0 #frem-tilbage forkast
+		self.ini.fbunit="ne"
+		self.ini.maxdd=2.0 #max. afst. forsk.
+		self.ini.maxsl=50 #max. sigtel.
+		self.ini.maxsd=0.00012 #max inst. sd
+		self.ini.maxhd=0.00050 #max forskel mellem sigter i praes.-mode
+		self.ini.instport=5 
+		self.ini.instbaud=9600
+	def CheckAdditionalKeys(self,key,line):
+		if key=="instrument" and len(line)>3:
+			instrumenttype=line[1]
+			instrumentname=line[0]
+			instrumentport=int(line[2])
+			instrumentbaud=int(line[3])
+			if instrumenttype.lower().find("dini")!=-1:
+				self.instruments.append(Instrument.DINI(instrumentname,instrumentport,instrumentbaud,instrumenttype))
+		if key=="fejlgraenser" and len(line)>0:
+			self.ini.maxsl=float(line[0])
+			if len(line)>1:
+				self.ini.maxdd=float(line[1])
+			if len(line)>2:
+				self.ini.maxsd=float(line[2])
+			if len(line)>3:
+				self.ini.maxhd=float(line[3])
+		if key=="laegte" and len(line)>3:
+			name=line[0]
+			zone_low=float(line[1])
+			zone_high=float(line[2])
+			zeroshift=float(line[3])
+			self.laegter.append(MGLlaegte(name,zone_low,zone_high,zeroshift))
+			
 	
 if __name__=="__main__":
 	main()

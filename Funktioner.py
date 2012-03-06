@@ -79,6 +79,26 @@ def Dato():
 		maaned="0"+maaned
 	dato=dag+"."+maaned+"."+str(t.tm_year)
 	return dato
+#inverse functions of date, time
+def GetTime(tid):
+	delim="."
+	if ":" in tid:
+		delim=":"
+	h,m=tid.split(delim)
+	return int(m),int(h)
+
+def GetDate(date):
+	delim="."
+	if ":" in date:
+		delim=":"
+	elif "-" in date:
+		delim="-"
+	date=map(int,date.split(delim))
+	if date[0]>365:
+		date.reverse()
+	return date
+		
+
 def Dato2():
 	t=time.localtime()
 	maaned=str(t.tm_mon)
