@@ -159,15 +159,12 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 class MGLStatusData(StatusData):
 		def __init__(self):
 			StatusData.__init__(self)
-		def Clear(self):
 			self.ddist=[0]
-			self._Clear()
 		def AddSetup(self,hdiff=0,dist=0,dd=0): #overrides previous
 			self.ddist[-1]=dd
 			self.ddist.append(0)
 			self._AddSetup(hdiff,dist)
-		def StartNewStretch(self):
-			self._StartNewStretch()
+		def ClearDD(self):
 			self.ddist=[0]
 		def GetDDSum(self):
 			return sum(self.ddist)
@@ -275,8 +272,8 @@ class MLBase(GUI.MainWindow):
 		self.anamenu.AppendSeparator()
 		CompareHdiff=self.anamenu.Append(wx.ID_ANY,u"Sammenlign h\u00F8jdeforskelle",u"Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
 		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
-		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie database","Viser data i forkastelseskriteriedatabasen.")
-		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,u"Outlier analyse",u"Foretag en outlier analyse af str\u00E6kninger.") 
+		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie-database","Viser data i forkastelseskriteriedatabasen.")
+		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,u"Forkastelseskriterie-analyse",u"Foretag en outlier analyse af str\u00E6kninger.") 
 		#SetProjectFiles=self.anamenu.Append(wx.ID_ANY,u"Definer projekt-resultatfiler",u"Definer resultatfiler til frem/tilbage test.")
 		#MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
@@ -288,8 +285,8 @@ class MLBase(GUI.MainWindow):
 		#SET UP EXTRA MENU ITEMS#
 		self.funkmenu.AppendSeparator()
 		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
-		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hoved","Sletter til seneste hoved i datafilen!")
-		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hoved i datafilen.")
+		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hovede","Sletter til seneste hoved i datafilen!")
+		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hovede i datafilen.")
 		TjekPunkter=self.funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
 		TjekJsider=self.funkmenu.Append(wx.ID_ANY,"Tjek journalsider","Tjek journalsider i datafil(er).")
 		# Creating the menubar.
@@ -530,7 +527,6 @@ class MLBase(GUI.MainWindow):
 		dlg.Destroy()
 			
 	def OnMeasTemp(self,e):
-		#fullresfilnavn=self.ini.fullrespath
 		tframe=GUI.InputDialog(self,title=u"Temperaturm\u00E5ling",numlabels=["Temperatur: "],bounds=[(-50,55)],pedantic=True)
 		tframe.ShowModal()
 		if tframe.WasOK():
@@ -686,6 +682,8 @@ class MLBase(GUI.MainWindow):
 		self.Log("Erstatter hovede: %s" %(choices[sel]))
 		FileOps.EditHead(self.resfile,sel,newhead)
 	def DeleteToLastHead(self):
+		if not GUI.YesNo(self,u"Er du sikker p\u00E5 at du vil slette?","Slet til hovede."):
+			return
 		self.statusdata.ClearCurrentStretch()
 		FileOps.DeleteToLastHead(self.resfile)
 		self.Log(SL)
@@ -694,6 +692,8 @@ class MLBase(GUI.MainWindow):
 	def DeleteLastAction(self):
 		nopst=self.statusdata.GetSetups()
 		if nopst==0:
+			return
+		if not GUI.YesNo(self,u"Er du sikker p\u00E5 at du vil slette?",u"Slet seneste m\u00E5ling."):
 			return
 		if nopst==1:
 			self.statusdata.ClearCurrentStretch()
@@ -865,7 +865,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Log("%s: port %i %s" %(inst.GetName(),inst.GetPort(),msg),style=style)
 		resfiles=GetResultFiles()
 		if self.ini.fb_use_all:
-			self.Log("Bruger ALLE %d resultatfiler i %s til frem/tilbage-test." %(len(resfiles),RESDIR_SHORT))
+			self.Log("Bruger ALLE %d resultatfiler i mappen %s til frem/tilbage-test." %(len(resfiles),RESDIR_SHORT))
 		else:
 			self.Log("Bruger kun den aktuelle resultatfil til frem/tilbage-test.")
 		self.Log("Dette kan reguleres i ini-filen....")

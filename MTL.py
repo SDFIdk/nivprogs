@@ -13,8 +13,9 @@ import Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.23"
-PROGRAM.date="2012-01-13"
+PROGRAM.version="beta 0.30"
+PROGRAM.exename="MTLb030.exe"
+PROGRAM.date="2012-03-07"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 

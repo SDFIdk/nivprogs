@@ -1061,3 +1061,10 @@ def Message(window,msg,title=u"Bem\u00E6rk:"):
 	dlg=MyMessageDialog(window,msg=msg,title=title)
 	dlg.ShowModal()
 	dlg.Destroy()
+
+def YesNo(window,msg,title=u"Foresp\u00F8rgsel",buttonlabels=["OK","FORTRYD"]):
+	dlg=OKdialog(window,title=title,msg=msg,buttonlabels=buttonlabels)
+	dlg.ShowModal()
+	ok=dlg.WasOK()
+	dlg.Destroy()
+	return ok

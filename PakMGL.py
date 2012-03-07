@@ -4,6 +4,8 @@ import shutil
 import os
 import sys
 import glob
+from MGL import PROGRAM
+nsi_name="MGL.exe"
 os.environ["PATH"] += ";C:\\gdalwin32-1.6\\bin"
 sys.argv.append("py2exe")
 media_files=glob.glob("./mcontent/*")
@@ -19,4 +21,6 @@ console=[{"script" : "MGL.py"}],
 data_files=[("",extra_files),("mcontent",media_files),("Microsoft.VC90.MFC", mfc_files),("Microsoft.VC90.CRT",crt_files),])
 #shutil.copy("C:\\Python25\\pythonw.exe.manifest","./dist/MGL.exe.manifest") #not needed in python2.6
 os.system("C:\\Programmer\NSIS\makensis.exe setup_MGL.nsi")
+ver_name=PROGRAM.exename
+os.rename(nsi_name,ver_name)
 sys.exit()

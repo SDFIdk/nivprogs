@@ -11,8 +11,9 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.64"
-PROGRAM.date="05-12-11"
+PROGRAM.version="beta 1.70"
+PROGRAM.exename="MGLb170.exe"
+PROGRAM.date="2012-03-07"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -206,9 +207,14 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		GUI.FullScreenWindow.__init__(self,parent) #window with 5 sizer rows
 		self.map=PanelMap(self,self.parent.data,self.ini.mapdirs) #setup the map - a panel in the center of the screen
 		self.map.RegisterPointFunction(self.PointNameHandler)
+		#setup check boxes#
 		self.footsetup=wx.CheckBox(self,label="Fodopstilling.")
 		self.footsetup.SetFont(GUI.DefaultFont(size-2))
-		self.Bind(wx.EVT_CHECKBOX,self.OnFoot)
+		self.footsetup.Bind(wx.EVT_CHECKBOX,self.OnFoot)
+		self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst.")
+		self.clearddsum.SetFont(GUI.DefaultFont(size-2))
+		self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
+		#end check boxes#
 		if self.pmode=='detail':
 			self.back=MGLpanel(self,u"Tilbagem\u00E5ling",self.rodnames,size)
 			self.forward=MGLpanel(self,u"Fremm\u00E5ling",self.rodnames,size)
@@ -291,6 +297,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		vsizer2=wx.BoxSizer(wx.VERTICAL)
 		vsizer3=wx.BoxSizer(wx.VERTICAL)
 		hsizer=wx.BoxSizer(wx.HORIZONTAL)
+		hsizer2=wx.BoxSizer(wx.HORIZONTAL)
 		vsizer1.Add(self.backstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer1.Add(self.back,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer1.Add(self.optionpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
@@ -298,7 +305,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		vsizer2.Add(self.forward,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer3.Add(self.map,0,wx.ALL|wx.CENTER,5)
-		vsizer3.Add(self.footsetup,0,wx.ALL,5)
+		hsizer2.Add(self.footsetup,0,wx.ALL,5)
+		hsizer2.Add(self.clearddsum,0,wx.ALL,5)
+		vsizer3.Add(hsizer2,0,wx.ALL,5)
+		
 		hsizer.Add(vsizer1,1,wx.ALL,5)
 		hsizer.Add(vsizer3,0,wx.ALL|wx.CENTER,5)
 		hsizer.Add(vsizer2,1,wx.ALL,5)
@@ -362,6 +372,14 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.Log("Normal opstilling - gps positioner lagres.")
 			self.footsetup.SetBackgroundColour(GUI.BGCOLOR)
 		self.footsetup.Refresh()
+	def OnClearDDsum(self,event):
+		if self.clearddsum.IsChecked():
+			self.Log("Resetter delta-afstands-sum efter punkttilslutning")
+			self.clearddsum.SetBackgroundColour("yellow")
+		else:
+			self.Log("Resetter IKKE delta-afstands-sum punkttilslutning")
+			self.clearddsum.SetBackgroundColour(GUI.BGCOLOR)
+		self.clearddsum.Refresh()
 	#Text-events only send in manuel mode. Auto-mode uses ChangeValue.
 	#Rods are set either when a new selection is made,  when something useful is entered in measurement-fields or when return ios hit in rod-field.
 	def RodHandler(self,aim):
@@ -852,6 +870,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
 			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
 			self.statusdata.StartNewStretch()
+			#if clearddsum is checked : also clear da sum, man!
+			if self.clearddsum.IsChecked():
+				self.statusdata.ClearDD()
+				self.Log("Resetter delta-afstands-sum")
 			self.back.EnablePoint()
 			#start new strech
 			hvd.Destroy()
