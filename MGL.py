@@ -12,7 +12,7 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
 PROGRAM.version="beta 1.70"
-PROGRAM.exename="MGLb170.exe"
+PROGRAM.exename="MGL_b170.exe"
 PROGRAM.date="2012-03-07"
 PROGRAM.type="MGL"
 PROGRAM.about="""
@@ -211,9 +211,11 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.footsetup=wx.CheckBox(self,label="Fodopstilling.")
 		self.footsetup.SetFont(GUI.DefaultFont(size-2))
 		self.footsetup.Bind(wx.EVT_CHECKBOX,self.OnFoot)
-		self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst.")
+		self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst v. hovede.")
 		self.clearddsum.SetFont(GUI.DefaultFont(size-2))
 		self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
+		self.clearddsum_now=GUI.MyButton(self,u"Nulstil nu",size-2)
+		self.clearddsum_now.Bind(wx.EVT_BUTTON,self.OnClearDDsum_now)
 		#end check boxes#
 		if self.pmode=='detail':
 			self.back=MGLpanel(self,u"Tilbagem\u00E5ling",self.rodnames,size)
@@ -304,9 +306,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		vsizer2.Add(self.forwardstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer2.Add(self.forward,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer3.Add(self.map,0,wx.ALL|wx.CENTER,5)
+		vsizer3.Add(self.map,0,wx.ALL|wx.TOP,5)
 		hsizer2.Add(self.footsetup,0,wx.ALL,5)
 		hsizer2.Add(self.clearddsum,0,wx.ALL,5)
+		hsizer2.Add(self.clearddsum_now,0,wx.ALL|wx.CENTER,5)
 		vsizer3.Add(hsizer2,0,wx.ALL,5)
 		
 		hsizer.Add(vsizer1,1,wx.ALL,5)
@@ -380,6 +383,14 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.Log("Resetter IKKE delta-afstands-sum punkttilslutning")
 			self.clearddsum.SetBackgroundColour(GUI.BGCOLOR)
 		self.clearddsum.Refresh()
+	def OnClearDDsum_now(self,event):
+		ok=True
+		if self.statusdata.GetSetups()>0:
+			ok=GUI.YesNo(self,u"Der er foretaget m\u00E5linger, vil du nulstille afstandssum?","Afstandssum")
+		if ok:
+			self.statusdata.ClearDD()
+			self.Log("Resetter delta-afstands-sum")
+			self.UpdateStretchBox()
 	#Text-events only send in manuel mode. Auto-mode uses ChangeValue.
 	#Rods are set either when a new selection is made,  when something useful is entered in measurement-fields or when return ios hit in rod-field.
 	def RodHandler(self,aim):
@@ -658,7 +669,8 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.back.hd2.SetFocus()
 		else:
 			if not self.setup.HasData():
-				dlg=GUI.MyMessageDialog(self,u"Bem\u00E6rk",u"Hvis du vil slette flere data m\u00E5 du editere resultatfilen :-)")
+				dlg=GUI.MyMessageDialog(self,u"Bem\u00E6rk",
+				u"Hvis du vil slette flere data m\u00E5 du editere resultatfilen,\neller bruge redigeringsfunktioner i hovedvindue")
 				dlg.ShowModal()
 			self.back.ClearTop()
 			self.forward.ClearTop()
@@ -798,6 +810,12 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.forwardstatus.Clear()
 		self.forward.Clear()
 		self.back.Clear()
+		#if clearddsum is checked : also clear da sum, man!
+		if self.clearddsum.IsChecked():
+			self.statusdata.ClearDD()
+			self.Log("Resetter delta-afstands-sum")
+		if self.log.GetNumberOfLines()>12:
+			self.log.Clear()
 		if self.statusdata.slutpunkt is not None and self.statusdata.GetSetups()==0: #do this after clear.
 				self.back.point.ChangeValue(self.statusdata.slutpunkt)
 		self.forward.EnableTop()
@@ -870,10 +888,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
 			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
 			self.statusdata.StartNewStretch()
-			#if clearddsum is checked : also clear da sum, man!
-			if self.clearddsum.IsChecked():
-				self.statusdata.ClearDD()
-				self.Log("Resetter delta-afstands-sum")
+			
 			self.back.EnablePoint()
 			#start new strech
 			hvd.Destroy()
@@ -958,8 +973,6 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 	def OnInstLog(self,event):
 		self.Log(event.text)
 	def Log(self,text):
-		if self.log.GetNumberOfLines()>6:
-			self.log.Clear()
 		self.log.AppendText(text+"\n")
 #-----------------------------------------------------------#
 #Panels etc. used in the MainMGLMeasurement-frame

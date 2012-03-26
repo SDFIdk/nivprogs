@@ -155,6 +155,8 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		self.projekt=proj
 	def GetProject(self):
 		return self.projekt
+	def GotoNextInstrument(self): #overridden in MTLStatusData
+		pass
 		
 class MGLStatusData(StatusData):
 		def __init__(self):
