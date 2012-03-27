@@ -11,7 +11,7 @@ sys.argv.append("py2exe")
 media_files=glob.glob("./mcontent/*")
 mfcdir="C:\\Python26\\Lib\\site-packages\\pythonwin"
 mfc_files= [os.path.join(mfcdir, i) for i in ["mfc90.dll" ,"mfc90u.dll" ,"mfcm90.dll" ,"mfcm90u.dll" ,"Microsoft.VC90.MFC.manifest"]]
-crt_files=glob.glob("C:\\Depth\\crt\\*")
+crt_files=glob.glob(".\\crt\\*")
 extra_files=["C:\\Python26\\DLLs\\libgeos-3-0-4.dll","C:\\Python26\\DLLs\\geos.dll"]
 print mfc_files
 #Husk pythonw.exe.manifest!!! -not needed in python2.6

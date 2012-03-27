@@ -797,12 +797,12 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			states.append(inst.TestPort())
 		self.portstatus.UpdateStatus(states=states)
 	def OnUpdateButton(self,event):
-		self.log.Clear()
+		#self.log.Clear()
 		self.Log("Initialiserer:")
 		self.Setup()
 		self.TestPorts()
 		self.LogStatus()
-		
+		self.log.Refresh()
 	def Setup(self):
 		if self.data is not None:
 			self.data.Disconnect()
@@ -1285,6 +1285,9 @@ class IniReader(object):
 		self.n_inst=n_inst
 		self.min_laegter=min_laegter
 	def Read(self):
+		self.laegter=[]
+		self.instruments=[]
+		self.ini=Ini()
 		f=open(self.path,"r")
 		line=Fkt.RemRem(f)
 		while len(line)>0:
