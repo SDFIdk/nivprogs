@@ -211,10 +211,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.footsetup=wx.CheckBox(self,label="Fodopstilling.")
 		self.footsetup.SetFont(GUI.DefaultFont(size-2))
 		self.footsetup.Bind(wx.EVT_CHECKBOX,self.OnFoot)
-		self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst v. hovede.")
-		self.clearddsum.SetFont(GUI.DefaultFont(size-2))
-		self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
-		self.clearddsum_now=GUI.MyButton(self,u"Nulstil nu",size-2)
+		#self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst v. hovede.")
+		#self.clearddsum.SetFont(GUI.DefaultFont(size-2))
+		#self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
+		self.clearddsum_now=GUI.MyButton(self,u"Nulstil afstandssum",size-2)
 		self.clearddsum_now.Bind(wx.EVT_BUTTON,self.OnClearDDsum_now)
 		#end check boxes#
 		if self.pmode=='detail':
@@ -308,7 +308,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
 		vsizer3.Add(self.map,0,wx.ALL|wx.TOP,5)
 		hsizer2.Add(self.footsetup,0,wx.ALL,5)
-		hsizer2.Add(self.clearddsum,0,wx.ALL,5)
+		#hsizer2.Add(self.clearddsum,0,wx.ALL,5)
 		hsizer2.Add(self.clearddsum_now,0,wx.ALL|wx.CENTER,5)
 		vsizer3.Add(hsizer2,0,wx.ALL,5)
 		
@@ -375,19 +375,19 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.Log("Normal opstilling - gps positioner lagres.")
 			self.footsetup.SetBackgroundColour(GUI.BGCOLOR)
 		self.footsetup.Refresh()
-	def OnClearDDsum(self,event):
-		if self.clearddsum.IsChecked():
-			self.Log("Resetter delta-afstands-sum efter punkttilslutning")
-			self.clearddsum.SetBackgroundColour("yellow")
-		else:
-			self.Log("Resetter IKKE delta-afstands-sum punkttilslutning")
-			self.clearddsum.SetBackgroundColour(GUI.BGCOLOR)
-		self.clearddsum.Refresh()
+	#def OnClearDDsum(self,event):
+	#	if self.clearddsum.IsChecked():
+	#		self.Log("Resetter delta-afstands-sum efter punkttilslutning")
+	#		self.clearddsum.SetBackgroundColour("yellow")
+	#	else:
+	#		self.Log("Resetter IKKE delta-afstands-sum punkttilslutning")
+	#		self.clearddsum.SetBackgroundColour(GUI.BGCOLOR)
+	#	self.clearddsum.Refresh()
 	def OnClearDDsum_now(self,event):
-		ok=True
 		if self.statusdata.GetSetups()>0:
-			ok=GUI.YesNo(self,u"Der er foretaget m\u00E5linger, vil du nulstille afstandssum?","Afstandssum")
-		if ok:
+			self.Log(u"Kan ikke nulstille afstandssum midt i en str\u00E6kning.")
+			return
+		else:
 			self.statusdata.ClearDD()
 			self.Log("Resetter delta-afstands-sum")
 			self.UpdateStretchBox()
@@ -811,9 +811,9 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.forward.Clear()
 		self.back.Clear()
 		#if clearddsum is checked : also clear da sum, man!
-		if self.clearddsum.IsChecked():
-			self.statusdata.ClearDD()
-			self.Log("Resetter delta-afstands-sum")
+		#if self.clearddsum.IsChecked():
+		#	self.statusdata.ClearDD()
+		#	self.Log("Resetter delta-afstands-sum")
 		if self.log.GetNumberOfLines()>12:
 			self.log.Clear()
 		if self.statusdata.slutpunkt is not None and self.statusdata.GetSetups()==0: #do this after clear.
