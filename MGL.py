@@ -999,9 +999,9 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		self.point=GUI.MyTextField(self,size=(120,-1),fontsize=size)
 		pointsizer=GUI.FieldWithLabel(self,field=self.point,size=size,label="Pkt:")
 		self.rod=Core.RodBox(self,rods,(120,-1),fontsize=size)
-		self.dist=MyNumMGL(self,0,200,2,size=(120,-1),fontsize=size) #distandsfelt
+		self.dist=MyNumMGL(self,-100,200,2,size=(120,-1),fontsize=size) #distandsfelt
 		rodsizer=GUI.FieldWithLabel(self,field=self.rod,label=u"Lgt:",size=size)
-		self.hd=MyNumMGL(self,0,100,5,size=(120,-1),fontsize=size) #sigtehoejdefelt
+		self.hd=MyNumMGL(self,-100,200,5,size=(120,-1),fontsize=size) #sigtehoejdefelt
 		self.hds=[self.hd] 
 		distsizer=GUI.FieldWithLabel(self,field=self.dist,size=size,label="L:")
 		maalsizer=GUI.FieldWithLabel(self,field=self.hd,size=size,label="H1:")
