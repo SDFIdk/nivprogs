@@ -459,7 +459,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.mmode=0  #0 : distances   1: angles, changed in the 2 SetMode fcts. below
 		self.auto_fields=[[],[]] #two 'columns' to store fields for 'auto mode' in.
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
-		self.modecolors=["blue","red","yellow"]
+		self.modecolors=["green","red","yellow"]
 		#END MODE SETUP - inherit stuff from parent#
 		self.statusdata=parent.statusdata
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
@@ -886,7 +886,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.mode=0 #modes are 0: manual and 1: auto 2; single auto - i.e. just one field....
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
-		self.modecolors=["blue","red","yellow"]
+		self.modecolors=["green","red","yellow"]
 		self.auto_fields=[] #an ordered list of fields from subpanel to receive data from instrument
 		self.sigte=-2*int((self.statusdata.GetSetups())==0)+1
 		self.setup=MTLsetup.MTLBasisSetup(self.sigte)

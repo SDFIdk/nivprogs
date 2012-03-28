@@ -1154,7 +1154,7 @@ def GetFile(win,msg="Select a file:",defaultDir=None,style=wx.FD_OPEN,wildcard="
 	if dlg.ShowModal()==wx.ID_OK:
 		filename=dlg.GetPath()
 	else:
-		filename=-1
+		filename=""
 	dlg.Destroy()
 	return filename
 

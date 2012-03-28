@@ -11,8 +11,8 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.71"
-PROGRAM.exename="MGL_b171.exe"
+PROGRAM.version="beta 1.72"
+PROGRAM.exename="MGL_b172.exe"
 PROGRAM.date="2012-03-26"
 PROGRAM.type="MGL"
 PROGRAM.about="""

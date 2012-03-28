@@ -437,12 +437,11 @@ class StatusBox2(wx.Panel):
 		self.box=wx.StaticBox(self,label=label)
 		self.box.SetFont(DefaultFont(fs))
 		self.text=[]
-		vsizers=[]
-		self.bsizer=wx.StaticBoxSizer(self.box,wx.HORIZONTAL)
+		self.bsizer=wx.StaticBoxSizer(self.box)
+		self.gridsizer=wx.FlexGridSizer(self.colsize,self.cols*2,10,10)
 		self.sizer=wx.BoxSizer()
 		n=0
 		for j in range(0,self.cols):
-			vsizers.append(wx.BoxSizer(wx.VERTICAL))
 			i=0
 			maxtext=0
 			while n<self.N and i<self.colsize:
@@ -451,15 +450,14 @@ class StatusBox2(wx.Panel):
 				line=[MyText(self,self.list[n],fs),MyText(self,"",fs)]
 				hsizer=wx.BoxSizer(wx.HORIZONTAL)
 				self.text.append(line)
-				self.text[n][1].SetFont(DefaultLogFont(fontsize,True))
-				self.text[n][0].SetFont(DefaultLogFont(fontsize))
-				hsizer.Add(line[0],0,wx.ALL,5)
-				hsizer.Add(line[1],0,wx.ALL,5)
-				vsizers[j].Add(hsizer,0,wx.ALL,5)
+				line[0].SetFont(DefaultLogFont(fontsize,True))
+				line[1].SetFont(DefaultLogFont(fontsize))
+				self.gridsizer.Add(line[0],1,wx.ALL|wx.EXPAND|wx.CENTER,5)
+				self.gridsizer.Add(line[1],2,wx.ALL|wx.EXPAND|wx.CENTER,5)
 				i+=1
 				n+=1
 			self.col_tl.append(maxtext)
-			self.bsizer.Add(vsizers[j],0,wx.ALL,5)
+		self.bsizer.Add(self.gridsizer,1,wx.ALL,5)
 		self.sizer.Add(self.bsizer,0,wx.ALL,5)
 		
 	def UpdateStatus(self,inputlist=[],states=None,colours=None,field=None,text=None,label=None,colour=None):    #Hmmm, vist lettere med default vaerdier!!
@@ -467,12 +465,12 @@ class StatusBox2(wx.Panel):
 			for i in range(0,len(states)):
 				if states[i]:
 					self.text[i][1].SetLabel("OK")
-					self.text[i][1].SetForegroundColour("green")
-					self.text[i][0].SetBackgroundColour("green")
+					self.text[i][1].SetBackgroundColour("green")
+					#self.text[i][0].SetBackgroundColour("green")
 				else:
 					self.text[i][1].SetLabel("ERR")
-					self.text[i][1].SetForegroundColour("red")
-					self.text[i][0].SetBackgroundColour("red")
+					self.text[i][1].SetBackgroundColour("red")
+					#self.text[i][0].SetBackgroundColour("red")
 				for text in self.text[i]:
 					text.Refresh()
 		else: 
@@ -501,16 +499,18 @@ class StatusBox2(wx.Panel):
 					text_label="NA"
 				col_nr=int(i/self.colsize)
 				textl=self.col_tl[col_nr]
-				extra_space=max(0,textl-len(self.list[i]))
-				more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
+				#extra_space=max(0,textl-len(self.list[i]))
+				#more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
+				extra_space=0
+				more_space=0
 				self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"",text_label,more_space,""))
 				if paint and colours.has_key(i):
 					if colours[i] is None:
 						col=self.parent.GetBackgroundColour()
 					else:
 						col=colours[i]
-					self.text[i][0].SetBackgroundColour(col)
-					self.text[i][1].SetForegroundColour(col)
+					#self.text[i][0].SetBackgroundColour(col)
+					self.text[i][1].SetBackgroundColour(col)
 					for text in self.text[i]:
 						text.Refresh()
 		if label!=None:
@@ -521,11 +521,13 @@ class StatusBox2(wx.Panel):
 		for i in range(0,self.N):
 			col_nr=int(i/self.colsize)
 			textl=self.col_tl[col_nr]
-			extra_space=max(0,textl-len(self.list[i]))
-			more_space=max(0,self.minlengths[i]-extra_space-2)
+			#extra_space=max(0,textl-len(self.list[i]))
+			#more_space=max(0,self.minlengths[i]-extra_space-2)
+			extra_space=0
+			more_space=0
 			self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"","NA",more_space,""))
-			self.text[i][1].SetForegroundColour("black")
-			self.text[i][0].SetBackgroundColour(bgcol)
+			self.text[i][1].SetBackgroundColour(bgcol)
+			#self.text[i][0].SetBackgroundColour(bgcol)
 			for text in self.text[i]:
 				text.Refresh()
 		self.SetSizerAndFit(self.sizer)
