@@ -24,7 +24,7 @@ OGR_VECTOR_FORMATS="*.shp;*.tab;*.gml"
 #Last update/bugfix  january 11, simlk - major update on layer stuff - minor bugfixes in wms errors
 #Bugfix/update 25.03.11 - fixed "selected point" stuff. Now managed by DataClass - should be more clear, since this class knows all about the points....
 #VisFix simplified to be ONLY a point data, and map-data viewer. No observations anymore.
-Program="VisFix ver. beta 2.2"
+Program="VisFix ver. beta 2.3"
 aboutstr=u"""
 Standalone-program til visualisering af h\u00F8jdefikspunkter.
 Bruger GDAL til kortvisning. Bugs rettes til simlk@kms.dk
@@ -627,12 +627,12 @@ class MainFrame(wx.Frame):
 		if not self.Map.data.IsInitialized():
 			self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
 			return
-		file=GetFile(self,u"V\u00E6lg fil med identiteter for punkter, som er tabtg\u00E5et")
+		file=GetFile(self,u"V\u00E6lg fil med lokationer (punktnavne) for punkter, som er tabtg\u00E5et")
 		if file!=-1:
 			f=open(file)
-			Stations,Nd,Ngm,Ngps=Extract.GetIDs(f)
+			Stations,nd=Extract.GetLoc(f)
 			f.close()
-			msg=u"Fandt %i stationer, %i G.M/G.I-navne og %i GPS-navne i %s.\nAntal dubletter: %i." %(len(Stations),Ngm,Ngps,file,Nd)
+			msg=u"Fandt %i stationer" %(len(Stations))
 			if len(Stations)>0:
 				msg+=u"\nFilen indeholder eksempelvis stationen:\n%s" %(Stations.keys()[0])
 				msg+="\nVil du opdatere datafilen?"

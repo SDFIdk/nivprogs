@@ -18,7 +18,7 @@ datafiles=glob.glob("./mcontent/*")
 #setup(windows=['MTL2.pyw'])
 mfcdir="C:\\Python26\\Lib\\site-packages\\pythonwin"
 mfc_files= [os.path.join(mfcdir, i) for i in ["mfc90.dll" ,"mfc90u.dll" ,"mfcm90.dll" ,"mfcm90u.dll" ,"Microsoft.VC90.MFC.manifest"]]
-crt_files=glob.glob("C:\\Depth\\crt\\*")
+crt_files=glob.glob(".\\crt\\*")
 print mfc_files
 extra_files=["C:\\Python26\\DLLs\\libgeos-3-0-4.dll","C:\\Python26\\DLLs\\geos.dll"]
 excludes=["Tkconstants","Tkinter","tcl","matplotlib","pylab","javaxx"]
