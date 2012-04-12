@@ -619,7 +619,7 @@ class MainFrame(wx.Frame):
 					self.Map.data.MarkAsGeo(crds.keys())
 				dlg.Destroy()
 				n=self.Map.data.GetNChanged()
-				self.Log("Datafil opdateret. Opdateringer ialt: %i" %n)
+				self.Log("Datafil opdateret. Opdateringer ialt: %d" %n)
 			else:
 				self.Log(msg)
 	def OnMarkAsLost(self,event):

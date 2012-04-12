@@ -1301,7 +1301,7 @@ class IniReader(object):
 			if key=="gps" and len(line)>0:
 				self.ini.gpsport=int(line[0])
 				if len(line)>1:
-					self.gpsbaud=int(line[1])
+					self.ini.gpsbaud=int(line[1])
 			if key=="kortmappe" and len(line)>0:
 				mapdir=line[0]
 				if mapdir[-1] not in ["/","\\"]:
