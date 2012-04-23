@@ -196,6 +196,22 @@ class MultiPlotFrame(SecondaryWindow): #Frame for showing 4 plots.
 			gc = plot.PlotGraphics(lines)
 		self.plotter[p].Draw(gc)
 		self.plotter[p].SetEnableLegend(True)
+		
+
+class DebugWindow(wx.Frame):
+	def __init__(self,parent):
+		self.parent=parent
+		wx.Frame.__init__(self,parent,title="DEBUG-CONSOLE",style=wx.DEFAULT_FRAME_STYLE|wx.STAY_ON_TOP)
+		self.sizer=wx.BoxSizer(wx.VERTICAL)
+		self.field=wx.TextCtrl(self,size=(300,-1),style=wx.TE_PROCESS_ENTER)
+		self.sizer.Add(self.field,0,wx.EXPAND|wx.ALL,10)
+		self.SetSizerAndFit(self.sizer)
+		self.Show()
+	def BindEnter(self,fct):
+		self.field.Bind(wx.EVT_TEXT_ENTER,fct)
+	def ClearField(self):
+		self.field.Clear()
+		
 
 
 #-------------------------------------------------------------------------------#

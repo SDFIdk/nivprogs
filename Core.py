@@ -33,6 +33,7 @@ PRECISION_LIMIT=2.5
 SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
+#LAST EDIT: 2012-04-23
 
 def SetPrecisionMode(ini,program="MGL"):
 	global IS_PRECISION
@@ -368,6 +369,19 @@ class MLBase(GUI.MainWindow):
 			self.Log("Punktdatabase tilsluttet.")
 		#On Close kill gps
 		self.Bind(wx.EVT_CLOSE,self.OnClose)
+		if DEBUG:
+			debug_win=GUI.DebugWindow(self)
+			debug_win.BindEnter(self.OnDebugCMD)
+	def OnDebugCMD(self,event):
+		field=event.GetEventObject()
+		text=field.GetValue()
+		try:
+			exec(text)
+		except Exception,msg:
+			print msg
+		else:
+			field.Clear()
+		
 	def OnClose(self,event):
 		self.gps.kill()
 		if self.gps.isAlive():
@@ -895,10 +909,10 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		resfil=open(fname,"w")
 		#Start resultatfil#
 		resfil.write("%*s %s %s %s\n"%(-19,"Program:",self.program.name,self.program.version,self.program.date))
-		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname))
-		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk))
+		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname.encode('utf-8')))
+		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk.encode('utf-8')))
 		resfil.write("%*s %s %s\n" %(-19,"Dato og tid:",Fkt.Dato(),Fkt.Nu()))
-		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1,m2))
+		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1.encode('utf-8'),m2.encode('utf-8')))
 		for instrument in self.instruments:
 			resfil.write("%s\n" %instrument.PresentYourself(short=True))
 		resfil.write("Laegter:\n")
@@ -918,7 +932,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		if dlg.ShowModal()==wx.ID_OK:
 			fname=dlg.GetFilename()
 			dir=dlg.GetDirectory()
-			if Fkt.CompareDirs(str(dir),RESDIR):
+			if os.path.realpath(dir)==os.path.realpath(RESDIR):
 				if fname.find("backup")!=-1:
 					GUI.ErrorBox(self,u"Backup filen skal omd\u00F8bes, inden der kan tilsluttes til den.")
 				else:
@@ -939,9 +953,9 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			return
 		if isres:
 			data=self.statusdata
-			self.fil.field2.SetValue(data.GetProject())
+			self.fil.field2.SetValue(data.GetProject().decode('utf-8'))
 			imsg="Data for resultatfil:\n"
-			imsg+="Projekt: %s\n" %data.GetProject()
+			imsg+="Projekt: %s\n" %data.GetProject().decode('utf-8')
 			imsg+=u"Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
 			if data.GetSetups()>0:
 				imsg+=u"Uafsluttet str\u00E6kning:\n"

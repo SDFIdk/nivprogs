@@ -5,7 +5,7 @@ import numpy as np
 import os
 import FileOps
 #fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
-# Last edit: 2012-01-09 fixed mtl test. Unified.
+# Last edit: 2012-01-09 fixed mtl test. Unified, 2012-04-23: fixed possible None return val in TestStretch
 #Rejcection criteria reflects a model variance for meas. of a strectch, should correpond to a variance of half the parameter used in the test. 
 def MTL_var_model_linear(dist,parameter):
 	dist=dist/1000.0
@@ -107,7 +107,7 @@ class FBreject(object):
 				msg+=u"\nDen samlede standarafvigelse er IKKE OK, lav flere m\u00E5linger!\n"
 				if len(hdiffs_all)>1 and new_std>raw_std: #or something more fancy
 					msg+=u"Den nye m\u00E5ling er tilsyneladende en outlier og kan evt. omm\u00E5les!\n"
-				return True,isok,abs(diff),len(hdiffs_all),msg
+			return True,isok,abs(diff),len(hdiffs_all),msg
 		else:
 			msg=u"%s->%s er ikke m\u00E5lt tidligere" %(start,end)
 			self.found=False
