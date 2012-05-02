@@ -360,7 +360,8 @@ def LaesSidsteHoved(fullfile):
 def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soegemode, mode3: test
 	f=open(resfile,"rb") #'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!
 	f.readline() #foerste linie er program version
-	filnavn=f.readline().split()[1] #anden linie indeholder filnavn
+	#filnavn=f.readline().split()[1] #anden linie indeholder filnavn
+	filnavn=resfile
 	pos, nl=SaetEfterHoved(f,mode,JS) #egentlig er nl overfloedig her nu....
 	if mode==2 and nl==0:
 		return False #betyder at JS ikke blev fundet (udskriv enkeltsidemode=2)

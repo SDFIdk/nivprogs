@@ -599,13 +599,17 @@ class MLBase(GUI.MainWindow):
 		"Udskriv journalside(r).",  u"V\u00E6lg journalside(r):",list)
 		#dlg.SetFont(wx.Font(14,wx.SWISS,wx.NORMAL,wx.NORMAL))
 		dlg.ShowModal()
+		if DEBUG:
+			mode=3
+		else:
+			mode=2
 		if dlg.OK:
 			selections = dlg.GetSelections()
 			if len(selections)>0:
 				strings = [list[x] for x in selections]
 				for JS in strings:
 					try:
-						OK=FileOps.Jside(self.resfile,2,JS,self.program.type)  #Kald med mode2, saa soeges efter Jsidenr...mode 3=test
+						OK=FileOps.Jside(self.resfile,mode,JS,self.program.type)  #Kald med mode2, saa soeges efter Jsidenr...mode 3=test
 					except:
 						GUI.ErrorBox(self,"Fejl under udskrivning...")
 					else:	
