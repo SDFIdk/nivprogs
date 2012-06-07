@@ -573,6 +573,8 @@ class MLBase(GUI.MainWindow):
 			line = GUI.plot.PolyLine(data, colour=col, width=1,legend="%.2f %s" %(param,unit))
 			graphics.append(line)
 			next+=1
+		line_global_min=GUI.plot.PolyLine(FBtest.GetGlobalMinLine(self.program),colour="lightblue",legend=u"bagatelgr\u00E6nse")
+		graphics.append(line_global_min)
 		gc = GUI.plot.PlotGraphics(graphics,"Plot af forkastelseskriterie","Afstand [m]","Tolerance [mm]")
 		theplot.plotter.Draw(gc)
 	def OnWriteComment(self,e):

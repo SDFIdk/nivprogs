@@ -75,26 +75,30 @@ class FullScreenWindow(PlainWindow):
 		PlainWindow.__init__(self,parent)
 		self.hsizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.vsizer=wx.BoxSizer(wx.VERTICAL)
-		self.vsizer.AddStretchSpacer(1) #above
-		self.vsizer.AddStretchSpacer(1) #below
-		self.hsizer.AddStretchSpacer(1) #left
-		self.hsizer.Add(self.vsizer,10,wx.EXPAND)
-		self.hsizer.AddStretchSpacer(1) #right
+		self.vsizer.AddSpacer(10) #above
+		self.vsizer.AddSpacer(10) #below
+		self.hsizer.AddSpacer(20) #left
+		self.hsizer.Add(self.vsizer,1,wx.EXPAND,5)
+		self.hsizer.AddSpacer(20) #right
 		self.rowsizer=wx.BoxSizer(wx.HORIZONTAL)
-		self.nrows=2
+		self.insert_at=1
+		
 	def ShowMe(self):
 		self.Show()
 		self.SetSizerAndFit(self.hsizer)
 		self.ShowFullScreen(1)
 	def LayoutSizer(self):
+		#self.vsizer.Layout()
 		self.hsizer.Layout()
+		
 	def CreateRow(self):
 		self.rowsizer=wx.BoxSizer(wx.HORIZONTAL)
 	def AddItem(self,item,proportion=1,style=wx.ALL,border=5):
 		self.rowsizer.Add(item,proportion,style,border)
 	def AddRow(self,proportion=1,style=wx.ALL,border=5):
-		self.vsizer.Insert(self.nrows-1,self.rowsizer,proportion,style,border)
-		self.nrows+=1
+		self.vsizer.Insert(self.insert_at,self.rowsizer,proportion,style,border)
+		self.vsizer.AddSpacer(5)
+		self.insert_at+=2
 class PlotFrame(SecondaryWindow): #Frame for showing a single plot
 	def __init__(self,parent,*args,**kwargs):
 		self.parent=parent

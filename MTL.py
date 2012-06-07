@@ -1081,16 +1081,15 @@ class MakeBasis(GUI.FullScreenWindow):
 			return True
 		else:
 			data=self.statusdata
-			found,OK,diff,nfound=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
+			found,OK,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
 			#self.Log(repr(found)+repr(OK)+repr(diff)+repr(nfound))
 			if found:
 				if OK:
 					self.Log(u"Fremm\u00E5ling fundet, forkastelseskriterie overholdt.")
 					return True
 				else:
-					msg=u"Forkastelseskriterie for frem og tilbage-m\u00E5lte str\u00E6kninger overksredet med %.1f mm.\n" %diff
 					self.Log(msg)
-					msg+=u"Vil du godkende m\u00E5lingen?"
+					msg+=u"\nVil du godkende m\u00E5lingen?"
 					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
 					dlg.ShowModal()
 					OK=dlg.WasOK()

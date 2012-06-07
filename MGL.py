@@ -11,9 +11,9 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.75"
+PROGRAM.version="beta 1.76"
 PROGRAM.exename="MGL_b175.exe"
-PROGRAM.date="2012-05-02"
+PROGRAM.date="2012-06-07"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -271,11 +271,11 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		bfitems=["Sd:","#Afls.:" ,"Sigtelgd.:",u"L\u00E6gte:"]
 		strkitems=[u"Sum \u2206 afst.:","Startpunkt:","Afst. punkt:",u"\u2206H til punkt:","#Opst.:"]
 		strkminl=[2,12,2,5,3]
-		self.backstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-1,label="Kontrol-tilbage")
-		self.forwardstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-1,label="Kontrol-frem")
+		self.backstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-tilbage")
+		self.forwardstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-frem")
 		self.bfstatus={'back':self.backstatus,'forward':self.forwardstatus} #utility dict for neater access.
-		self.opststatus=GUI.StatusBox2(self,opstitems,colsize=2,fontsize=size-1,label="Opstilling",minlengths=opstminl)
-		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-1,label=u"Str\u00E6kning",minlengths=strkminl)
+		self.opststatus=GUI.StatusBox2(self,opstitems,colsize=2,fontsize=size-2,label="Opstilling",minlengths=opstminl)
+		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-2,label=u"Str\u00E6kning",minlengths=strkminl)
 		self.backstatus.UpdateStatus()
 		self.forwardstatus.UpdateStatus()
 		self.opststatus.UpdateStatus()
@@ -283,43 +283,63 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#Log-field
 		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE,size=(-1,80))
 		self.log.SetFont(GUI.DefaultFont(size-1))
-		#Define Layout, sizer programming still a bit of a mystery - well it not that interesting :-)
+		#Define Layout, sizer programming still a bit of a mystery - well its not that interesting :-)
 		self.CreateRow()
-		if self.pmode=='detail':
-			p1=1
-			p2=2
-		else:
-			p1=1
-			p2=1
-		self.AddItem(self.opststatus,p1,wx.ALL,5)
-		self.AddItem(self.strkstatus,p2,wx.ALL,5)
-		self.AddRow(3,wx.ALIGN_CENTER|wx.EXPAND,5)
+		row=wx.GridSizer(1,2,5,5)
+		row.Add(self.strkstatus,0,wx.ALL,5)
+		row.Add(self.opststatus,0,wx.ALL,5)
+		self.AddItem(row,1,wx.ALL,5)
+		self.AddRow(2,wx.ALL,5)
 		self.CreateRow()
-		vsizer1=wx.BoxSizer(wx.VERTICAL)
-		vsizer2=wx.BoxSizer(wx.VERTICAL)
-		vsizer3=wx.BoxSizer(wx.VERTICAL)
-		hsizer=wx.BoxSizer(wx.HORIZONTAL)
-		hsizer2=wx.BoxSizer(wx.HORIZONTAL)
-		vsizer1.Add(self.backstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer1.Add(self.back,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer1.Add(self.optionpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer2.Add(self.forwardstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer2.Add(self.forward,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer3.Add(self.map,0,wx.ALL|wx.TOP,5)
-		hsizer2.Add(self.footsetup,0,wx.ALL,5)
+		grid=wx.FlexGridSizer(2,2,5,5)
+		grid.Add(self.backstatus,1,wx.ALL|wx.EXPAND,5)
+		grid.Add(self.forwardstatus,1,wx.ALL|wx.EXPAND,5)
+		grid.Add(self.back,1,wx.ALL|wx.EXPAND,5)
+		grid.Add(self.forward,1,wx.ALL|wx.EXPAND,5)
+		self.AddItem(grid,1,wx.ALL|wx.EXPAND,5)
+		self.AddItem(self.map,1,wx.ALL|wx.EXPAND,5)
+		self.AddRow(6,wx.ALL|wx.EXPAND,5)
+		#self.CreateRow()
+		#if self.pmode=='detail':
+		#	prop=2
+		#else:
+		#	prop=3
+		#self.AddItem(self.back,0,wx.ALL,15)
+		#self.AddItem(self.map,1,wx.CENTER,5)
+		#self.AddItem(self.forward,0,wx.ALL,15)
+		#self.AddRow(prop,wx.ALL|wx.EXPAND,5)
+		self.CreateRow()
+		self.AddItem(self.optionpanel,1,wx.ALL,5)
+		bsizer=wx.BoxSizer(wx.HORIZONTAL)
+		bsizer.Add(self.footsetup,0,wx.ALL,5)
+		bsizer.Add(self.clearddsum_now,0,wx.ALL,5)
+		self.AddItem(self.nextpanel,1,wx.ALL,5)
+		self.AddItem(bsizer,2,wx.ALL,15)
+		self.AddRow(0,wx.ALL,15)
+		#vsizer1=wx.BoxSizer(wx.VERTICAL)
+		#vsizer2=wx.BoxSizer(wx.VERTICAL)
+		#vsizer3=wx.BoxSizer(wx.VERTICAL)
+		#hsizer=wx.BoxSizer(wx.HORIZONTAL)
+		#hsizer2=wx.BoxSizer(wx.HORIZONTAL)
+		#vsizer1.Add(self.backstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer1.Add(self.back,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer1.Add(self.optionpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer2.Add(self.forwardstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer2.Add(self.forward,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer3.Add(self.map,0,wx.ALL|wx.TOP,5)
+		#hsizer2.Add(self.footsetup,0,wx.ALL,5)
 		#hsizer2.Add(self.clearddsum,0,wx.ALL,5)
-		hsizer2.Add(self.clearddsum_now,0,wx.ALL|wx.CENTER,5)
-		vsizer3.Add(hsizer2,0,wx.ALL,5)
-		
-		hsizer.Add(vsizer1,1,wx.ALL,5)
-		hsizer.Add(vsizer3,0,wx.ALL|wx.CENTER,5)
-		hsizer.Add(vsizer2,1,wx.ALL,5)
-		self.AddItem(hsizer,1,wx.ALL,5)
-		self.AddRow(12,wx.ALIGN_CENTER,5)
+		#hsizer2.Add(self.clearddsum_now,0,wx.ALL|wx.CENTER,5)
+		#vsizer3.Add(hsizer2,0,wx.ALL,5)
+		#hsizer.Add(vsizer1,1,wx.ALL,5)
+		#hsizer.Add(vsizer3,0,wx.ALL|wx.CENTER,5)
+		#hsizer.Add(vsizer2,1,wx.ALL,5)
+		#self.AddItem(hsizer,1,wx.ALL,5)
+		#self.AddRow(12,wx.ALIGN_CENTER,5)
 		self.CreateRow()
-		self.AddItem(self.log,1,wx.CENTER,5)
-		self.AddRow(1,wx.EXPAND|wx.CENTER,5)
+		self.AddItem(self.log,1,wx.ALL|wx.EXPAND,5)
+		self.AddRow(1,wx.ALL|wx.EXPAND,5)
 		#SETUP INSTRUMENT EVENT HANDLING
 		self.instrument.SetEventHandler(self)
 		self.instrument.SetLogWindow(self)
@@ -472,6 +492,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.fields[aim].SetBackgroundColour("wheat")
 			self.fields[aim].Refresh()
 			self.instrument.ReadData()
+			self.LayoutSizer()
 	def OnData(self,event):
 		self.instrument.SetReadState(False) #almost the same as setting 'manual' mode.
 		Core.SoundGotData()
@@ -553,6 +574,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		for aim in ['back','forward']:
 			self.fields[aim].SetBackgroundColour(GUI.BGCOLOR)
 			self.fields[aim].Refresh()
+		self.LayoutSizer()
 	def SetStatus(self): #Method which checks/displays status after measurements. Enables buttons. Updates Statusbox. Moving focus should be handled elsewhere
 		#All this happens at key-press in 'manual' mode
 		#First update f/b- statusboxes 
@@ -639,6 +661,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.opststatus.UpdateStatus([di_label,dd_label,hd_label],colours={1:ddcolor})
 			else:
 				self.opststatus.UpdateStatus([di_label,dd_label,hd_label,hdt_label],colours={1:ddcolor,3:hdt_color})
+			self.LayoutSizer()
 	def UpdateStretchBox(self):
 		ddsum=self.statusdata.GetDDSum()
 		if abs(ddsum)>4.0:
@@ -649,6 +672,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		ul+=["%s" %self.statusdata.GetStart(),"%.2f m" %self.statusdata.GetDistance(),"%.5f m" %self.statusdata.GetHdiff()]
 		ul+=["%i" %self.statusdata.GetSetups()]
 		self.strkstatus.UpdateStatus(ul,colours={0:dd_color})
+		self.LayoutSizer()
 	def OnDelete(self,event):
 		if self.mmode!='manual':
 			self.SetManualMode()
@@ -770,7 +794,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			return True
 		else:
 			data=self.statusdata
-			found,OK,diff,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
+			found,OK,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
 			if found:
 				if OK:
 					self.Log(msg)
@@ -1104,7 +1128,7 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 	def __init__(self,parent,title,rods=[],size=12):
 		MGLpanel.__init__(self,parent,title,rods,size)
-		self.hd2=MyNumMGL(self,0,100,5,size=(120,-1),fontsize=size)
+		self.hd2=MyNumMGL(self,-100,100,5,size=(120,-1),fontsize=size)
 		self.hds=[self.hd,self.hd2]
 		maalsizer=GUI.FieldWithLabel(self,field=self.hd2,size=size,label=u"H2:")
 		self.bsizer.Insert(4,maalsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)
