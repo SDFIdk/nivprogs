@@ -12,7 +12,7 @@ BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
 PROGRAM.version="beta 1.76"
-PROGRAM.exename="MGL_b175.exe"
+PROGRAM.exename="MGL_b176.exe"
 PROGRAM.date="2012-06-07"
 PROGRAM.type="MGL"
 PROGRAM.about="""
@@ -298,7 +298,12 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		grid.Add(self.forward,1,wx.ALL|wx.EXPAND,5)
 		self.AddItem(grid,1,wx.ALL|wx.EXPAND,5)
 		self.AddItem(self.map,1,wx.ALL|wx.EXPAND,5)
-		self.AddRow(6,wx.ALL|wx.EXPAND,5)
+		dsize=wx.GetDisplaySize()
+		if dsize[1]<1024:
+			prop=7
+		else:
+			prop=6
+		self.AddRow(prop,wx.ALL|wx.EXPAND,5)
 		#self.CreateRow()
 		#if self.pmode=='detail':
 		#	prop=2
