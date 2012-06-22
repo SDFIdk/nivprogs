@@ -11,8 +11,8 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.76"
-PROGRAM.exename="MGL_b176.exe"
+PROGRAM.version="beta 1.77"
+PROGRAM.exename="MGL_b177.exe"
 PROGRAM.date="2012-06-07"
 PROGRAM.type="MGL"
 PROGRAM.about="""
@@ -285,17 +285,20 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.log.SetFont(GUI.DefaultFont(size-1))
 		#Define Layout, sizer programming still a bit of a mystery - well its not that interesting :-)
 		self.CreateRow()
-		row=wx.GridSizer(1,2,5,5)
-		row.Add(self.strkstatus,0,wx.ALL,5)
+		#This seems to work with screen resolution 1280x800
+		row=wx.FlexGridSizer(1,2,5,5)
 		row.Add(self.opststatus,0,wx.ALL,5)
+		row.Add(self.strkstatus,1,wx.ALL,5)
 		self.AddItem(row,1,wx.ALL,5)
 		self.AddRow(2,wx.ALL,5)
 		self.CreateRow()
 		grid=wx.FlexGridSizer(2,2,5,5)
 		grid.Add(self.backstatus,1,wx.ALL|wx.EXPAND,5)
 		grid.Add(self.forwardstatus,1,wx.ALL|wx.EXPAND,5)
+		#grid.Add(self.map,1,wx.ALL,wx.EXPAND,5)
 		grid.Add(self.back,1,wx.ALL|wx.EXPAND,5)
 		grid.Add(self.forward,1,wx.ALL|wx.EXPAND,5)
+		#grid.Add((-1,-1))
 		self.AddItem(grid,1,wx.ALL|wx.EXPAND,5)
 		self.AddItem(self.map,1,wx.ALL|wx.EXPAND,5)
 		dsize=wx.GetDisplaySize()
