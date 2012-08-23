@@ -152,8 +152,7 @@ class FBreject(object):
 			print repr(msg)
 			return False
 		else:
-			
-				return True
+			return True
 	def OutlierAnalysis(self):
 		data=self.database.copy()
 		msg=""
@@ -283,7 +282,7 @@ def MakeRejectData(resfiles):
 				day,month,year=Funktioner.GetDate(dato)
 				date=datetime.datetime(year,month,day,h,m)
 			except Exception, msg:
-				print repr(msg)
+				print repr(msg),head
 				nerrors+=1
 			else:
 				if data.has_key(key):
