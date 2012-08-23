@@ -477,12 +477,12 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#define setup class#
 		self.setup=MTLsetup.MTLTransferSetup(self.aim,[[inst.addconst,inst.axisconst] for inst in self.instruments],self.ini)
 		#define gui stuff #
-		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11],bold_list=[2])
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=3,minlengths=[7,7,11],bold_list=[2])
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
 		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
 		,fontsize=FONTSIZE-1)
 		self.resultbox.UpdateStatus([])
-		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=FONTSIZE)
+		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=3,fontsize=FONTSIZE)
 		self.main.button[1].Enable(0)
 		self.main.button[2].Enable(0)
 		self.main.button[3].Enable(0)
@@ -501,21 +501,19 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetDistanceMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetZMode)
 		#LAYOUT#
+		self.CreateRow() #space in top....
+		self.AddItem((-1,50))
+		self.AddRow(1,wx.ALL)
 		self.CreateRow()
-		self.AddItem(self.statusbox,1,wx.ALIGN_LEFT)
-		#rsizer=wx.BoxSizer(wx.VERTICAL)
-		#rsizer.Add(self.main)
-		#rsizer.Add(self.satsstatus)
-		self.AddRow(1,wx.ALL|wx.ALIGN_LEFT,5)
-		self.CreateRow()
-		self.AddItem(self.resultbox,0,wx.ALL|wx.ALIGN_LEFT,5)
-		#self.AddRow(0,wx.ALL|wx.ALIGN_LEFT,5)
-		#self.CreateRow()
-		self.AddItem(self.main,0,wx.ALL,5)
-		self.AddRow(2,wx.ALL|wx.ALIGN_LEFT,5)
+		row=wx.FlexGridSizer(1,3,15,15)
+		row.Add(self.statusbox,1,wx.ALL,10)
+		row.Add(self.resultbox,1,wx.ALL,10)
+		row.Add(self.main,1,wx.ALL,5,10)
+		self.AddItem(row,1,wx.ALIGN_CENTER|wx.EXPAND)
+		self.AddRow(3,wx.ALL|wx.EXPAND,5)
 		self.CreateRow()
 		self.AddItem(self.lower)
-		self.AddRow(3,wx.ALL|wx.ALIGN_CENTER,10)
+		self.AddRow(5,wx.ALIGN_CENTER,10)
 		self.UpdateStatus()
 		
 		#Gaa direkte til afstand#
@@ -952,6 +950,9 @@ class MakeBasis(GUI.FullScreenWindow):
 		#LAYOUT#
 		self.UpdateStatus()
 		self.CreateRow()
+		self.AddItem((-1,50))
+		self.AddRow(1,wx.ALL)
+		self.CreateRow()
 		sizer_left=wx.BoxSizer(wx.VERTICAL)
 		sizer_left.Add(self.status,1,wx.ALL,5)
 		sizer_left.Add(self.resultbox,1,wx.ALL,5)
@@ -961,11 +962,11 @@ class MakeBasis(GUI.FullScreenWindow):
 		sizer_right.Add(self.valg,1,wx.ALL,5)
 		sizer_right.Add(self.main,1,wx.ALL,5)
 		self.AddItem(sizer_right,1,wx.ALL,5)
-		self.AddRow(2,wx.CENTER|wx.ALL|wx.EXPAND)
+		self.AddRow(3,wx.CENTER|wx.ALL|wx.EXPAND)
 		self.CreateRow()
 		self.AddItem(self.maal,1)
 		self.AddItem(self.controlbox,1)
-		self.AddRow(1,wx.ALL)
+		self.AddRow(3,wx.ALL)
 		self.ShowMe()
 		self.valg.SetFocus()
 		if DEBUG:
@@ -1343,7 +1344,7 @@ def main():
 	dsize=wx.GetDisplaySize() #but we need to check this anyways....
 	global FONTSIZE
 	if dsize[0]<1100 or dsize[1]<800: #set default fontsize for labels, input fields etc. - fields set size relative to this base size
-		FONTSIZE=12
+		FONTSIZE=13
 	else:
 		FONTSIZE=14
 	frame=StartFrame(None)
