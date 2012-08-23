@@ -185,7 +185,7 @@ class MGLlaegte(object):
 # State-handling principle: when data arrives via keyboard or data-com it should be displayed in status-box. This is handled by text-events in case of key-press in 'manual mode'. 
 # Data arriving from instrument in 'auto mode' is inserted into text boxes without firing text-events.
 # Errors are indicated by red-colors.
-#  User prompting via dialogs should only be done when a measurement is completed - not for each keypress! i.e. when the user try's to accept the measurement.
+#  User prompting via dialogs should only be done when a measurement is completed - not for each keypress! i.e. when the user tries to accept the measurement.
 #  In 'precision' mode the prompting should happen earlier, before doing the second measurement.
 #-----------------------------------------------------------------------------------------------------------------------
 class MGLMeasurementFrame(GUI.FullScreenWindow):

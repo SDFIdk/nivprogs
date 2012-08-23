@@ -1,10 +1,15 @@
-import serial
 import threading
 import wx
 import  wx.lib.newevent
 import time
 from math import sqrt
 import sys
+if "fakeMTL" in sys.argv:
+	import MyModules.FakeMTLserial as serial
+	is_fake=True
+else:
+	import serial
+	is_fake=False
 DEBUG="debug" in sys.argv
 (LogEvent,EVT_LOG) = wx.lib.newevent.NewEvent()
 (DataEvent,EVT_DATA) = wx.lib.newevent.NewEvent()
@@ -18,6 +23,7 @@ class DummyThread(object):
 		return False
 #Base Instrument Class, should be subclassed to MTLinstrument and MGLinstrument
 #Threads created by subclasses should implement a 'Kill' method.....
+#TODO: Perhaps set the thread object to a dummy thread after kill or SetReadState(False)
 class Instrument(object):
 	def __init__(self,name="instrument",port=5,baudrate=1000,type="ost"):
 		self.name=name #screen name
@@ -59,7 +65,7 @@ class Instrument(object):
 		self.logwindow=win
 	def SetReadState(self,state=False):
 		self.isreading=state
-	def IsReading(self):
+	def IsReading(self):  #Perhaps return self.thread.isAlive() instead here, so the user doesn't have to set the state manually!!!!!!
 		return self.isreading
 	def Kill(self):
 		self.thread.Kill()
@@ -86,11 +92,14 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			return "Instrument: %s, konstanter: %.5f m %.4f m, type: %s." %(self.name,self.addconst,self.axisconst,self.type)
 		else:
 			return "Instrument: %s,  konstanter: %.5f m %.4f m, type: %s, com-port: %i" %(self.name,self.addconst,self.axisconst,self.type,self.port)
-	def ReadData(self): #is really common, at least, to instruments communicating via (virtual) com-port.....
+	def ReadData(self,expect=None): #is really common, at least, to instruments communicating via (virtual) com-port.....
 		try:
 			con=serial.Serial(self.port,self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
-		except: #well this is easiest since the eventhandler should be listening...
-			event=DataEvent(id=self.id,value=['E',u'Instrumentets com port (port %i) kunne ikke \u00E5bnes' %self.port]) #for at foelge samme standard som traaden bruger, se nedenfor
+			if (is_fake and expect=="?"):
+				con.returnDistances()
+			
+		except Exception,msg: #well this is easiest since the eventhandler should be listening...
+			event=DataEvent(id=self.id,value=['E',(u'Instrumentets com port (port %i) kunne ikke \u00E5bnes'%self.port)+"\n"+repr(msg) ]) #for at foelge samme standard som traaden bruger, se nedenfor
 			wx.PostEvent(self.eventhandler,event)
 		else:
 			self.portstatus=True  #flag to signal that the we can connect to instrument.

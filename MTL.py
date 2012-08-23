@@ -247,8 +247,8 @@ class DistancePanel(wx.Panel):
 			row_validity=self.setup.IsValid(row=0) 
 			if row_validity:
 				self.UpdateStatus()
-				
 		event.Skip()
+		
 	def OnChar(self,event): #easier to handle char events here, rather than via the standard 'keyhandler' setup of MyTextField....
 		key=event.GetKeyCode()
 		field=event.GetEventObject()
@@ -449,7 +449,8 @@ class SatsEdit(GUI.TwoButtonDialog):
 			colors={2:Funktioner.State2Col(self.setup.MaxDevTest(mask))}
 			self.status.UpdateStatus(["%.4f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
 		self.SetSizer(self.sizer)
-		
+
+#TODO: Fix id of instruments!!!!
 class Instrument2Instrument(GUI.FullScreenWindow):
 	"""Main window for inst->inst setups"""
 	def __init__(self, parent):
@@ -465,6 +466,8 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.resfile=parent.resfile
 		self.instruments=self.statusdata.GetInstruments()
+		#WRITE TO LOG#
+		self.Log(u"Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
 		for instrument in self.instruments:
 			instrument.SetLogWindow(self)
 			instrument.SetEventHandler(self)
@@ -514,8 +517,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.AddItem(self.lower)
 		self.AddRow(3,wx.ALL|wx.ALIGN_CENTER,10)
 		self.UpdateStatus()
-		#WRITE TO LOG#
-		self.Log(u"Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+		
 		#Gaa direkte til afstand#
 		self.SetDistanceMode() 
 		self.ShowMe()
@@ -539,15 +541,26 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			GUI.ErrorBox(self,msg)
 			self.SetManualMode() #end control here
 			return
+		if DEBUG:
+			print "Call from instrument:",id
+			self.PrintAutoFields()
 		if len(self.auto_fields[id])>0:
 			Core.SoundGoodData()
-			field=self.auto_fields[id][-1]
-			field.SetValue(val)
+			field=self.auto_fields[id].pop(0)
 			field.Enable()
-			self.auto_fields[id]=self.auto_fields[:-1]
+			field.SetValue(val)
+			field.Refresh()
+		if len(self.auto_fields[id])==0:
+			#it is not reading anymore - and the connection should have been closed by the internal thread!
+			#not really convinced that this design is 'optimal'....
+			self.instruments[id].SetReadState(False) 
+		else:
+			self.instruments[id].ReadData()
 		if len(self.auto_fields[0])==0 and len(self.auto_fields[1])==0:
-			self.UpdateHeightStatus()
+			if DEBUG:
+				print("We seem to be done!")
 			self.SetManualMode() #or something else
+			self.UpdateHeightStatus()
 	def OnSetZMode(self,event):
 		self.SetZMode()
 	def OnSetDistanceMode(self,event):
@@ -582,27 +595,37 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def SetManualMode(self):
 		if self.mode==0:
 			return
-		self.Log(u"Skifter til 'manuel mode'. Afbryder instrumentl\u00E6sning.")
+		self.Log(u"Skifter til 'manuel mode'. Afslutter instrumentl\u00E6sning.")
 		self.mode=0
 		for inst in self.instruments:
-			inst.Kill()
+			if (inst.IsReading()): #or inst.thread.isAlive()
+				inst.Kill()
 		for col in self.auto_fields:
 			for field in col:
 				field.Enable()
 		self.auto_fields=[[],[]]
 		self.UpdateStatus()
+	def PrintAutoFields(self): #for debugging
+		print("Auto-fields are:")
+		for id_x in range(2):
+			print "id:",id_x
+			for field in self.auto_fields[id_x]:
+				print field.ij_id
 	def SetAutoMode(self,col1,col2):
 		if self.mode>0:
 			self.SetManualMode()
 			return
 		self.Log("Skifter til 'auto mode'.")
-		self.auto_fields=[col1,col2]
+		self.auto_fields=[col1[:],col2[:]] #since we use pop we really need to make a copy of list objects - otherwise we affect the original!!
 		for col in self.auto_fields:
 			for field in col:
 				field.Enable(0)
 		self.mode=1
+		expect=None
+		if self.mmode==0:
+			expect="?"
 		for instrument in self.instruments:
-			instrument.ReadData()
+			instrument.ReadData(expect)
 		self.UpdateStatus()
 	def SetSingleAutoMode(self,field,col):
 		if self.mode>0:
@@ -613,7 +636,10 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.Log("Skifter til 'single auto mode'.")
 		field.Enable(0)
 		self.mode=2
-		self.instruments[col].ReadData()
+		if self.mmode==0:
+			self.instruments[col].ReadData("?")
+		else:
+			self.instruments[col].ReadData()
 		self.UpdateStatus()
 	def UpdateStatus(self):
 		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
@@ -625,10 +651,14 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		dlg.Destroy()
 		return ok
 	def UpdateHeightStatus(self): #name is a bit 'misvisende' since general status is really handled here....
-		if self.mmode==0:
+		if self.mmode==0: # this shuld be done in panel!
+			if (not self.setup.AreDistancesDone()): #escape if we are not done - perhaps shouldnt be called in the first place!
+				return
 			diff,ok=self.setup.DistanceTest()
 			msg=u"Stor forskel mellem afstandsm\u00E5linger: %.3f m" %abs(diff)
 		else:
+			if (not self.setup.IsValid()): #escape if we are not done - perhaps shouldnt be called in the first place!
+				return
 			ok=self.setup.SatsTest()
 			msg=u"Den aktuelle sats opfylder ikke fejlkriterierne!"
 		if not ok:
@@ -1064,11 +1094,12 @@ class MakeBasis(GUI.FullScreenWindow):
 				GUI.ErrorBox(self,u"Forventede en vinkelm\u00E5ling!")
 				self.SetManualMode()  #leave function here...
 			else: #then code is '<' and we have angles...
-				field=self.auto_fields.pop([0])
+				field=self.auto_fields.pop(0)
 				field.SetValue(val) #issues a text-event which triggers event handlers... Watch out that these dont send the thread of control astray!!!!
+				field.Enable()
 				if len(self.auto_fields)==0:
 					self.SetManualMode()
-					self.Valg.SetFocus()
+					self.valg.SetFocus()
 					Core.SoundGoodData()
 				else:
 					self.instrument.ReadData()
@@ -1282,7 +1313,8 @@ class MTLinireader(Core.IniReader): #add more error handling!
 			instrumentport=int(line[3])
 			instrumentbaud=int(line[4])
 			instrumenttype=line[5]
-			self.instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
+			id=len(self.instruments)
+			self.instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype,id))
 		
 		if key=="maxdelta_dist" and len(line)>0:
 			self.ini.maxdelta_dist=float(line[0])
