@@ -6,13 +6,14 @@ import sys
 import glob
 from MGL import PROGRAM
 nsi_name="MGL.exe"
-os.environ["PATH"] += ";C:\\gdalwin32-1.6\\bin"
+#os.environ["PATH"] += ";C:\\gdalwin32-1.6\\bin"
 sys.argv.append("py2exe")
 media_files=glob.glob("./mcontent/*")
-mfcdir="C:\\Python26\\Lib\\site-packages\\pythonwin"
+mfcdir="C:\\Python27\\Lib\\site-packages\\pythonwin"
 mfc_files= [os.path.join(mfcdir, i) for i in ["mfc90.dll" ,"mfc90u.dll" ,"mfcm90.dll" ,"mfcm90u.dll" ,"Microsoft.VC90.MFC.manifest"]]
 crt_files=glob.glob(".\\crt\\*")
-extra_files=["C:\\Python26\\DLLs\\libgeos-3-0-4.dll","C:\\Python26\\DLLs\\geos.dll"]
+extra_files=["C:\\Python27\\DLLs\\geos_c.dll","C:\\Python27\\DLLs\\geos.dll"]
+extra_files.extend(glob.glob("Microsoft.VC100.CRT/*.dll"))
 print mfc_files
 #Husk pythonw.exe.manifest!!! -not needed in python2.6
 excludes=["Tkconstants","Tkinter","tcl","matplotlib","pylab","javaxx"]

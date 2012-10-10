@@ -11,9 +11,9 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.77"
-PROGRAM.exename="MGL_b177.exe"
-PROGRAM.date="2012-06-07"
+PROGRAM.version="beta 1.78"
+PROGRAM.exename="MGL_b178.exe"
+PROGRAM.date="2012-10-09"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -295,17 +295,18 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		grid=wx.FlexGridSizer(2,2,5,5)
 		grid.Add(self.backstatus,1,wx.ALL|wx.EXPAND,5)
 		grid.Add(self.forwardstatus,1,wx.ALL|wx.EXPAND,5)
-		#grid.Add(self.map,1,wx.ALL,wx.EXPAND,5)
 		grid.Add(self.back,1,wx.ALL|wx.EXPAND,5)
 		grid.Add(self.forward,1,wx.ALL|wx.EXPAND,5)
-		#grid.Add((-1,-1))
-		self.AddItem(grid,1,wx.ALL|wx.EXPAND,5)
-		self.AddItem(self.map,1,wx.ALL|wx.EXPAND,5)
+		
+		self.AddItem(grid,4,wx.ALL|wx.EXPAND,5)
+		#problems with map hiding statusboxes, so we scale it down a bit....
+		self.AddItem(self.map,3,wx.ALL|wx.EXPAND,5)
+		self.AddItem((40,-1),0,wx.ALL)
 		dsize=wx.GetDisplaySize()
 		if dsize[1]<1024:
-			prop=7
+			prop=8
 		else:
-			prop=6
+			prop=7
 		self.AddRow(prop,wx.ALL|wx.EXPAND,5)
 		#self.CreateRow()
 		#if self.pmode=='detail':
@@ -320,10 +321,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.AddItem(self.optionpanel,1,wx.ALL,5)
 		bsizer=wx.BoxSizer(wx.HORIZONTAL)
 		bsizer.Add(self.footsetup,0,wx.ALL,5)
-		bsizer.Add(self.clearddsum_now,0,wx.ALL,5)
+		bsizer.Add(self.clearddsum_now,0,wx.ALIGN_TOP,5)
 		self.AddItem(self.nextpanel,1,wx.ALL,5)
 		self.AddItem(bsizer,2,wx.ALL,15)
-		self.AddRow(0,wx.ALL,15)
+		self.AddRow(1,wx.ALL,15)
 		#vsizer1=wx.BoxSizer(wx.VERTICAL)
 		#vsizer2=wx.BoxSizer(wx.VERTICAL)
 		#vsizer3=wx.BoxSizer(wx.VERTICAL)
@@ -347,7 +348,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#self.AddRow(12,wx.ALIGN_CENTER,5)
 		self.CreateRow()
 		self.AddItem(self.log,1,wx.ALL|wx.EXPAND,5)
-		self.AddRow(1,wx.ALL|wx.EXPAND,5)
+		self.AddRow(2,wx.ALL|wx.EXPAND,5)
 		#SETUP INSTRUMENT EVENT HANDLING
 		self.instrument.SetEventHandler(self)
 		self.instrument.SetLogWindow(self)
@@ -593,10 +594,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				sd_label="%.2f mm" %(sd*1000)
 				sd_color=Funktioner.State2Col(data.SDTest(self.ini.maxsd))
 			else:
-				sd_label="NA" #maybe also set color
+				sd_label="NA  " #maybe also set color
 				sd_color=None
 			if data.nread is not None:
-				nr_label="%i" %data.nread
+				nr_label="%d" %data.nread
 			else:
 				nr_label="NA"
 			d=data.GetDistance()

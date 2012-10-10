@@ -3,7 +3,7 @@ import sys
 try:
 	sys.frozen   #will pass if running py2exe executable 
 except:
-	os.environ["PATH"] += ";C:\\gdalwin32-1.6\\bin"
+	pass #not needed, put gdal binaries on PATH
 else:
 	exedir=sys.prefix+"\\"
 	os.environ["PATH"] += ";"+exedir
