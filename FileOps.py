@@ -136,7 +136,7 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 			return True,False,msg
 	if not (ATTACH_MSG in lines[-1]):
 		f=open(resfile,"a")
-		f.write("%s\n" %ATTACH_MSG)
+		f.write("\n%s\n" %ATTACH_MSG)
 		f.close()
 	return True,(not has_extra_lines),msg
 			

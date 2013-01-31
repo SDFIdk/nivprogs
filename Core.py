@@ -1033,7 +1033,11 @@ def CompareHdiffs(win,file,data): #a bit messy, could be better
 			htil=Til[hoved[1]]
 			if (hfra is not None and hfra>-100) and (htil is not None and hfra>-100):  #nodata-value
 				msg+="Fra %s til %s:\n" %(hoved[0],hoved[1])
-				msg+=u"M\u00E5lt: %s m, Database: %.4f m\n" %(hoved[5],(htil-hfra))
+				h_db=htil-hfra
+				h_m=float(hoved[5])
+				diff=(h_m-h_db)*1e3
+				ne=abs(diff)/np.sqrt(float(hoved[4])*1e-3)
+				msg+=u"M\u00E5lt: %s m, Database: %.4f m, diff: %.2f mm, %.2f ne\n" %(hoved[5],h_db,diff,ne)
 		if len(notfound)>0:
 			msg+=u"F\u00F8lgende punkters koter blev ikke fundet i databasen:\n"
 			for station in notfound:
