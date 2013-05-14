@@ -4,13 +4,15 @@ import shutil
 import os
 import sys
 import glob
-NSIS="C:\\Programmer\NSIS\makensis.exe"
+NSIS="makensis.exe"
 sys.argv.append("py2exe")
 media_files=glob.glob("./mcontent/*")
-mfcdir="C:\\Python27\\Lib\\site-packages\\pythonwin"
+py_dir=os.path.dirname(sys.executable)
+mfcdir=py_dir+"\\Lib\\site-packages\\pythonwin"
 mfc_files= [os.path.join(mfcdir, i) for i in ["mfc90.dll" ,"mfc90u.dll" ,"mfcm90.dll" ,"mfcm90u.dll" ,"Microsoft.VC90.MFC.manifest"]]
 crt_files=glob.glob(".\\crt\\*")
-extra_files=["C:\\Python27\\DLLs\\geos_c.dll","C:\\Python27\\DLLs\\geos.dll"]
+shapely_dir=py_dir+"\\Lib\\site-packages\\shapely\\DLLs"
+extra_files=glob.glob(shapely_dir+"\\*.dll") #[shapely_dir+"\\geos_c.dll",shapely_dir+"\\geos.dll"]
 extra_files.extend(glob.glob("Microsoft.VC100.CRT/*.dll"))
 excludes=["Tkconstants","Tkinter","tcl","matplotlib","pylab","javaxx"]
 print mfc_files
