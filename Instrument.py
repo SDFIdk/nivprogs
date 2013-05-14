@@ -94,7 +94,7 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			return "Instrument: %s,  konstanter: %.5f m %.4f m, type: %s, com-port: %i" %(self.name,self.addconst,self.axisconst,self.type,self.port)
 	def ReadData(self,expect=None): #is really common, at least, to instruments communicating via (virtual) com-port.....
 		try:
-			con=serial.Serial(self.port,self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
+			con=serial.Serial(self.port-1,self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
 			if (is_fake and expect=="?"):
 				con.returnDistances()
 			
@@ -150,7 +150,7 @@ class TopconThread(threading.Thread):
 		self.alive=True
 		try:
 			self.connection.flush()  #er denne raekkefoelge optimal?? Maaske laese lineien to gange??
-			s=self.connection.readline()
+			s=self.connection.read(32)
 			#Write accept code 4 times#
 			for j in range(0,4):
 				self.connection.write(self.accept_code)
