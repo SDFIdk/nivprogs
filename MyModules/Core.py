@@ -1,13 +1,13 @@
-import MyModules.GUIclasses2 as GUI
+import GUIclasses2 as GUI
 import os
 import sys
 import serial
-import MyModules.GPS as GPS
-import MyModules.MLmap as Map
+import GPS 
+import MLmap as Map
 import wx
-import MyModules.DataClass3 as DataClass
-from MyModules.GdalMaps import INDEXNAME
-from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
+import DataClass3 as DataClass
+from GdalMaps import INDEXNAME
+from ExtractKMS import Numformat2Pointname,Pointname2Numformat
 import time
 import Funktioner as Fkt
 import FileOps
@@ -20,9 +20,9 @@ DEBUG="debug" in sys.argv
 try:
 	sys.frozen
 except:
-	MMDIR=BASEDIR+"/"+"mcontent"+"/" 
+	MMDIR=os.path.join(BASEDIR,"mcontent","") 
 else:
-	MMDIR=sys.prefix+"\\mcontent\\"
+	MMDIR=os.path.join(sys.prefix,"mcontent","")
 RESDIR=os.path.join(BASEDIR,"resultatfiler")
 RESDIR_SHORT=os.path.basename(RESDIR) #to be shown on screen
 #FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"

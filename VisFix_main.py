@@ -12,10 +12,10 @@ import MyModules.GUIclasses2 as GUI
 import MyModules.ExtractKMS as Extract
 import MyModules.GPS as GPS
 import MyModules.DataClass3 as Data
-from Funktioner import RemRem
+from MyModules.Funktioner import RemRem
 import numpy as np
-import MapBrowser2 as MapBrowser
-import Kortforsyningen
+import MyModules.MapBrowser2 as MapBrowser
+import MyModules.Kortforsyningen as Kortforsyningen
 import wx.lib.agw.foldpanelbar as fpb #foldpanelbar
 import wx.lib.newevent
 import time

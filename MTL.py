@@ -1,15 +1,15 @@
 import wx
-import Core #defines classes that are common to, or very similar in, MGL and MTL
+import MyModules.Core as Core #defines classes that are common to, or very similar in, MGL and MTL
 import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
 from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
-import Instrument 
+import MyModules.Instrument as Instrument
 import numpy as np
-import MTLsetup # all MTL math stuff handled here.... This is the real thing!
-import Funktioner
-import FileOps
+import MyModules.MTLsetup as MTLsetup # all MTL math stuff handled here.... This is the real thing!
+import MyModules.Funktioner as Funktioner
+import MyModules.FileOps as FileOps
 import sys,os
-import Sketch #just kidding!
+import MyModules.Sketch as Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"

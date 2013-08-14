@@ -18,7 +18,7 @@ import sqlite3
 import os
 import sys
 import threading
-from shapely.wkb import loads
+#from shapely.wkb import loads
 import wx.lib.newevent
 (MapEvent,EVT_MAP) = wx.lib.newevent.NewEvent()
 wx.InitAllImageHandlers()
@@ -557,17 +557,19 @@ class PolygonReader(): #reads polygon (opmaalingsdistrikter) from shapefile
 		self.layer.SetSpatialFilterRect(minx,miny,maxx,maxy)
 		nf=self.layer.GetFeatureCount()
 		polygons=[]
-		for i in range(0,nf):
+		for i in xrange(0,nf):
 			feature=self.layer.GetNextFeature()
 			label=feature.GetFieldAsString(0) # we assume that this field is the label for the feature
 			geom=feature.GetGeometryRef()  #geometry class
-			bound=geom.GetBoundary()
-			npoints=bound.GetPointCount()
-			coords=np.zeros((npoints,2))
-			for j in range(0,npoints):
-				point=bound.GetPoint_2D(j) 
-				coords[j,:]=point
-			polygons.append(Polygon(coords,label))
+			type=geom.GetGeometryType()
+			if (type==ogr.wkbPolygon or type==ogr.wkbPolygon25D):
+				#boundary=loads(geom.GetBoundary().ExportToWkb()) #quick and dirty using geos
+				coords=np.array(geom.GetBoundary().GetPoints())
+				#print coords.shape
+				if coords.shape[1]>2:
+					coords=coords[:,0:2]
+				polygons.append(Polygon(coords,label))
+			#TODO: else do some kind of logging....
 		self.polygons=polygons
 		self.lastfetch=(minx,maxx,miny,maxy)
 		return polygons
@@ -625,8 +627,11 @@ class LineReader(object):
 			geom=feature.GetGeometryRef()
 			type= geom.GetGeometryType()
 			if type==ogr.wkbLineString or type==ogr.wkbLineString25D:
-				geom=loads(geom.ExportToWkb()) #geometry class
-				coords=np.array(geom.coords)[:,0:2]
+				#geom=loads(geom.ExportToWkb()) #geometry class
+				coords=np.array(geom.GetPoints())
+				#print coords.shape
+				if coords.shape[1]>2:
+					coords=coords[:,0:2]
 				#print coords.mean()
 				#npoints=geom.GetPointCount()
 				#coords=np.zeros((npoints,2))
@@ -639,7 +644,7 @@ class LineReader(object):
 		return lines
 	def GetBounds(self):
 		if not self.INITIALIZED:
-			return
+			return 0,10,0,10
 		nf=self.layer.GetFeatureCount() #reset filter???
 		coords=np.empty((0,2))
 		for i in range(0,3):
@@ -657,10 +662,11 @@ class LineReader(object):
 		return x1,x2,y1,y2
 	def CloseDown(self):
 		try:
-			self.source.Destroy()
+			self.source=None #invokes gc
 			self.layer=None
 		except:
 			pass
+			
 def TestOverlap(x11,x12,y11,y12,x21,x22,y21,y22): #test for overlap of rectangles...
 	xhit=False
 	yhit=False

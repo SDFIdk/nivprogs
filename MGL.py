@@ -1,12 +1,12 @@
 import wx
-import Core #defines classes that are common to, or very similar in, MGL and MTL
+import MyModules.Core as Core #defines classes that are common to, or very similar in, MGL and MTL
 import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
 from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
-import Instrument 
+import MyModules.Instrument as Instrument 
 import numpy 
-import Funktioner
-import FileOps
+import MyModules.Funktioner as Funktioner
+import MyModules.FileOps as FileOps
 import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
