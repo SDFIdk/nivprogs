@@ -150,7 +150,7 @@ class TopconThread(threading.Thread):
 		self.alive=True
 		try:
 			self.connection.flush()  #er denne raekkefoelge optimal?? Maaske laese lineien to gange??
-			s=self.connection.read(32)
+			s=self.connection.readline()
 			#Write accept code 4 times#
 			for j in range(0,4):
 				self.connection.write(self.accept_code)
