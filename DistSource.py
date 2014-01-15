@@ -7,6 +7,7 @@ if os.path.exists(SUITE):
 	shutil.rmtree(SUITE)
 os.mkdir(SUITE)
 shutil.copytree("MyModules",os.path.join(SUITE,"MyModules"))
+shutil.copytree("mcontent",os.path.join(SUITE,"mcontent"))
 for script in SCRIPTS:
 	shutil.copy(script,os.path.join(SUITE,os.path.splitext(script)[0]+".pyw"))
 os.system("hg identify > %s" %(VER_INFO))

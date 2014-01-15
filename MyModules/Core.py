@@ -163,19 +163,24 @@ class MGLStatusData(StatusData):
 		def __init__(self):
 			StatusData.__init__(self)
 			self.ddist=[0]
-		def AddSetup(self,hdiff=0,dist=0,dd=0): #overrides previous
+			self.lambdas=[] #list of hd-difs, to monitor instrument 'sinking'. Only relevant for precision modes...
+		def AddSetup(self,hdiff=0,dist=0,dd=0,lam=0): #overrides previous
 			self.ddist[-1]=dd
 			self.ddist.append(0)
+			self.lambdas.append(lam)
 			self._AddSetup(hdiff,dist)
 		def ClearDD(self):
 			self.ddist=[0]
 		def GetDDSum(self):
 			return sum(self.ddist)
+		def GetSumLambda(self):
+			return sum(self.lambdas)
 		def SetLastDD(self,dd):
 			self.ddist[-1]=dd
 		def SubtractSetup(self,*args):
 			self._SubtractSetup(*args)
 			self.ddist=self.ddist[0:-1] #we should always have nopst>0 when calling this
+			del self.lambdas[-1]
 			
 #------This class handles MTL "state logic" - here we keep pointers to the instruments also --------------------#			
 class MTLStatusData(StatusData):
@@ -277,6 +282,7 @@ class MLBase(GUI.MainWindow):
 		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
 		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie-database","Viser data i forkastelseskriteriedatabasen.")
 		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,u"Forkastelseskriterie-analyse",u"Foretag en outlier analyse af str\u00E6kninger.") 
+		SummaRho=self.anamenu.Append(wx.ID_ANY,u"Summa rho-analyse",u"Foretag en detaljeret summa rho analyse af resultatfilen.")
 		#SetProjectFiles=self.anamenu.Append(wx.ID_ANY,u"Definer projekt-resultatfiler",u"Definer resultatfiler til frem/tilbage test.")
 		#MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
@@ -311,6 +317,7 @@ class MLBase(GUI.MainWindow):
 		self.Bind(wx.EVT_MENU,self.OnSumHeights,SumHeights)
 		self.Bind(wx.EVT_MENU,self.OnShowFBdata,ShowFBdata)
 		self.Bind(wx.EVT_MENU,self.OnOutlierAnalysis,OutlierAnalysis)
+		self.Bind(wx.EVT_MENU,self.OnSummaRho,SummaRho)
 		self.Bind(wx.EVT_MENU,self.OnTTgraph,TTgraph)
 		self.Bind(wx.EVT_MENU,self.OnFBgraph,FBgraph)
 		self.Bind(wx.EVT_MENU,self.OnShowFile,ShowFile)
@@ -541,7 +548,14 @@ class MLBase(GUI.MainWindow):
 		dlg=GUI.MyLongMessageDialog(self,"Frem-tilbage/outlier Analyse",msg,size=(800,-1))
 		dlg.ShowModal()
 		dlg.Destroy()
-			
+	def OnSummaRho(self,event):
+		ok,msg=GetSummaRho(self.resfile)
+		if ok:
+			dlg=GUI.MyLongMessageDialog(self,"Summa rho analyse",msg,size=(800,-1))
+			dlg.ShowModal()
+			dlg.Destroy()
+		else:
+			GUI.ErrorBox(self,msg)
 	def OnMeasTemp(self,e):
 		tframe=GUI.InputDialog(self,title=u"Temperaturm\u00E5ling",numlabels=["Temperatur: "],bounds=[(-50,55)],pedantic=True)
 		tframe.ShowModal()
@@ -1059,6 +1073,93 @@ def AnalyserNet(win,fil):
 	dlg = MySumDialog( win, u"Summer H\u00F8jdeforskelle.",msg+u"V\u00E6lg str\u00E6kning(er):", heads)
 	dlg.ShowModal()
 
+#As above and below - GUIless  
+def GetSummaRho(fil):
+	nerrors=0
+	msg=""
+	heads=FileOps.Hoveder(fil)
+	jsides={}
+	if len(heads)==0:
+		return False,"Ingen hoveder fundet i filen."
+	for head in heads:
+		jside=head[6]
+		fra=head[0]
+		til=head[1]
+		dist=float(head[4])
+		hdiff=float(head[5])
+		err=False
+		spl=jside.split(".")
+		if len(spl)!=2:
+			err=True
+		else:
+			try:
+				jside=int(spl[0])
+				ext=int(spl[1])
+			except:
+				err=True
+			if err:
+				nerrors+=1
+				msg+=u"Ukurankt journalside: %s, str\u00E6kning: %s til %s, fil: %s\n" %(jside,fra,til,os.path.basename(file))
+			else:
+				if jside in jsides:
+					jsides[jside].append((fra,til,ext,dist,hdiff))
+				else:
+					jsides[jside]=[(fra,til,ext,dist,hdiff)]
+	summa_rho=0.0
+	summa_rho_norm=0.0
+	n_used=0
+	max_used=0
+	for jside in jsides:
+		items=jsides[jside]
+		if len(items)>1:
+			item=items[0]
+			h_forward=item[-1]
+			dists=[item[-2]]
+			h_back=0.0
+			fra=item[0]
+			til=item[1]
+			org_ext=item[2]
+			n_forward=1
+			n_back=0
+			ok=True
+			for item in items[1:]:
+				if item[0]==fra and item[1]==til:
+					n_forward+=1
+					h_forward+=item[-1]
+				elif item[1]==fra and item[0]==til:
+					n_back+=1
+					h_back+=item[-1]
+				else:
+					msg+="Fejl i journalside %d.%d, punkter stemmer ikke med journalside nummer %d.%d:\n" %(jside,item[2],jside,org_ext)
+					msg+="Fra: %s, til: %s, for denne jside: %s, %s\n" %(fra,til,item[0],item[1])
+					ok=False
+					break
+				dists.append(item[-2])
+			if ok:
+				n_used+=1
+				d1=min(dists)
+				d2=max(dists)
+				if (d2-d1)>50:
+					msg+="Journalside: %d, stor forskel i afstande: %.2f m, max %.2f m, min: %.2f m\n" %(jside,d2-d1,d2,d1)
+				max_used=max((max_used,n_forward,n_back))
+				h_forward=h_forward/n_forward
+				h_back=h_back/n_back
+				h_all=h_forward+h_back
+				d=np.mean(dists)
+				summa_rho+=h_all
+				summa_rho_norm+=h_all/np.sqrt(d/1e3)
+	if n_used>0:
+		msg+="Summa rho:                                %.3f cm\n" %(summa_rho*100.0)
+		msg+="Normaliseret summa rho (mm/sqrt(d_km)):   %.2f ne\n" %(summa_rho_norm*1e3)
+		msg+="Brugte journalsidenumre:                 %d\n"  %n_used
+		msg+="Max. antal maalinger af samme straek i samme retning: %d\n" %max_used
+	else:
+		return True,"Fandt ingen relevante/korrekte data..." 
+	return True,msg
+					
+					
+				
+		
 def TjekJsider(files): #tjekker journalsider i en liste af res-filer.
 	con=sqlite3.connect(":memory:")
 	cur=con.cursor()

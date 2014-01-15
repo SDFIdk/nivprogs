@@ -11,9 +11,9 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.79"
-PROGRAM.exename="MGL_b179.exe"
-PROGRAM.date="2013-01-31"
+PROGRAM.version="beta 1.791"
+PROGRAM.exename="MGL_b1791.exe"
+PROGRAM.date="2014-01-15"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -146,6 +146,13 @@ class MGLsetup(object):
 	def GetHD(self):
 		self.hd=-self.forward.GetHD()+self.back.GetHD() #same as ((h1b-h1f)+(h2b-h2f))*0.5
 		return self.hd
+	def GetLambda(self):
+		#differences between readings in each direction...
+		lam=0
+		for setup in [self.back,self.forward]:
+			if len(setup.hds)==2:
+				lam+=setup.hds[1]-setup.hds[0]
+		return lam
 	def GetDistance(self):
 		self.dist=self.back.dist+self.forward.dist
 		return self.dist
@@ -269,7 +276,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#status-boxes
 		
 		bfitems=["Sd:","#Afls.:" ,"Sigtelgd.:",u"L\u00E6gte:"]
-		strkitems=[u"Sum \u2206 afst.:","Startpunkt:","Afst. punkt:",u"\u2206H til punkt:","#Opst.:"]
+		strkitems=[u"Sum \u2206 afst.:","Startpunkt:","Afst. punkt:",u"\u2206H til punkt:","#Opst.:",u"Sum 'lambda':"]
 		strkminl=[2,12,2,5,3]
 		self.backstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-tilbage")
 		self.forwardstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-frem")
@@ -679,7 +686,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			dd_color="green"
 		ul=["%.2f m" %ddsum]
 		ul+=["%s" %self.statusdata.GetStart(),"%.2f m" %self.statusdata.GetDistance(),"%.5f m" %self.statusdata.GetHdiff()]
-		ul+=["%i" %self.statusdata.GetSetups()]
+		ul+=["%i" %self.statusdata.GetSetups(),"%.3f m" %self.statusdata.GetSumLambda()]
 		self.strkstatus.UpdateStatus(ul,colours={0:dd_color})
 		self.LayoutSizer()
 	def OnDelete(self,event):
@@ -783,7 +790,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		if self.pmode=='detail' or self.nmode==2:
 			#now update statusdata
 			#self.Log("%s %i %s" %(self.pmode,self.nmode,gotohead))
-			self.statusdata.AddSetup(self.setup.GetHD(),self.setup.GetDistance(),self.setup.GetDistanceDifference())
+			self.statusdata.AddSetup(self.setup.GetHD(),self.setup.GetDistance(),self.setup.GetDistanceDifference(),self.setup.GetLambda())
 			if gotohead:
 				self.UpdateStretchBox()
 				OK=self.TestStretch()
