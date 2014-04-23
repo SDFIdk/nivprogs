@@ -14,7 +14,7 @@ def GetSummaRho(fil,include=None,exclude=None,f_out=None):
 		til=head[1]
 		skipthis=False
 		if include is not None:
-			if not (til in include or fra in include):
+			if not (til in include or fra in include): #if til or fra in include continue
 				skipthis=True
 		if (not skipthis) and exclude is not None:
 			if til in exclude or fra in exclude:

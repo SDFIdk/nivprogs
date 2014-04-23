@@ -40,6 +40,7 @@ def main(args):
 		if len(inc_pts)==0:
 			print("No points specified in include file.")
 			usage()
+		print("Including %d points" %len(inc_pts))
 	else:
 		inc_pts=None
 	if exc_pts_file is not None:
@@ -49,6 +50,7 @@ def main(args):
 		if len(exc_pts)==0:
 			print("No points specified in include file.")
 			usage()
+		print("Excluding %d points" %len(exc_pts))
 	else:
 		exc_pts=None
 	print("Reading %s, writing %s...\n" %(resfile,outfile))
