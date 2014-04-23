@@ -5,6 +5,9 @@ def usage():
 	print("Call: %s <datafile> <outputfile> [<inc_points_file>] [<exclude_points_file>]" %os.path.basename(sys.argv[0]))
 	print("If include file is not present, all points will be used")
 	print("Last argument (exclude file) is optional")
+	print("Include and exclude files should contain one point per line:")
+	print("12123232\n121214334\n.....")
+	print("Lines can be commented out with a #")
 	sys.exit()
 	
 
