@@ -89,7 +89,7 @@ def GetSummaRho(fil,include=None,exclude=None,f_out=None):
 					
 				
 	if n_used>0:
-		summa_rho_norm=summa_rho/np.sqrt(total_dist/1e3)
+		summa_rho_norm=abs(summa_rho)/np.sqrt(total_dist/1e3)
 		msg+="Summa rho:                                            %.3f cm\n" %(summa_rho*100.0)
 		msg+="Normaliseret summa rho (mm/sqrt(d_km)):               %.2f ne\n" %(summa_rho_norm*1e3)
 		msg+="Samlet afstand:                                       %.2f m\n"  %(total_dist)
