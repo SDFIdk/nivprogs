@@ -1,8 +1,8 @@
 #Make a source distribution of the "niv-prog suite"
 import sys,os,time,shutil,glob
 SUITE="NivProgs"
-WSCRIPTS=["VisFix.py","VisFix_main.py","MGL.py","MTL.py","ImportTest.py"] #gui apps
-SCRIPTS=["SummaRho.py"]  #console scripts
+WSCRIPTS=["VisFix.py","MGL.py","MTL.py","ImportTest.py"] #gui apps
+SCRIPTS=["SummaRho.py","VisFix_main.py"]  #console scripts
 VER_INFO=os.path.join(SUITE,"version.txt")
 if os.path.exists(SUITE):
 	shutil.rmtree(SUITE)
