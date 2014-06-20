@@ -208,6 +208,18 @@ def GetSkitser(dir):
 ############################
 ## Translation Routiones                   
 #############################
+
+#valideringsfkt. til punktnavne - tjek med maalere o.a...
+def ValidatePointName(name): 
+	if len(name)<3: #at least 3 chars
+		return False
+	if len(name.split())>1: #No spaces
+		return False
+	return True
+
+def IdenticalTranslation(name):
+	return name
+
 def Pointname2Numformat(name):
 	if name.isdigit(): #then we are OK
 		return name

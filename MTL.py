@@ -2,7 +2,11 @@ import wx
 import MyModules.Core as Core #defines classes that are common to, or very similar in, MGL and MTL
 import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
-from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
+#from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
+from MyModules.ExtractKMS import IdenticalTranslation, ValidatePointName
+#We do not want to support pointname translations from to old 'numeric format anymore'
+Numformat2Pointname=IdenticalTranslation
+Pointname2Numformat=IdenticalTranslation
 import MyModules.Instrument as Instrument
 import numpy as np
 import MyModules.MTLsetup as MTLsetup # all MTL math stuff handled here.... This is the real thing!
@@ -859,16 +863,7 @@ class OverfPanel(wx.Panel):
 			event.Skip() #so that text appears in the field....
 	
 		
-#valideringsfkt. til punktnavne
-def ValidatePointName(name): #should perhaps be defined elsewhere
-	if 3<len(name)<12:
-		try:
-			int(name)
-		except:
-			pass
-		else:
-			return True
-	return False
+
 	
 class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox......
 	def __init__(self,parent,laegter,fontsize=12):
@@ -993,6 +988,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.map.SetPanMode()
 		self.map.SetMap()
 	def PointNameHandler(self,name):
+		#now identical translation - see top of file...
 		name=Pointname2Numformat(name)
 		self.valg.SetPoint(name)
 	def OnCancel(self,event):

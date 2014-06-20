@@ -1223,11 +1223,11 @@ class Logger(wx.Panel):
 	def OnSave(self,event):
 		Nlog=0
 		fname=Fkt.Dato().replace(".","-").replace(":","-")+".log"
-		while os.path.exists(BASEDIR+fname):
+		while os.path.exists(os.path.join(BASEDIR,fname)):
 			Nlog+=1
 			fname=Fkt.Dato().replace(".","-").replace(":","-")+"_"+str(Nlog)+".log"
 		self.log.AppendText("Saving %s...\n" %fname)
-		f=open(BASEDIR+fname,"w") 
+		f=open(os.path.join(BASEDIR,fname),"w") 
 		f.write(self.log.GetValue().encode('utf-8'))
 		f.close()
 	def OnClear(self,event):

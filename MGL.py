@@ -2,7 +2,10 @@ import wx
 import MyModules.Core as Core #defines classes that are common to, or very similar in, MGL and MTL
 import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
-from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
+from MyModules.ExtractKMS import IdenticalTranslation, ValidatePointName
+#We do not want to support pointname translations from to old 'numeric format anymore'
+Numformat2Pointname=IdenticalTranslation
+Pointname2Numformat=IdenticalTranslation
 import MyModules.Instrument as Instrument 
 import numpy 
 import MyModules.Funktioner as Funktioner
@@ -11,9 +14,9 @@ import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.791"
-PROGRAM.exename="MGL_b1791.exe"
-PROGRAM.date="2014-01-15"
+PROGRAM.version="1.8"
+PROGRAM.exename="MGL_180.exe"
+PROGRAM.date="2014-06-20"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -387,6 +390,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		point=obj.GetValue().strip()
 		if len(point)>0 and self.map.panmode:  #if the field is not empty and not using gps-centering
 			if self.parent.data is not None:
+				#now identical translation - see top of file...
 				translation=Numformat2Pointname(point)
 				x,y=self.parent.data.GetCoordinates(translation)
 				if x is not None and y is not None:
@@ -736,7 +740,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					GUI.ErrorBox(self,"Du skal indtaste et startpunkt.")
 					return 
 				else:
-					OK=self.ValidatePointName(startp)
+					OK=ValidatePointName(startp)
 					if not OK:
 						GUI.ErrorBox(self,"Startpunkt %s ikke korrekt!\nIndtast nyt punktnavn" %startp)
 						return
@@ -744,7 +748,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 						self.statusdata.SetStartPoint(startp) #set startpoint
 			endp=self.forward.point.GetValue()
 			if len(endp)>0:
-				OK=self.ValidatePointName(endp)
+				OK=ValidatePointName(endp)
 				if not OK:
 					GUI.ErrorBox(self,"Slutpunkt %s ikke korrekt!\nIndtast nyt punktnavn" %endp)
 					return
@@ -996,20 +1000,12 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		resfile.close()
 		
 	def PointNameHandler(self,name):
+		#now identical translation - see top of file...
 		name=Pointname2Numformat(name)
 		if self.statusdata.GetSetups()>0 or not self.forward.point.IsEmpty(): #a way to force insertion into forward-point
 			self.forward.point.SetValue(name)
 		else:
 			self.back.point.SetValue(name)
-	def ValidatePointName(self,name): #should perhaps be defined elsewhere
-		if 3<len(name)<12:
-			try:
-				int(name)
-			except:
-				pass
-			else:
-				return True
-		return False
 	def OnInstLog(self,event):
 		self.Log(event.text)
 	def Log(self,text):
