@@ -1,13 +1,14 @@
-import MyModules.GUIclasses2 as GUI
+import GUIclasses2 as GUI
 import os
 import sys
 import serial
-import MyModules.GPS as GPS
-import MyModules.MLmap as Map
+import GPS 
+import MLmap as Map
 import wx
-import MyModules.DataClass3 as DataClass
-from MyModules.GdalMaps import INDEXNAME
-from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
+import DataClass3 as DataClass
+from GdalMaps import INDEXNAME
+from ExtractKMS import Numformat2Pointname,Pointname2Numformat
+from Analysis import GetSummaRho
 import time
 import Funktioner as Fkt
 import FileOps
@@ -20,9 +21,9 @@ DEBUG="debug" in sys.argv
 try:
 	sys.frozen
 except:
-	MMDIR=BASEDIR+"/"+"mcontent"+"/" 
+	MMDIR=os.path.join(BASEDIR,"mcontent","") 
 else:
-	MMDIR=sys.prefix+"\\mcontent\\"
+	MMDIR=os.path.join(sys.prefix,"mcontent","")
 RESDIR=os.path.join(BASEDIR,"resultatfiler")
 RESDIR_SHORT=os.path.basename(RESDIR) #to be shown on screen
 #FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"
@@ -33,6 +34,7 @@ PRECISION_LIMIT=2.5
 SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
+#LAST EDIT: 2012-04-23
 
 def SetPrecisionMode(ini,program="MGL"):
 	global IS_PRECISION
@@ -155,24 +157,31 @@ class StatusData(object): #data-beholder til datatyper faelles for MGL og MTL
 		self.projekt=proj
 	def GetProject(self):
 		return self.projekt
+	def GotoNextInstrument(self): #overridden in MTLStatusData
+		pass
 		
 class MGLStatusData(StatusData):
 		def __init__(self):
 			StatusData.__init__(self)
 			self.ddist=[0]
-		def AddSetup(self,hdiff=0,dist=0,dd=0): #overrides previous
+			self.lambdas=[] #list of hd-difs, to monitor instrument 'sinking'. Only relevant for precision modes...
+		def AddSetup(self,hdiff=0,dist=0,dd=0,lam=0): #overrides previous
 			self.ddist[-1]=dd
 			self.ddist.append(0)
+			self.lambdas.append(lam)
 			self._AddSetup(hdiff,dist)
 		def ClearDD(self):
 			self.ddist=[0]
 		def GetDDSum(self):
 			return sum(self.ddist)
+		def GetSumLambda(self):
+			return sum(self.lambdas)
 		def SetLastDD(self,dd):
 			self.ddist[-1]=dd
 		def SubtractSetup(self,*args):
 			self._SubtractSetup(*args)
 			self.ddist=self.ddist[0:-1] #we should always have nopst>0 when calling this
+			del self.lambdas[-1]
 			
 #------This class handles MTL "state logic" - here we keep pointers to the instruments also --------------------#			
 class MTLStatusData(StatusData):
@@ -274,6 +283,7 @@ class MLBase(GUI.MainWindow):
 		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
 		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie-database","Viser data i forkastelseskriteriedatabasen.")
 		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,u"Forkastelseskriterie-analyse",u"Foretag en outlier analyse af str\u00E6kninger.") 
+		SummaRho=self.anamenu.Append(wx.ID_ANY,u"Summa rho-analyse",u"Foretag en detaljeret summa rho analyse af resultatfilen.")
 		#SetProjectFiles=self.anamenu.Append(wx.ID_ANY,u"Definer projekt-resultatfiler",u"Definer resultatfiler til frem/tilbage test.")
 		#MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
@@ -308,6 +318,7 @@ class MLBase(GUI.MainWindow):
 		self.Bind(wx.EVT_MENU,self.OnSumHeights,SumHeights)
 		self.Bind(wx.EVT_MENU,self.OnShowFBdata,ShowFBdata)
 		self.Bind(wx.EVT_MENU,self.OnOutlierAnalysis,OutlierAnalysis)
+		self.Bind(wx.EVT_MENU,self.OnSummaRho,SummaRho)
 		self.Bind(wx.EVT_MENU,self.OnTTgraph,TTgraph)
 		self.Bind(wx.EVT_MENU,self.OnFBgraph,FBgraph)
 		self.Bind(wx.EVT_MENU,self.OnShowFile,ShowFile)
@@ -366,6 +377,19 @@ class MLBase(GUI.MainWindow):
 			self.Log("Punktdatabase tilsluttet.")
 		#On Close kill gps
 		self.Bind(wx.EVT_CLOSE,self.OnClose)
+		if DEBUG:
+			debug_win=GUI.DebugWindow(self)
+			debug_win.BindEnter(self.OnDebugCMD)
+	def OnDebugCMD(self,event):
+		field=event.GetEventObject()
+		text=field.GetValue()
+		try:
+			exec(text)
+		except Exception,msg:
+			print msg
+		else:
+			field.Clear()
+		
 	def OnClose(self,event):
 		self.gps.kill()
 		if self.gps.isAlive():
@@ -525,7 +549,14 @@ class MLBase(GUI.MainWindow):
 		dlg=GUI.MyLongMessageDialog(self,"Frem-tilbage/outlier Analyse",msg,size=(800,-1))
 		dlg.ShowModal()
 		dlg.Destroy()
-			
+	def OnSummaRho(self,event):
+		ok,msg=GetSummaRho(self.resfile)
+		if ok:
+			dlg=GUI.MyLongMessageDialog(self,"Summa rho analyse",msg,size=(800,-1))
+			dlg.ShowModal()
+			dlg.Destroy()
+		else:
+			GUI.ErrorBox(self,msg)
 	def OnMeasTemp(self,e):
 		tframe=GUI.InputDialog(self,title=u"Temperaturm\u00E5ling",numlabels=["Temperatur: "],bounds=[(-50,55)],pedantic=True)
 		tframe.ShowModal()
@@ -557,6 +588,8 @@ class MLBase(GUI.MainWindow):
 			line = GUI.plot.PolyLine(data, colour=col, width=1,legend="%.2f %s" %(param,unit))
 			graphics.append(line)
 			next+=1
+		line_global_min=GUI.plot.PolyLine(FBtest.GetGlobalMinLine(self.program),colour="lightblue",legend=u"bagatelgr\u00E6nse")
+		graphics.append(line_global_min)
 		gc = GUI.plot.PlotGraphics(graphics,"Plot af forkastelseskriterie","Afstand [m]","Tolerance [mm]")
 		theplot.plotter.Draw(gc)
 	def OnWriteComment(self,e):
@@ -583,13 +616,17 @@ class MLBase(GUI.MainWindow):
 		"Udskriv journalside(r).",  u"V\u00E6lg journalside(r):",list)
 		#dlg.SetFont(wx.Font(14,wx.SWISS,wx.NORMAL,wx.NORMAL))
 		dlg.ShowModal()
+		if DEBUG:
+			mode=3
+		else:
+			mode=2
 		if dlg.OK:
 			selections = dlg.GetSelections()
 			if len(selections)>0:
 				strings = [list[x] for x in selections]
 				for JS in strings:
 					try:
-						OK=FileOps.Jside(self.resfile,2,JS,self.program.type)  #Kald med mode2, saa soeges efter Jsidenr...mode 3=test
+						OK=FileOps.Jside(self.resfile,mode,JS,self.program.type)  #Kald med mode2, saa soeges efter Jsidenr...mode 3=test
 					except:
 						GUI.ErrorBox(self,"Fejl under udskrivning...")
 					else:	
@@ -795,12 +832,12 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			states.append(inst.TestPort())
 		self.portstatus.UpdateStatus(states=states)
 	def OnUpdateButton(self,event):
-		self.log.Clear()
+		#self.log.Clear()
 		self.Log("Initialiserer:")
 		self.Setup()
 		self.TestPorts()
 		self.LogStatus()
-		
+		self.log.Refresh()
 	def Setup(self):
 		if self.data is not None:
 			self.data.Disconnect()
@@ -893,10 +930,10 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		resfil=open(fname,"w")
 		#Start resultatfil#
 		resfil.write("%*s %s %s %s\n"%(-19,"Program:",self.program.name,self.program.version,self.program.date))
-		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname))
-		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk))
+		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname.encode('utf-8')))
+		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk.encode('utf-8')))
 		resfil.write("%*s %s %s\n" %(-19,"Dato og tid:",Fkt.Dato(),Fkt.Nu()))
-		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1,m2))
+		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1.encode('utf-8'),m2.encode('utf-8')))
 		for instrument in self.instruments:
 			resfil.write("%s\n" %instrument.PresentYourself(short=True))
 		resfil.write("Laegter:\n")
@@ -916,7 +953,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		if dlg.ShowModal()==wx.ID_OK:
 			fname=dlg.GetFilename()
 			dir=dlg.GetDirectory()
-			if Fkt.CompareDirs(str(dir),RESDIR):
+			if os.path.realpath(dir)==os.path.realpath(RESDIR):
 				if fname.find("backup")!=-1:
 					GUI.ErrorBox(self,u"Backup filen skal omd\u00F8bes, inden der kan tilsluttes til den.")
 				else:
@@ -937,9 +974,9 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			return
 		if isres:
 			data=self.statusdata
-			self.fil.field2.SetValue(data.GetProject())
+			self.fil.field2.SetValue(data.GetProject().decode('utf-8'))
 			imsg="Data for resultatfil:\n"
-			imsg+="Projekt: %s\n" %data.GetProject()
+			imsg+="Projekt: %s\n" %data.GetProject().decode('utf-8')
 			imsg+=u"Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
 			if data.GetSetups()>0:
 				imsg+=u"Uafsluttet str\u00E6kning:\n"
@@ -1011,7 +1048,11 @@ def CompareHdiffs(win,file,data): #a bit messy, could be better
 			htil=Til[hoved[1]]
 			if (hfra is not None and hfra>-100) and (htil is not None and hfra>-100):  #nodata-value
 				msg+="Fra %s til %s:\n" %(hoved[0],hoved[1])
-				msg+=u"M\u00E5lt: %s m, Database: %.4f m\n" %(hoved[5],(htil-hfra))
+				h_db=htil-hfra
+				h_m=float(hoved[5])
+				diff=(h_m-h_db)*1e3
+				ne=abs(diff)/np.sqrt(float(hoved[4])*1e-3)
+				msg+=u"M\u00E5lt: %s m, Database: %.4f m, diff: %.2f mm, %.2f ne\n" %(hoved[5],h_db,diff,ne)
 		if len(notfound)>0:
 			msg+=u"F\u00F8lgende punkters koter blev ikke fundet i databasen:\n"
 			for station in notfound:
@@ -1033,6 +1074,11 @@ def AnalyserNet(win,fil):
 	dlg = MySumDialog( win, u"Summer H\u00F8jdeforskelle.",msg+u"V\u00E6lg str\u00E6kning(er):", heads)
 	dlg.ShowModal()
 
+
+					
+					
+				
+		
 def TjekJsider(files): #tjekker journalsider i en liste af res-filer.
 	con=sqlite3.connect(":memory:")
 	cur=con.cursor()
@@ -1152,7 +1198,7 @@ def GetFile(win,msg="Select a file:",defaultDir=None,style=wx.FD_OPEN,wildcard="
 	if dlg.ShowModal()==wx.ID_OK:
 		filename=dlg.GetPath()
 	else:
-		filename=-1
+		filename=""
 	dlg.Destroy()
 	return filename
 
@@ -1283,6 +1329,9 @@ class IniReader(object):
 		self.n_inst=n_inst
 		self.min_laegter=min_laegter
 	def Read(self):
+		self.laegter=[]
+		self.instruments=[]
+		self.ini=Ini()
 		f=open(self.path,"r")
 		line=Fkt.RemRem(f)
 		while len(line)>0:
@@ -1296,7 +1345,7 @@ class IniReader(object):
 			if key=="gps" and len(line)>0:
 				self.ini.gpsport=int(line[0])
 				if len(line)>1:
-					self.gpsbaud=int(line[1])
+					self.ini.gpsbaud=int(line[1])
 			if key=="kortmappe" and len(line)>0:
 				mapdir=line[0]
 				if mapdir[-1] not in ["/","\\"]:

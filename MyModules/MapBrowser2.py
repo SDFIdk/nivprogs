@@ -1,10 +1,10 @@
 import wx
-from MyModules import MapPanel
-from MyModules import GdalMaps
-from MyModules import GPS 
-from MyModules import MapBase
-from MyModules.DataClass2 import PointData
-from MyModules import wms_client
+import MapPanel
+import GdalMaps
+import GPS 
+import MapBase
+from DataClass2 import PointData
+import wms_client
 import numpy as np
 wms_client.SetLogin("kms1","adgang") #should be setup by the user...
 #Implements a base class MapBase for handling maps via wms or GDALMaps and point data (sqlite) via DataClass2

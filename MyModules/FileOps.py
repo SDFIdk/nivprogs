@@ -1,6 +1,11 @@
 import os,sys
-import win32ui
-import win32con
+try:
+	import win32ui
+	import win32con
+except:
+	HAS_WIN32=False
+else:
+	HAS_WIN32=True
 import time
 import Funktioner
 import shutil
@@ -136,7 +141,7 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 			return True,False,msg
 	if not (ATTACH_MSG in lines[-1]):
 		f=open(resfile,"a")
-		f.write("%s\n" %ATTACH_MSG)
+		f.write("\n%s\n" %ATTACH_MSG)
 		f.close()
 	return True,(not has_extra_lines),msg
 			
@@ -236,7 +241,10 @@ def GetInstrumentNames(fname,program="MTL"):
 	return names
 
 def TjekHeader(fname,program_name): #majet, majet simpel funktion, som bare ser efter programnavn i foerste linie af en fil....
-	f=open(fname,"r")
+	try:
+		f=open(fname,"r")
+	except:
+		return False
 	line=f.readline()
 	f.close()
 	if program_name.lower() in line.lower():
@@ -355,9 +363,13 @@ def LaesSidsteHoved(fullfile):
 	
 
 def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soegemode, mode3: test
+	if (not HAS_WIN32):
+		raise Warning("Udprint kraever win32-moduler, som ikke er loadet korrekt")
+		return False
 	f=open(resfile,"rb") #'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!
 	f.readline() #foerste linie er program version
-	filnavn=f.readline().split()[1] #anden linie indeholder filnavn
+	#filnavn=f.readline().split()[1] #anden linie indeholder filnavn
+	filnavn=resfile
 	pos, nl=SaetEfterHoved(f,mode,JS) #egentlig er nl overfloedig her nu....
 	if mode==2 and nl==0:
 		return False #betyder at JS ikke blev fundet (udskriv enkeltsidemode=2)

@@ -5,37 +5,37 @@ import numpy as np
 import os
 import FileOps
 #fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
-# Last edit: 2012-01-09 fixed mtl test. Unified.
+# Last edit: 2012-01-09 fixed mtl test. Unified, 2012-04-23: fixed possible None return val in TestStretch
 #Rejcection criteria reflects a model variance for meas. of a strectch, should correpond to a variance of half the parameter used in the test. 
+
+# Test is really - for two meas:
+#par=prec=reject_par/2.....
+#|diff|<2*sqrt(var_model(d,par)) - always linear in par. 
+#No more Centering err/ constant 'avoid zero' term! 
+#Thus the var-models are artificial close to zero. Instead a global min is defined (0,3 mm for now)!!!!!
+
+GLOBAL_MIN_DEV=0.3 #twice precision on mean
+
 def MTL_var_model_linear(dist,parameter):
 	dist=dist/1000.0
-	return (dist*parameter+0.1)**2
+	return (dist*parameter)**2
 	
 def MTL_var_model(dist,parameter):
 	dist=dist/1000.0
 	DLIM=0.2 #km
+	c_err=0 #divided by two below because 'precision' is (defined to be)  half of 'reject par'
 	if dist<DLIM:
-		FKLIN=(np.sqrt(DLIM)*parameter-0.3)/DLIM
-		return (FKLIN*dist+0.3)**2
+		FKLIN=(np.sqrt(DLIM)*parameter-c_err*0.5)/DLIM
+		return (FKLIN*dist+c_err*0.5)**2
 	else:
 		return (parameter**2*dist)
 
 def MGL_var_model(dist,parameter):
 	dist=dist/1000.0
-	return (np.sqrt(dist)*parameter+0.05)**2   #add a centering err....
+	c_err=0.0 #divided by two below because 'precision' is (defined to be)  half of 'reject par'
+	return (np.sqrt(dist)*parameter+c_err*0.5)**2   #add a centering err....
 	
-def Test_old(hdiffin,found,dist,parameter,var_model):
-	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
-	return diff*1000-np.sqrt(((1+1.0/found.size)*0.5)*var_model(dist,parameter))
 
-def Test(std_total,dist,parameter,var_model):
-	return std_total*1000-np.sqrt(var_model(dist,parameter))
-
-def MGLtest(hdiffin,found,dist,parameter):
-	diff=np.fabs(hdiffin+np.mean(found)) #this is in m - test in mm
-	test=diff*1000-np.sqrt((((1+1.0/found.size)*0.5)*parameter**2*(dist/1000.0)+0.1**2)) #add "centering-error". Also reflects the number of found. 
-	#print diff,dist,parameter,found.size,test
-	return test
 	
 class FBreject(object): 
 	def __init__(self,database,program="MGL",parameter=2.0,unit="ne"):
@@ -46,7 +46,9 @@ class FBreject(object):
 				self.var_model=MTL_var_model
 			else:
 				self.var_model=MTL_var_model_linear
+		self.unit=unit
 		self.parameter=parameter
+		self.precision=parameter*0.5 #this is the correpsonding 'precision'
 		self.initialized=False
 		self.found=False
 		self.wasok=False
@@ -62,7 +64,7 @@ class FBreject(object):
 		return data
 	def GetDatabase(self):
 		return self.database
-	def TestStretch(self,start,end,hdiff): #returns foundstretch,testresult, diff,#found
+	def TestStretch(self,start,end,hdiff): #returns foundstretch,testresult,#found,msg
 		self.found=False
 		self.wasok=False
 		msg=""
@@ -84,36 +86,51 @@ class FBreject(object):
 			if nforward>0:
 				dists.append(s_forward.dist)
 				hdiffs_all=np.append(hdiffs_all,np.array(s_forward.hdiffs))
-		msg+=u"%s->%s er tidligere m\u00E5lt %d gange, og %d gange i modsat retning." %(start,end,nforward,nback)
+		msg+=u"%s->%s er tidligere m\u00E5lt %d gang(e), og %d gang(e) i modsat retning.\n" %(start,end,nforward,nback)
 		nall=len(hdiffs_all)
 		if len(hdiffs_all)>0:
 			d=np.mean(dists)
+			norm_d=np.sqrt(d/1e3)
+			msg+="Afstand: %.2f m\n" %d
 			if len(hdiffs_all)>1:
 				raw_mean=np.mean(hdiffs_all)
 				raw_std=np.std(hdiffs_all,ddof=1)
-				msg+="\nAfst: %.2f m, hdiff_middel: %.4f m, std-dev: %.2f mm" %(d,raw_mean,raw_std*1000)
+				raw_prec=raw_std/np.sqrt(len(hdiffs_all))
+				raw_max_diff=hdiffs_all.max()-hdiffs_all.min()
+				msg+=u"hdiff_middel: %.4f m, max-diff: %.2f mm (%.2f ne)\n" %(raw_mean,raw_max_diff*1000,raw_max_diff*1e3/norm_d)
+				msg+="std_dev: %.2f mm, std_dev(middel): %.2f mm (%.2f ne)\n" %(raw_std*1000,raw_prec*1000,raw_prec*1e3/norm_d)
 			msg+=u"\nEfter inds\u00E6ttelse af ny m\u00E5ling:\n"
 			hdiffs_new=np.append(hdiffs_all,[hdiff])
 			new_mean=np.mean(hdiffs_new)
 			new_std=np.std(hdiffs_new,ddof=1)
-			msg+=u"hdiff_middel: %.4f m, std_dev: %.2f mm" %(new_mean,new_std*1000)
-			diff=Test(new_std,d,self.parameter,self.var_model)
-			isok=diff<0
+			new_prec=new_std/np.sqrt(len(hdiffs_new))
+			new_max_diff=hdiffs_new.max()-hdiffs_new.min()
+			msg+=u"hdiff_middel: %.4f m, max-diff: %.2f mm (%.2f ne)\n" %(new_mean,new_max_diff*1000,new_max_diff*1e3/norm_d)
+			msg+="std_dev: %.2f mm, std_dev(middel): %.2f mm (%.2f ne)\n" %(new_std*1000,new_prec*1000,new_prec*1e3/norm_d)
+			msg+="\nForkastelsesparameter: %.3f %s." %(self.parameter,self.unit)
+			max_dev=self.GetMaxDev(d) #in mm!!
+			if len(hdiffs_new)==2:
+				msg+=" Vil acceptere |diff|<%.2f mm" %(2*max_dev)
+			isok=(new_prec*1e3<=max_dev)
 			self.found=True
 			self.wasok=isok
 			if isok:
-				msg+="\nDen samlede standardafvigelse er OK.\n"
+				msg+=u"\nDen samlede standardafvigelse p\u00E5 middel er OK.\n"
 			else:
-				msg+=u"\nDen samlede standarafvigelse er IKKE OK, lav flere m\u00E5linger!\n"
-				if len(hdiffs_all)>1 and new_std>raw_std: #or something more fancy
-					msg+=u"Den nye m\u00E5ling er tilsyneladende en outlier og kan evt. omm\u00E5les!\n"
-				return True,isok,abs(diff),len(hdiffs_all),msg
+				msg+=u"\nDen samlede standarafvigelse p\u00E5 middel er IKKE OK\n" 
+				msg+=u"Foretag flere m\u00E5linger!\n"
+			if len(hdiffs_all)>1 and new_prec>raw_prec: #or something more fancy
+				msg+=u"Den nye m\u00E5ling er tilsyneladende en outlier og kan evt. omm\u00E5les!\n"
+				isok=False
+			return True,isok,len(hdiffs_all),msg
 		else:
 			msg=u"%s->%s er ikke m\u00E5lt tidligere" %(start,end)
 			self.found=False
 			self.wasok=True
-			return True,True,0,0,msg
+			return True,True,0,msg
 			
+	def GetMaxDev(self,dist): #max dev in mm!
+		return max(np.sqrt(self.var_model(dist,self.precision)),GLOBAL_MIN_DEV*0.5)
 			
 	def InsertStretch(self,start,end,hdiff,dist,dato,tid,jside=""):
 		if not self.initialized:
@@ -135,8 +152,7 @@ class FBreject(object):
 			print repr(msg)
 			return False
 		else:
-			
-				return True
+			return True
 	def OutlierAnalysis(self):
 		data=self.database.copy()
 		msg=""
@@ -165,26 +181,36 @@ class FBreject(object):
 			if len(hdiffs_all)>1:
 				std_dev=np.std(hdiffs_all,ddof=1)
 				m=np.mean(hdiffs_all)
-				diff=Test(std_dev,d,self.parameter,self.var_model)
-				is_ok=diff<0
+				#same test as above#
+				prec=std_dev/np.sqrt(len(hdiffs_all))
+				max_dev=self.GetMaxDev(d) #in mm
+				#print max_dev,prec
+				is_ok=(prec*1e3<=max_dev)
 				if not is_ok:
 					nbad+=1
 					report=True
-					l_msg+="\nForkastelseskriterie IKKE overholdt, forskel: %.2f mm" %diff
+					l_msg+="\nForkastelseskriterie IKKE overholdt."
+					l_msg+=u"\nTilladt fejl p\u00E5 middel: %.2f mm, aktuel fejl: %.2f mm" %(max_dev,prec*1e3)
 				if len(hdiffs_all)>2:
 					dh=np.fabs(hdiffs_all-m)
-					I=np.where(np.fabs(dh)>2*std_dev)[0]
+					outlier_limit=1.5*std_dev
+					if len(hdiffs_all)==3:
+						outlier_limit=1.1*std_dev
+					I=np.where(np.fabs(dh)>outlier_limit)[0]
 					if I.size>0:
-						noutliers+=1
 						report=True
 						l_msg+="\nOutliere:"
 						for i in I:
+							noutliers+=1
 							if i>nforward-1:
 								i-=nforward
 								s=s_back
 							else:
 								s=s_forward
 							l_msg+=u"\nHdiff: %.4f m, m\u00E5lt %s, journalside: %s" %(s.hdiffs[i],s.times[i].isoformat().replace("T"," "),s.jpages[i])
+							hdiffs_new=np.delete(hdiffs_all,i)
+							new_prec=np.std(hdiffs_new,ddof=1)/np.sqrt(len(hdiffs_new))
+							l_msg+=u"\nFejl p\u00E5 middel: %.2f mm, fejl p\u00E5 middel uden denne m\u00E5ling: %.2f mm" %(prec*1e3,new_prec*1e3)
 				if report:
 					msg+="\n"+"*"*60+"\n"+l_msg
 				
@@ -216,8 +242,14 @@ def GetPlotData(program="MGL",parameter=2.0,unit="ne"):
 		else:
 			var_model=MTL_var_model_linear
 	dists=np.arange(0,1500,10)
-	out=np.sqrt(map(lambda x: var_model(x,parameter), dists))
+	precision=0.5*parameter  #since parameter is 'reject-parameter' and we define precison as half of dat - man :-)
+	out=2*np.sqrt(map(lambda x: var_model(x,precision), dists))
 	return np.column_stack((dists,out))
+
+def GetGlobalMinLine(program="MGL"):
+	dists=[0,400.0]
+	hs=[GLOBAL_MIN_DEV,GLOBAL_MIN_DEV]
+	return np.column_stack((dists,hs))
 	
 class Stretch(object):
 	def __init__(self):
@@ -250,7 +282,7 @@ def MakeRejectData(resfiles):
 				day,month,year=Funktioner.GetDate(dato)
 				date=datetime.datetime(year,month,day,h,m)
 			except Exception, msg:
-				print repr(msg)
+				print repr(msg),head
 				nerrors+=1
 			else:
 				if data.has_key(key):

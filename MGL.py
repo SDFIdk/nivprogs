@@ -1,19 +1,19 @@
 import wx
-import Core #defines classes that are common to, or very similar in, MGL and MTL
+import MyModules.Core as Core #defines classes that are common to, or very similar in, MGL and MTL
 import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
 from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
-import Instrument 
+import MyModules.Instrument as Instrument 
 import numpy 
-import Funktioner
-import FileOps
+import MyModules.Funktioner as Funktioner
+import MyModules.FileOps as FileOps
 import sys
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MGL"
-PROGRAM.version="beta 1.70"
-PROGRAM.exename="MGLb170.exe"
-PROGRAM.date="2012-03-07"
+PROGRAM.version="beta 1.791"
+PROGRAM.exename="MGL_b1791.exe"
+PROGRAM.date="2014-01-15"
 PROGRAM.type="MGL"
 PROGRAM.about="""
 MGL program skrevet i Python. 
@@ -146,6 +146,13 @@ class MGLsetup(object):
 	def GetHD(self):
 		self.hd=-self.forward.GetHD()+self.back.GetHD() #same as ((h1b-h1f)+(h2b-h2f))*0.5
 		return self.hd
+	def GetLambda(self):
+		#differences between readings in each direction...
+		lam=0
+		for setup in [self.back,self.forward]:
+			if len(setup.hds)==2:
+				lam+=setup.hds[1]-setup.hds[0]
+		return lam
 	def GetDistance(self):
 		self.dist=self.back.dist+self.forward.dist
 		return self.dist
@@ -185,7 +192,7 @@ class MGLlaegte(object):
 # State-handling principle: when data arrives via keyboard or data-com it should be displayed in status-box. This is handled by text-events in case of key-press in 'manual mode'. 
 # Data arriving from instrument in 'auto mode' is inserted into text boxes without firing text-events.
 # Errors are indicated by red-colors.
-#  User prompting via dialogs should only be done when a measurement is completed - not for each keypress! i.e. when the user try's to accept the measurement.
+#  User prompting via dialogs should only be done when a measurement is completed - not for each keypress! i.e. when the user tries to accept the measurement.
 #  In 'precision' mode the prompting should happen earlier, before doing the second measurement.
 #-----------------------------------------------------------------------------------------------------------------------
 class MGLMeasurementFrame(GUI.FullScreenWindow):
@@ -211,9 +218,11 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.footsetup=wx.CheckBox(self,label="Fodopstilling.")
 		self.footsetup.SetFont(GUI.DefaultFont(size-2))
 		self.footsetup.Bind(wx.EVT_CHECKBOX,self.OnFoot)
-		self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst.")
-		self.clearddsum.SetFont(GUI.DefaultFont(size-2))
-		self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
+		#self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst v. hovede.")
+		#self.clearddsum.SetFont(GUI.DefaultFont(size-2))
+		#self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
+		self.clearddsum_now=GUI.MyButton(self,u"Nulstil afstandssum",size-2)
+		self.clearddsum_now.Bind(wx.EVT_BUTTON,self.OnClearDDsum_now)
 		#end check boxes#
 		if self.pmode=='detail':
 			self.back=MGLpanel(self,u"Tilbagem\u00E5ling",self.rodnames,size)
@@ -267,13 +276,13 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#status-boxes
 		
 		bfitems=["Sd:","#Afls.:" ,"Sigtelgd.:",u"L\u00E6gte:"]
-		strkitems=[u"Sum \u2206 afst.:","Startpunkt:","Afst. punkt:",u"\u2206H til punkt:","#Opst.:"]
+		strkitems=[u"Sum \u2206 afst.:","Startpunkt:","Afst. punkt:",u"\u2206H til punkt:","#Opst.:",u"Sum 'lambda':"]
 		strkminl=[2,12,2,5,3]
-		self.backstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-1,label="Kontrol-tilbage")
-		self.forwardstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-1,label="Kontrol-frem")
+		self.backstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-tilbage")
+		self.forwardstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-frem")
 		self.bfstatus={'back':self.backstatus,'forward':self.forwardstatus} #utility dict for neater access.
-		self.opststatus=GUI.StatusBox2(self,opstitems,colsize=2,fontsize=size-1,label="Opstilling",minlengths=opstminl)
-		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-1,label=u"Str\u00E6kning",minlengths=strkminl)
+		self.opststatus=GUI.StatusBox2(self,opstitems,colsize=2,fontsize=size-2,label="Opstilling",minlengths=opstminl)
+		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-2,label=u"Str\u00E6kning",minlengths=strkminl)
 		self.backstatus.UpdateStatus()
 		self.forwardstatus.UpdateStatus()
 		self.opststatus.UpdateStatus()
@@ -281,42 +290,72 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#Log-field
 		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE,size=(-1,80))
 		self.log.SetFont(GUI.DefaultFont(size-1))
-		#Define Layout, sizer programming still a bit of a mystery - well it not that interesting :-)
+		#Define Layout, sizer programming still a bit of a mystery - well its not that interesting :-)
 		self.CreateRow()
-		if self.pmode=='detail':
-			p1=1
-			p2=2
-		else:
-			p1=1
-			p2=1
-		self.AddItem(self.opststatus,p1,wx.ALL,5)
-		self.AddItem(self.strkstatus,p2,wx.ALL,5)
-		self.AddRow(3,wx.ALIGN_CENTER|wx.EXPAND,5)
+		#This seems to work with screen resolution 1280x800
+		row=wx.FlexGridSizer(1,2,5,5)
+		row.Add(self.opststatus,0,wx.ALL,5)
+		row.Add(self.strkstatus,1,wx.ALL,5)
+		self.AddItem(row,1,wx.ALL,5)
+		self.AddRow(2,wx.ALL,5)
 		self.CreateRow()
-		vsizer1=wx.BoxSizer(wx.VERTICAL)
-		vsizer2=wx.BoxSizer(wx.VERTICAL)
-		vsizer3=wx.BoxSizer(wx.VERTICAL)
-		hsizer=wx.BoxSizer(wx.HORIZONTAL)
-		hsizer2=wx.BoxSizer(wx.HORIZONTAL)
-		vsizer1.Add(self.backstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer1.Add(self.back,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer1.Add(self.optionpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer2.Add(self.forwardstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer2.Add(self.forward,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
-		vsizer3.Add(self.map,0,wx.ALL|wx.CENTER,5)
-		hsizer2.Add(self.footsetup,0,wx.ALL,5)
-		hsizer2.Add(self.clearddsum,0,wx.ALL,5)
-		vsizer3.Add(hsizer2,0,wx.ALL,5)
+		grid=wx.FlexGridSizer(2,2,5,5)
+		grid.Add(self.backstatus,1,wx.ALL|wx.EXPAND,5)
+		grid.Add(self.forwardstatus,1,wx.ALL|wx.EXPAND,5)
+		grid.Add(self.back,1,wx.ALL|wx.EXPAND,5)
+		grid.Add(self.forward,1,wx.ALL|wx.EXPAND,5)
 		
-		hsizer.Add(vsizer1,1,wx.ALL,5)
-		hsizer.Add(vsizer3,0,wx.ALL|wx.CENTER,5)
-		hsizer.Add(vsizer2,1,wx.ALL,5)
-		self.AddItem(hsizer,1,wx.ALL,5)
-		self.AddRow(12,wx.ALIGN_CENTER,5)
+		self.AddItem(grid,4,wx.ALL|wx.EXPAND,5)
+		#problems with map hiding statusboxes, so we scale it down a bit....
+		self.AddItem(self.map,3,wx.ALL|wx.EXPAND,5)
+		self.AddItem((40,-1),0,wx.ALL)
+		dsize=wx.GetDisplaySize()
+		if dsize[1]<1024:
+			prop=8
+		else:
+			prop=7
+		self.AddRow(prop,wx.ALL|wx.EXPAND,5)
+		#self.CreateRow()
+		#if self.pmode=='detail':
+		#	prop=2
+		#else:
+		#	prop=3
+		#self.AddItem(self.back,0,wx.ALL,15)
+		#self.AddItem(self.map,1,wx.CENTER,5)
+		#self.AddItem(self.forward,0,wx.ALL,15)
+		#self.AddRow(prop,wx.ALL|wx.EXPAND,5)
 		self.CreateRow()
-		self.AddItem(self.log,1,wx.CENTER,5)
-		self.AddRow(1,wx.EXPAND|wx.CENTER,5)
+		self.AddItem(self.optionpanel,1,wx.ALL,5)
+		bsizer=wx.BoxSizer(wx.HORIZONTAL)
+		bsizer.Add(self.footsetup,0,wx.ALL,5)
+		bsizer.Add(self.clearddsum_now,0,wx.ALIGN_TOP,5)
+		self.AddItem(self.nextpanel,1,wx.ALL,5)
+		self.AddItem(bsizer,2,wx.ALL,15)
+		self.AddRow(1,wx.ALL,15)
+		#vsizer1=wx.BoxSizer(wx.VERTICAL)
+		#vsizer2=wx.BoxSizer(wx.VERTICAL)
+		#vsizer3=wx.BoxSizer(wx.VERTICAL)
+		#hsizer=wx.BoxSizer(wx.HORIZONTAL)
+		#hsizer2=wx.BoxSizer(wx.HORIZONTAL)
+		#vsizer1.Add(self.backstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer1.Add(self.back,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer1.Add(self.optionpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer2.Add(self.forwardstatus,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer2.Add(self.forward,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer2.Add(self.nextpanel,0,wx.ALL|wx.ALIGN_CENTER,5)
+		#vsizer3.Add(self.map,0,wx.ALL|wx.TOP,5)
+		#hsizer2.Add(self.footsetup,0,wx.ALL,5)
+		#hsizer2.Add(self.clearddsum,0,wx.ALL,5)
+		#hsizer2.Add(self.clearddsum_now,0,wx.ALL|wx.CENTER,5)
+		#vsizer3.Add(hsizer2,0,wx.ALL,5)
+		#hsizer.Add(vsizer1,1,wx.ALL,5)
+		#hsizer.Add(vsizer3,0,wx.ALL|wx.CENTER,5)
+		#hsizer.Add(vsizer2,1,wx.ALL,5)
+		#self.AddItem(hsizer,1,wx.ALL,5)
+		#self.AddRow(12,wx.ALIGN_CENTER,5)
+		self.CreateRow()
+		self.AddItem(self.log,1,wx.ALL|wx.EXPAND,5)
+		self.AddRow(2,wx.ALL|wx.EXPAND,5)
 		#SETUP INSTRUMENT EVENT HANDLING
 		self.instrument.SetEventHandler(self)
 		self.instrument.SetLogWindow(self)
@@ -372,14 +411,22 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.Log("Normal opstilling - gps positioner lagres.")
 			self.footsetup.SetBackgroundColour(GUI.BGCOLOR)
 		self.footsetup.Refresh()
-	def OnClearDDsum(self,event):
-		if self.clearddsum.IsChecked():
-			self.Log("Resetter delta-afstands-sum efter punkttilslutning")
-			self.clearddsum.SetBackgroundColour("yellow")
+	#def OnClearDDsum(self,event):
+	#	if self.clearddsum.IsChecked():
+	#		self.Log("Resetter delta-afstands-sum efter punkttilslutning")
+	#		self.clearddsum.SetBackgroundColour("yellow")
+	#	else:
+	#		self.Log("Resetter IKKE delta-afstands-sum punkttilslutning")
+	#		self.clearddsum.SetBackgroundColour(GUI.BGCOLOR)
+	#	self.clearddsum.Refresh()
+	def OnClearDDsum_now(self,event):
+		if self.statusdata.GetSetups()>0:
+			self.Log(u"Kan ikke nulstille afstandssum midt i en str\u00E6kning.")
+			return
 		else:
-			self.Log("Resetter IKKE delta-afstands-sum punkttilslutning")
-			self.clearddsum.SetBackgroundColour(GUI.BGCOLOR)
-		self.clearddsum.Refresh()
+			self.statusdata.ClearDD()
+			self.Log("Resetter delta-afstands-sum")
+			self.UpdateStretchBox()
 	#Text-events only send in manuel mode. Auto-mode uses ChangeValue.
 	#Rods are set either when a new selection is made,  when something useful is entered in measurement-fields or when return ios hit in rod-field.
 	def RodHandler(self,aim):
@@ -461,6 +508,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.fields[aim].SetBackgroundColour("wheat")
 			self.fields[aim].Refresh()
 			self.instrument.ReadData()
+			self.LayoutSizer()
 	def OnData(self,event):
 		self.instrument.SetReadState(False) #almost the same as setting 'manual' mode.
 		Core.SoundGotData()
@@ -542,6 +590,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		for aim in ['back','forward']:
 			self.fields[aim].SetBackgroundColour(GUI.BGCOLOR)
 			self.fields[aim].Refresh()
+		self.LayoutSizer()
 	def SetStatus(self): #Method which checks/displays status after measurements. Enables buttons. Updates Statusbox. Moving focus should be handled elsewhere
 		#All this happens at key-press in 'manual' mode
 		#First update f/b- statusboxes 
@@ -552,10 +601,10 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				sd_label="%.2f mm" %(sd*1000)
 				sd_color=Funktioner.State2Col(data.SDTest(self.ini.maxsd))
 			else:
-				sd_label="NA" #maybe also set color
+				sd_label="NA  " #maybe also set color
 				sd_color=None
 			if data.nread is not None:
-				nr_label="%i" %data.nread
+				nr_label="%d" %data.nread
 			else:
 				nr_label="NA"
 			d=data.GetDistance()
@@ -628,6 +677,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.opststatus.UpdateStatus([di_label,dd_label,hd_label],colours={1:ddcolor})
 			else:
 				self.opststatus.UpdateStatus([di_label,dd_label,hd_label,hdt_label],colours={1:ddcolor,3:hdt_color})
+			self.LayoutSizer()
 	def UpdateStretchBox(self):
 		ddsum=self.statusdata.GetDDSum()
 		if abs(ddsum)>4.0:
@@ -636,8 +686,9 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			dd_color="green"
 		ul=["%.2f m" %ddsum]
 		ul+=["%s" %self.statusdata.GetStart(),"%.2f m" %self.statusdata.GetDistance(),"%.5f m" %self.statusdata.GetHdiff()]
-		ul+=["%i" %self.statusdata.GetSetups()]
+		ul+=["%i" %self.statusdata.GetSetups(),"%.3f m" %self.statusdata.GetSumLambda()]
 		self.strkstatus.UpdateStatus(ul,colours={0:dd_color})
+		self.LayoutSizer()
 	def OnDelete(self,event):
 		if self.mmode!='manual':
 			self.SetManualMode()
@@ -658,7 +709,8 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.back.hd2.SetFocus()
 		else:
 			if not self.setup.HasData():
-				dlg=GUI.MyMessageDialog(self,u"Bem\u00E6rk",u"Hvis du vil slette flere data m\u00E5 du editere resultatfilen :-)")
+				dlg=GUI.MyMessageDialog(self,u"Bem\u00E6rk",
+				u"Hvis du vil slette flere data m\u00E5 du editere resultatfilen,\neller bruge redigeringsfunktioner i hovedvindue")
 				dlg.ShowModal()
 			self.back.ClearTop()
 			self.forward.ClearTop()
@@ -738,7 +790,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		if self.pmode=='detail' or self.nmode==2:
 			#now update statusdata
 			#self.Log("%s %i %s" %(self.pmode,self.nmode,gotohead))
-			self.statusdata.AddSetup(self.setup.GetHD(),self.setup.GetDistance(),self.setup.GetDistanceDifference())
+			self.statusdata.AddSetup(self.setup.GetHD(),self.setup.GetDistance(),self.setup.GetDistanceDifference(),self.setup.GetLambda())
 			if gotohead:
 				self.UpdateStretchBox()
 				OK=self.TestStretch()
@@ -758,7 +810,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			return True
 		else:
 			data=self.statusdata
-			found,OK,diff,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
+			found,OK,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
 			if found:
 				if OK:
 					self.Log(msg)
@@ -798,6 +850,12 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.forwardstatus.Clear()
 		self.forward.Clear()
 		self.back.Clear()
+		#if clearddsum is checked : also clear da sum, man!
+		#if self.clearddsum.IsChecked():
+		#	self.statusdata.ClearDD()
+		#	self.Log("Resetter delta-afstands-sum")
+		if self.log.GetNumberOfLines()>12:
+			self.log.Clear()
 		if self.statusdata.slutpunkt is not None and self.statusdata.GetSetups()==0: #do this after clear.
 				self.back.point.ChangeValue(self.statusdata.slutpunkt)
 		self.forward.EnableTop()
@@ -870,10 +928,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
 			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
 			self.statusdata.StartNewStretch()
-			#if clearddsum is checked : also clear da sum, man!
-			if self.clearddsum.IsChecked():
-				self.statusdata.ClearDD()
-				self.Log("Resetter delta-afstands-sum")
+			
 			self.back.EnablePoint()
 			#start new strech
 			hvd.Destroy()
@@ -958,8 +1013,6 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 	def OnInstLog(self,event):
 		self.Log(event.text)
 	def Log(self,text):
-		if self.log.GetNumberOfLines()>6:
-			self.log.Clear()
 		self.log.AppendText(text+"\n")
 #-----------------------------------------------------------#
 #Panels etc. used in the MainMGLMeasurement-frame
@@ -986,9 +1039,9 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		self.point=GUI.MyTextField(self,size=(120,-1),fontsize=size)
 		pointsizer=GUI.FieldWithLabel(self,field=self.point,size=size,label="Pkt:")
 		self.rod=Core.RodBox(self,rods,(120,-1),fontsize=size)
-		self.dist=MyNumMGL(self,0,200,2,size=(120,-1),fontsize=size) #distandsfelt
+		self.dist=MyNumMGL(self,-100,200,2,size=(120,-1),fontsize=size) #distandsfelt
 		rodsizer=GUI.FieldWithLabel(self,field=self.rod,label=u"Lgt:",size=size)
-		self.hd=MyNumMGL(self,0,100,5,size=(120,-1),fontsize=size) #sigtehoejdefelt
+		self.hd=MyNumMGL(self,-100,200,5,size=(120,-1),fontsize=size) #sigtehoejdefelt
 		self.hds=[self.hd] 
 		distsizer=GUI.FieldWithLabel(self,field=self.dist,size=size,label="L:")
 		maalsizer=GUI.FieldWithLabel(self,field=self.hd,size=size,label="H1:")
@@ -1091,7 +1144,7 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 	def __init__(self,parent,title,rods=[],size=12):
 		MGLpanel.__init__(self,parent,title,rods,size)
-		self.hd2=MyNumMGL(self,0,100,5,size=(120,-1),fontsize=size)
+		self.hd2=MyNumMGL(self,-100,100,5,size=(120,-1),fontsize=size)
 		self.hds=[self.hd,self.hd2]
 		maalsizer=GUI.FieldWithLabel(self,field=self.hd2,size=size,label=u"H2:")
 		self.bsizer.Insert(4,maalsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)

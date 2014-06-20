@@ -75,26 +75,30 @@ class FullScreenWindow(PlainWindow):
 		PlainWindow.__init__(self,parent)
 		self.hsizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.vsizer=wx.BoxSizer(wx.VERTICAL)
-		self.vsizer.AddStretchSpacer(1) #above
-		self.vsizer.AddStretchSpacer(1) #below
-		self.hsizer.AddStretchSpacer(1) #left
-		self.hsizer.Add(self.vsizer,10,wx.EXPAND)
-		self.hsizer.AddStretchSpacer(1) #right
+		self.vsizer.AddSpacer(10) #above
+		self.vsizer.AddSpacer(10) #below
+		self.hsizer.AddSpacer(20) #left
+		self.hsizer.Add(self.vsizer,1,wx.EXPAND,5)
+		self.hsizer.AddSpacer(20) #right
 		self.rowsizer=wx.BoxSizer(wx.HORIZONTAL)
-		self.nrows=2
+		self.insert_at=1
+		
 	def ShowMe(self):
 		self.Show()
 		self.SetSizerAndFit(self.hsizer)
 		self.ShowFullScreen(1)
 	def LayoutSizer(self):
+		#self.vsizer.Layout()
 		self.hsizer.Layout()
+		
 	def CreateRow(self):
 		self.rowsizer=wx.BoxSizer(wx.HORIZONTAL)
 	def AddItem(self,item,proportion=1,style=wx.ALL,border=5):
 		self.rowsizer.Add(item,proportion,style,border)
 	def AddRow(self,proportion=1,style=wx.ALL,border=5):
-		self.vsizer.Insert(self.nrows-1,self.rowsizer,proportion,style,border)
-		self.nrows+=1
+		self.vsizer.Insert(self.insert_at,self.rowsizer,proportion,style,border)
+		self.vsizer.AddSpacer(5)
+		self.insert_at+=2
 class PlotFrame(SecondaryWindow): #Frame for showing a single plot
 	def __init__(self,parent,*args,**kwargs):
 		self.parent=parent
@@ -196,6 +200,22 @@ class MultiPlotFrame(SecondaryWindow): #Frame for showing 4 plots.
 			gc = plot.PlotGraphics(lines)
 		self.plotter[p].Draw(gc)
 		self.plotter[p].SetEnableLegend(True)
+		
+
+class DebugWindow(wx.Frame):
+	def __init__(self,parent):
+		self.parent=parent
+		wx.Frame.__init__(self,parent,title="DEBUG-CONSOLE",style=wx.DEFAULT_FRAME_STYLE|wx.STAY_ON_TOP)
+		self.sizer=wx.BoxSizer(wx.VERTICAL)
+		self.field=wx.TextCtrl(self,size=(300,-1),style=wx.TE_PROCESS_ENTER)
+		self.sizer.Add(self.field,0,wx.EXPAND|wx.ALL,10)
+		self.SetSizerAndFit(self.sizer)
+		self.Show()
+	def BindEnter(self,fct):
+		self.field.Bind(wx.EVT_TEXT_ENTER,fct)
+	def ClearField(self):
+		self.field.Clear()
+		
 
 
 #-------------------------------------------------------------------------------#
@@ -437,12 +457,11 @@ class StatusBox2(wx.Panel):
 		self.box=wx.StaticBox(self,label=label)
 		self.box.SetFont(DefaultFont(fs))
 		self.text=[]
-		vsizers=[]
-		self.bsizer=wx.StaticBoxSizer(self.box,wx.HORIZONTAL)
+		self.bsizer=wx.StaticBoxSizer(self.box)
+		self.gridsizer=wx.FlexGridSizer(self.colsize,self.cols*2,10,10)
 		self.sizer=wx.BoxSizer()
 		n=0
 		for j in range(0,self.cols):
-			vsizers.append(wx.BoxSizer(wx.VERTICAL))
 			i=0
 			maxtext=0
 			while n<self.N and i<self.colsize:
@@ -451,15 +470,14 @@ class StatusBox2(wx.Panel):
 				line=[MyText(self,self.list[n],fs),MyText(self,"",fs)]
 				hsizer=wx.BoxSizer(wx.HORIZONTAL)
 				self.text.append(line)
-				self.text[n][1].SetFont(DefaultLogFont(fontsize,True))
-				self.text[n][0].SetFont(DefaultLogFont(fontsize))
-				hsizer.Add(line[0],0,wx.ALL,5)
-				hsizer.Add(line[1],0,wx.ALL,5)
-				vsizers[j].Add(hsizer,0,wx.ALL,5)
+				line[0].SetFont(DefaultLogFont(fontsize,True))
+				line[1].SetFont(DefaultLogFont(fontsize))
+				self.gridsizer.Add(line[0],1,wx.ALL|wx.EXPAND|wx.CENTER,5)
+				self.gridsizer.Add(line[1],2,wx.ALL|wx.EXPAND|wx.CENTER,5)
 				i+=1
 				n+=1
 			self.col_tl.append(maxtext)
-			self.bsizer.Add(vsizers[j],0,wx.ALL,5)
+		self.bsizer.Add(self.gridsizer,1,wx.ALL,5)
 		self.sizer.Add(self.bsizer,0,wx.ALL,5)
 		
 	def UpdateStatus(self,inputlist=[],states=None,colours=None,field=None,text=None,label=None,colour=None):    #Hmmm, vist lettere med default vaerdier!!
@@ -467,10 +485,14 @@ class StatusBox2(wx.Panel):
 			for i in range(0,len(states)):
 				if states[i]:
 					self.text[i][1].SetLabel("OK")
-					self.text[i][1].SetForegroundColour("green")
+					self.text[i][1].SetBackgroundColour("green")
+					#self.text[i][0].SetBackgroundColour("green")
 				else:
 					self.text[i][1].SetLabel("ERR")
-					self.text[i][1].SetForegroundColour("red")
+					self.text[i][1].SetBackgroundColour("red")
+					#self.text[i][0].SetBackgroundColour("red")
+				for text in self.text[i]:
+					text.Refresh()
 		else: 
 			if field is None:
 				if len(inputlist)==0:
@@ -497,26 +519,37 @@ class StatusBox2(wx.Panel):
 					text_label="NA"
 				col_nr=int(i/self.colsize)
 				textl=self.col_tl[col_nr]
-				extra_space=max(0,textl-len(self.list[i]))
-				more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
+				#extra_space=max(0,textl-len(self.list[i]))
+				#more_space=max(0,self.minlengths[i]-extra_space-len(text_label))
+				extra_space=0
+				more_space=0
 				self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"",text_label,more_space,""))
 				if paint and colours.has_key(i):
 					if colours[i] is None:
-						col="black"
+						col=self.parent.GetBackgroundColour()
 					else:
 						col=colours[i]
-					self.text[i][1].SetForegroundColour(col)
+					#self.text[i][0].SetBackgroundColour(col)
+					self.text[i][1].SetBackgroundColour(col)
+					for text in self.text[i]:
+						text.Refresh()
 		if label!=None:
 			self.box.SetLabel(label)
 		self.SetSizerAndFit(self.sizer)
 	def Clear(self):
+		bgcol=self.parent.GetBackgroundColour()
 		for i in range(0,self.N):
 			col_nr=int(i/self.colsize)
 			textl=self.col_tl[col_nr]
-			extra_space=max(0,textl-len(self.list[i]))
-			more_space=max(0,self.minlengths[i]-extra_space-2)
+			#extra_space=max(0,textl-len(self.list[i]))
+			#more_space=max(0,self.minlengths[i]-extra_space-2)
+			extra_space=0
+			more_space=0
 			self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"","NA",more_space,""))
-			self.text[i][1].SetForegroundColour("black")
+			self.text[i][1].SetBackgroundColour(bgcol)
+			#self.text[i][0].SetBackgroundColour(bgcol)
+			for text in self.text[i]:
+				text.Refresh()
 		self.SetSizerAndFit(self.sizer)
 
 

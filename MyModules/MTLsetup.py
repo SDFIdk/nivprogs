@@ -90,6 +90,8 @@ class MTLTransferSetup(MTLSetup):
 		self.err_limits=err_limits
 		self.InitData()
 	def InitData(self):
+		self.dh_test=False
+		self.rf_test=False
 		self.satser=np.empty((0,2,2),dtype='<S20') #for storing raw data
 		self.keep_mask=np.empty((0,),dtype=np.bool) #mask indicating whether to keep or delete a 'sats'
 		self.hdiff=None
@@ -98,6 +100,8 @@ class MTLTransferSetup(MTLSetup):
 		self.restfejls=np.empty((0,))
 		self.restfejl=None
 		self.index_errs_store=np.empty((0,2))
+	def AreDistancesDone(self):
+		return self.validity_mask[0].all()
 	def Clear(self):
 		self.Initialize(3,2)
 		self.InitData()

@@ -1,21 +1,21 @@
 import wx
-import Core #defines classes that are common to, or very similar in, MGL and MTL
+import MyModules.Core as Core #defines classes that are common to, or very similar in, MGL and MTL
 import MyModules.GUIclasses2 as GUI #basic GUI-stuff
 from MyModules.MLmap import PanelMap
 from MyModules.ExtractKMS import Numformat2Pointname,Pointname2Numformat
-import Instrument 
+import MyModules.Instrument as Instrument
 import numpy as np
-import MTLsetup # all MTL math stuff handled here.... This is the real thing!
-import Funktioner
-import FileOps
+import MyModules.MTLsetup as MTLsetup # all MTL math stuff handled here.... This is the real thing!
+import MyModules.Funktioner as Funktioner
+import MyModules.FileOps as FileOps
 import sys,os
-import Sketch #just kidding!
+import MyModules.Sketch as Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.30"
-PROGRAM.exename="MTLb030.exe"
-PROGRAM.date="2012-03-07"
+PROGRAM.version="beta 0.33"
+PROGRAM.exename="MTLb033.exe"
+PROGRAM.date="2013-01-31"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -247,8 +247,8 @@ class DistancePanel(wx.Panel):
 			row_validity=self.setup.IsValid(row=0) 
 			if row_validity:
 				self.UpdateStatus()
-				
 		event.Skip()
+		
 	def OnChar(self,event): #easier to handle char events here, rather than via the standard 'keyhandler' setup of MyTextField....
 		key=event.GetKeyCode()
 		field=event.GetEventObject()
@@ -449,7 +449,8 @@ class SatsEdit(GUI.TwoButtonDialog):
 			colors={2:Funktioner.State2Col(self.setup.MaxDevTest(mask))}
 			self.status.UpdateStatus(["%.4f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
 		self.SetSizer(self.sizer)
-		
+
+#TODO: Fix id of instruments!!!!
 class Instrument2Instrument(GUI.FullScreenWindow):
 	"""Main window for inst->inst setups"""
 	def __init__(self, parent):
@@ -459,12 +460,14 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.mmode=0  #0 : distances   1: angles, changed in the 2 SetMode fcts. below
 		self.auto_fields=[[],[]] #two 'columns' to store fields for 'auto mode' in.
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
-		self.modecolors=["blue","red","yellow"]
+		self.modecolors=["green","red","yellow"]
 		#END MODE SETUP - inherit stuff from parent#
 		self.statusdata=parent.statusdata
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.resfile=parent.resfile
 		self.instruments=self.statusdata.GetInstruments()
+		#WRITE TO LOG#
+		self.Log(u"Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
 		for instrument in self.instruments:
 			instrument.SetLogWindow(self)
 			instrument.SetEventHandler(self)
@@ -474,12 +477,12 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		#define setup class#
 		self.setup=MTLsetup.MTLTransferSetup(self.aim,[[inst.addconst,inst.axisconst] for inst in self.instruments],self.ini)
 		#define gui stuff #
-		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=1,minlengths=[7,7,11],bold_list=[2])
+		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=3,minlengths=[7,7,11],bold_list=[2])
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
 		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
 		,fontsize=FONTSIZE-1)
 		self.resultbox.UpdateStatus([])
-		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=2,fontsize=FONTSIZE)
+		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=3,fontsize=FONTSIZE)
 		self.main.button[1].Enable(0)
 		self.main.button[2].Enable(0)
 		self.main.button[3].Enable(0)
@@ -498,24 +501,21 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.main.button[0].Bind(wx.EVT_BUTTON,self.OnSetDistanceMode)
 		self.main.button[1].Bind(wx.EVT_BUTTON,self.OnSetZMode)
 		#LAYOUT#
+		self.CreateRow() #space in top....
+		self.AddItem((-1,50))
+		self.AddRow(1,wx.ALL)
 		self.CreateRow()
-		self.AddItem(self.statusbox,1,wx.ALIGN_LEFT)
-		#rsizer=wx.BoxSizer(wx.VERTICAL)
-		#rsizer.Add(self.main)
-		#rsizer.Add(self.satsstatus)
-		self.AddRow(1,wx.ALL|wx.ALIGN_LEFT,5)
-		self.CreateRow()
-		self.AddItem(self.resultbox,0,wx.ALL|wx.ALIGN_LEFT,5)
-		#self.AddRow(0,wx.ALL|wx.ALIGN_LEFT,5)
-		#self.CreateRow()
-		self.AddItem(self.main,0,wx.ALL,5)
-		self.AddRow(2,wx.ALL|wx.ALIGN_LEFT,5)
+		row=wx.FlexGridSizer(1,3,15,15)
+		row.Add(self.statusbox,1,wx.ALL,10)
+		row.Add(self.resultbox,1,wx.ALL,10)
+		row.Add(self.main,1,wx.ALL,5,10)
+		self.AddItem(row,1,wx.ALIGN_CENTER|wx.EXPAND)
+		self.AddRow(3,wx.ALL|wx.EXPAND,5)
 		self.CreateRow()
 		self.AddItem(self.lower)
-		self.AddRow(3,wx.ALL|wx.ALIGN_CENTER,10)
+		self.AddRow(5,wx.ALIGN_CENTER,10)
 		self.UpdateStatus()
-		#WRITE TO LOG#
-		self.Log(u"Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+		
 		#Gaa direkte til afstand#
 		self.SetDistanceMode() 
 		self.ShowMe()
@@ -539,15 +539,26 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			GUI.ErrorBox(self,msg)
 			self.SetManualMode() #end control here
 			return
+		if DEBUG:
+			print "Call from instrument:",id
+			self.PrintAutoFields()
 		if len(self.auto_fields[id])>0:
 			Core.SoundGoodData()
-			field=self.auto_fields[id][-1]
-			field.SetValue(val)
+			field=self.auto_fields[id].pop(0)
 			field.Enable()
-			self.auto_fields[id]=self.auto_fields[:-1]
+			field.SetValue(val)
+			field.Refresh()
+		if len(self.auto_fields[id])==0:
+			#it is not reading anymore - and the connection should have been closed by the internal thread!
+			#not really convinced that this design is 'optimal'....
+			self.instruments[id].SetReadState(False) 
+		else:
+			self.instruments[id].ReadData()
 		if len(self.auto_fields[0])==0 and len(self.auto_fields[1])==0:
-			self.UpdateHeightStatus()
+			if DEBUG:
+				print("We seem to be done!")
 			self.SetManualMode() #or something else
+			self.UpdateHeightStatus()
 	def OnSetZMode(self,event):
 		self.SetZMode()
 	def OnSetDistanceMode(self,event):
@@ -582,27 +593,37 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def SetManualMode(self):
 		if self.mode==0:
 			return
-		self.Log(u"Skifter til 'manuel mode'. Afbryder instrumentl\u00E6sning.")
+		self.Log(u"Skifter til 'manuel mode'. Afslutter instrumentl\u00E6sning.")
 		self.mode=0
 		for inst in self.instruments:
-			inst.Kill()
+			if (inst.IsReading()): #or inst.thread.isAlive()
+				inst.Kill()
 		for col in self.auto_fields:
 			for field in col:
 				field.Enable()
 		self.auto_fields=[[],[]]
 		self.UpdateStatus()
+	def PrintAutoFields(self): #for debugging
+		print("Auto-fields are:")
+		for id_x in range(2):
+			print "id:",id_x
+			for field in self.auto_fields[id_x]:
+				print field.ij_id
 	def SetAutoMode(self,col1,col2):
 		if self.mode>0:
 			self.SetManualMode()
 			return
 		self.Log("Skifter til 'auto mode'.")
-		self.auto_fields=[col1,col2]
+		self.auto_fields=[col1[:],col2[:]] #since we use pop we really need to make a copy of list objects - otherwise we affect the original!!
 		for col in self.auto_fields:
 			for field in col:
 				field.Enable(0)
 		self.mode=1
+		expect=None
+		if self.mmode==0:
+			expect="?"
 		for instrument in self.instruments:
-			instrument.ReadData()
+			instrument.ReadData(expect)
 		self.UpdateStatus()
 	def SetSingleAutoMode(self,field,col):
 		if self.mode>0:
@@ -613,7 +634,10 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.Log("Skifter til 'single auto mode'.")
 		field.Enable(0)
 		self.mode=2
-		self.instruments[col].ReadData()
+		if self.mmode==0:
+			self.instruments[col].ReadData("?")
+		else:
+			self.instruments[col].ReadData()
 		self.UpdateStatus()
 	def UpdateStatus(self):
 		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
@@ -625,10 +649,14 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		dlg.Destroy()
 		return ok
 	def UpdateHeightStatus(self): #name is a bit 'misvisende' since general status is really handled here....
-		if self.mmode==0:
+		if self.mmode==0: # this shuld be done in panel!
+			if (not self.setup.AreDistancesDone()): #escape if we are not done - perhaps shouldnt be called in the first place!
+				return
 			diff,ok=self.setup.DistanceTest()
 			msg=u"Stor forskel mellem afstandsm\u00E5linger: %.3f m" %abs(diff)
 		else:
+			if (not self.setup.IsValid()): #escape if we are not done - perhaps shouldnt be called in the first place!
+				return
 			ok=self.setup.SatsTest()
 			msg=u"Den aktuelle sats opfylder ikke fejlkriterierne!"
 		if not ok:
@@ -886,7 +914,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
 		self.mode=0 #modes are 0: manual and 1: auto 2; single auto - i.e. just one field....
 		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
-		self.modecolors=["blue","red","yellow"]
+		self.modecolors=["green","red","yellow"]
 		self.auto_fields=[] #an ordered list of fields from subpanel to receive data from instrument
 		self.sigte=-2*int((self.statusdata.GetSetups())==0)+1
 		self.setup=MTLsetup.MTLBasisSetup(self.sigte)
@@ -922,6 +950,9 @@ class MakeBasis(GUI.FullScreenWindow):
 		#LAYOUT#
 		self.UpdateStatus()
 		self.CreateRow()
+		self.AddItem((-1,50))
+		self.AddRow(1,wx.ALL)
+		self.CreateRow()
 		sizer_left=wx.BoxSizer(wx.VERTICAL)
 		sizer_left.Add(self.status,1,wx.ALL,5)
 		sizer_left.Add(self.resultbox,1,wx.ALL,5)
@@ -931,11 +962,11 @@ class MakeBasis(GUI.FullScreenWindow):
 		sizer_right.Add(self.valg,1,wx.ALL,5)
 		sizer_right.Add(self.main,1,wx.ALL,5)
 		self.AddItem(sizer_right,1,wx.ALL,5)
-		self.AddRow(2,wx.CENTER|wx.ALL|wx.EXPAND)
+		self.AddRow(3,wx.CENTER|wx.ALL|wx.EXPAND)
 		self.CreateRow()
 		self.AddItem(self.maal,1)
 		self.AddItem(self.controlbox,1)
-		self.AddRow(1,wx.ALL)
+		self.AddRow(3,wx.ALL)
 		self.ShowMe()
 		self.valg.SetFocus()
 		if DEBUG:
@@ -1064,11 +1095,12 @@ class MakeBasis(GUI.FullScreenWindow):
 				GUI.ErrorBox(self,u"Forventede en vinkelm\u00E5ling!")
 				self.SetManualMode()  #leave function here...
 			else: #then code is '<' and we have angles...
-				field=self.auto_fields.pop([0])
+				field=self.auto_fields.pop(0)
 				field.SetValue(val) #issues a text-event which triggers event handlers... Watch out that these dont send the thread of control astray!!!!
+				field.Enable()
 				if len(self.auto_fields)==0:
 					self.SetManualMode()
-					self.Valg.SetFocus()
+					self.valg.SetFocus()
 					Core.SoundGoodData()
 				else:
 					self.instrument.ReadData()
@@ -1081,16 +1113,15 @@ class MakeBasis(GUI.FullScreenWindow):
 			return True
 		else:
 			data=self.statusdata
-			found,OK,diff,nfound=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
+			found,OK,nfound,msg=self.parent.fbtest.TestStretch(data.GetStart(),data.GetEnd(),data.GetHdiff())
 			#self.Log(repr(found)+repr(OK)+repr(diff)+repr(nfound))
 			if found:
 				if OK:
 					self.Log(u"Fremm\u00E5ling fundet, forkastelseskriterie overholdt.")
 					return True
 				else:
-					msg=u"Forkastelseskriterie for frem og tilbage-m\u00E5lte str\u00E6kninger overksredet med %.1f mm.\n" %diff
 					self.Log(msg)
-					msg+=u"Vil du godkende m\u00E5lingen?"
+					msg+=u"\nVil du godkende m\u00E5lingen?"
 					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
 					dlg.ShowModal()
 					OK=dlg.WasOK()
@@ -1283,7 +1314,8 @@ class MTLinireader(Core.IniReader): #add more error handling!
 			instrumentport=int(line[3])
 			instrumentbaud=int(line[4])
 			instrumenttype=line[5]
-			self.instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype))
+			id=len(self.instruments)
+			self.instruments.append(Instrument.MTLinstrument(instrumentname,addconst,axisconst,instrumentport,instrumentbaud,instrumenttype,id))
 		
 		if key=="maxdelta_dist" and len(line)>0:
 			self.ini.maxdelta_dist=float(line[0])
@@ -1312,7 +1344,7 @@ def main():
 	dsize=wx.GetDisplaySize() #but we need to check this anyways....
 	global FONTSIZE
 	if dsize[0]<1100 or dsize[1]<800: #set default fontsize for labels, input fields etc. - fields set size relative to this base size
-		FONTSIZE=12
+		FONTSIZE=13
 	else:
 		FONTSIZE=14
 	frame=StartFrame(None)
