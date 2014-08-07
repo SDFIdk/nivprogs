@@ -326,10 +326,11 @@ class MapBase(wx.Panel): #Base class for mapping and data access- no direct user
 			return True
 	def SetInitialCenter(self,realcenter=False):
 		self.x,self.y=575160,6224150 #default, aarhus if coords is utm32
-		if self.MapEngine.IsInitialized():
-			x,y=self.MapEngine.MAPDIRS[0].GetCenter()
-			if (not(500000<x<750000 and 6150000<y<6300000)) or realcenter: #then it looks like where not in dk,utm32
-				self.x,self.y=x,y
+		#this is too messy, so disable it...
+		#if self.MapEngine.IsInitialized():
+		#	x,y=self.MapEngine.MAPDIRS[0].GetCenter()
+		#	if (not(500000<x<750000 and 6150000<y<6300000)) or realcenter: #then it looks like where not in dk,utm32
+		#		self.x,self.y=x,y
 			
 	def SetCenter(self,x,y,R=None):
 		self.x,self.y=x,y
