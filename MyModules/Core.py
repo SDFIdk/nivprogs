@@ -354,15 +354,8 @@ class MLBase(GUI.MainWindow):
 		self._UpdateStatus()
 		#set and log status.
 		self.Log("%s %s igangsat %s." %(self.program.name,self.program.version,self.starttime))
-		#if not os.path.exists(FORKAST):
-		#	self.Log("Forkastelsekriterie-database findes ikke. Generer den via menupunkt.")
-		#	self.fbtest=None
-		#else:
+		self.Log(u"Punktnumre / navne overs\u00E6ttes ikke mere. What you see is what you get!")
 		self.AttachFBtest()
-		#if self.gps.alive: #flag to see if all is OK, isAlive() could return True because the thread has not terminated yet...
-		#	self.Log("GPS-enheden er tilsluttet port %i." %self.ini.gpsport)
-		#else: 
-		#	self.Log("GPS ikke tilsluttet.")
 		if self.data is None or not self.data.IsInitialized():
 			self.map.DisablePoints()
 			self.Log("Punktdatabase ikke tilsluttet.")
