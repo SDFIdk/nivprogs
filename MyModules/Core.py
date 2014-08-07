@@ -7,7 +7,10 @@ import MLmap as Map
 import wx
 import DataClass3 as DataClass
 from GdalMaps import INDEXNAME
-from ExtractKMS import Numformat2Pointname,Pointname2Numformat
+from ExtractKMS import IdenticalTranslation
+#We do not want to support pointname translations from to old 'numeric format anymore'
+Numformat2Pointname=IdenticalTranslation
+Pointname2Numformat=IdenticalTranslation
 from Analysis import GetSummaRho
 import time
 import Funktioner as Fkt
@@ -16,7 +19,7 @@ import numpy as np
 import FBtest
 import glob
 import sqlite3
-BASEDIR=os.getcwd()
+BASEDIR=os.path.dirname(__file__)
 DEBUG="debug" in sys.argv
 try:
 	sys.frozen
@@ -26,15 +29,12 @@ else:
 	MMDIR=os.path.join(sys.prefix,"mcontent","")
 RESDIR=os.path.join(BASEDIR,"resultatfiler")
 RESDIR_SHORT=os.path.basename(RESDIR) #to be shown on screen
-#FORKAST_MGL=RESDIR+"/"+"forkast.sqlite"
-#FORKAST_MTL=RESDIR+"/"+"forkast_mtl.sqlite"
-#FORKAST=FORKAST_MGL
 IS_PRECISION=False #precision mode means special options in "MakeHead"
 PRECISION_LIMIT=2.5
 SL="*"*50
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
-#LAST EDIT: 2012-04-23
+#LAST EDIT: 2014-07-08
 
 def SetPrecisionMode(ini,program="MGL"):
 	global IS_PRECISION
@@ -43,13 +43,7 @@ def SetPrecisionMode(ini,program="MGL"):
 	else:
 		IS_PRECISION=False
 	return IS_PRECISION
-#def SetTestFile(program="MGL"):
-#	global FORKAST
-#	program=program.upper()
-#	if "MTL" in program:
-#		FORKAST=FORKAST_MTL
-#	else:
-#		FORKAST=FORKAST_MGL
+
 
 #Ini and status data container classes
 		
@@ -297,7 +291,7 @@ class MLBase(GUI.MainWindow):
 		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
 		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hovede","Sletter til seneste hoved i datafilen!")
 		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hovede i datafilen.")
-		TjekPunkter=self.funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
+		#TjekPunkter=self.funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
 		TjekJsider=self.funkmenu.Append(wx.ID_ANY,"Tjek journalsider","Tjek journalsider i datafil(er).")
 		# Creating the menubar.
 		menuBar = wx.MenuBar()
@@ -323,7 +317,7 @@ class MLBase(GUI.MainWindow):
 		self.Bind(wx.EVT_MENU,self.OnFBgraph,FBgraph)
 		self.Bind(wx.EVT_MENU,self.OnShowFile,ShowFile)
 		self.Bind(wx.EVT_MENU,self.OnSkrivJS,SkrivJS)
-		self.Bind(wx.EVT_MENU,self.OnTjekPunkter,TjekPunkter)
+		#self.Bind(wx.EVT_MENU,self.OnTjekPunkter,TjekPunkter)
 		#self.Bind(wx.EVT_MENU,self.OnMakeReject,MakeReject)
 		self.Bind(wx.EVT_MENU,self.OnTjekJsider,TjekJsider)
 		self.Bind(wx.EVT_MENU,self.OnEditHead,EditHead)
@@ -638,33 +632,7 @@ class MLBase(GUI.MainWindow):
 							self.Log("Udskriver journalside %s.\n" %JS)
 				
 		dlg.Destroy()
-	def OnTjekPunkter(self,event):
-		heads=FileOps.Hoveder(self.resfile)
-		choices=[]
-		if len(heads)==0:
-			dlg=GUI.ErrorBox(self,"Ingen hoveder fundet i filen!")
-		punkter=[]
-		for head in heads:
-			punkter.append([head[0],head[1]])
-		msg=""
-		i=0
-		Nuk=0
-		for edge in punkter:
-			n1=Numformat2Pointname(edge[0])
-			if len(n1)==0:
-				n1="ukurant?"
-				Nuk+=1
-			n2=Numformat2Pointname(edge[1])
-			if len(n2)==0:
-				n2="ukurant?"
-				Nuk+=1
-			msg+="Hoved %i:\n" %(i+1)
-			msg+="%s: %s,  %s: %s\n" %(edge[0],n1,edge[1],n2)
-			i+=1
-		msg="Antal ukurante punktnavne: %i\n"%Nuk+u"Overs\u00E6ttelser:\n"+msg
-		dlg=GUI.MyLongMessageDialog(self,"Punktnavne",msg)
-		dlg.ShowModal()
-		dlg.Destroy()
+	
 	def OnTjekJsider(self,e):
 		files=SelectResultFiles(self,self.program.type)
 		if len(files)>0:
