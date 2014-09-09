@@ -869,7 +869,7 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 	def __init__(self,parent,laegter,fontsize=12):
 		GUI.StuffWithBox.__init__(self,parent,label="Valg",style="vertical")
 		hsize=int(fontsize*10+30)
-		self.point=GUI.MyTextField(self,fontsize,size=(hsize,-1))
+		self.point=GUI.MyTextField(self,size=(hsize,-1),fontsize=fontsize-2)
 		self.point.SetValidator(ValidatePointName)
 		pointsizer=GUI.FieldWithLabel(self,self.point,"Punkt:",fontsize)
 		self.laegtebox=Core.RodBox(self,laegter,size=(hsize,-1),fontsize=fontsize)

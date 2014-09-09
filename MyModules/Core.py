@@ -19,19 +19,17 @@ import numpy as np
 import FBtest
 import glob
 import sqlite3
-BASEDIR=os.path.dirname(__file__)
+#no more support for frozen dists...
+BASEDIR=os.path.realpath(os.path.join(os.path.dirname(__file__),".."))
 DEBUG="debug" in sys.argv
-try:
-	sys.frozen
-except:
-	MMDIR=os.path.join(BASEDIR,"mcontent","") 
-else:
-	MMDIR=os.path.join(sys.prefix,"mcontent","")
+MMDIR=os.path.join(BASEDIR,"mcontent","") 
 RESDIR=os.path.join(BASEDIR,"resultatfiler")
 RESDIR_SHORT=os.path.basename(RESDIR) #to be shown on screen
 IS_PRECISION=False #precision mode means special options in "MakeHead"
 PRECISION_LIMIT=2.5
 SL="*"*50
+#UPDATE THIS STRING ON UPDATE
+CORE_VERSION="1.0.1"
 #TODO: Logtext in StartFrame not shown 'naar uheldig begyndelsesstoerrelse...'
 #Todo: Unicode stuff in filenames and desc. in StartFrame?
 #LAST EDIT: 2014-07-08
@@ -354,6 +352,7 @@ class MLBase(GUI.MainWindow):
 		self._UpdateStatus()
 		#set and log status.
 		self.Log("%s %s igangsat %s." %(self.program.name,self.program.version,self.starttime))
+		self.Log("Core.py version: %s" %CORE_VERSION)
 		self.Log(u"Punktnumre / navne overs\u00E6ttes ikke mere. What you see is what you get!")
 		self.AttachFBtest()
 		if self.data is None or not self.data.IsInitialized():
@@ -422,12 +421,7 @@ class MLBase(GUI.MainWindow):
 			self.map.AttachGPS(self.gps)
 		dlg.Destroy()
 		self._UpdateStatus()	
-	#def OnGPSstop(self,event):
-	#	if self.gps.isAlive():
-	#		self.gps.kill()
-	#	self.Log("Afbryder GPS-forbindelse.")
-	#	self.gps=GPS.DummyThread()
-	#	self.map.DetachGPS()
+	
 	def OnGPSKill(self,event):
 		self.Log("GPS ikke tilsluttet.")
 		self.gps=GPS.DummyThread()
@@ -803,7 +797,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		if self.data is not None:
 			self.data.Disconnect()
 		if not os.path.exists(self.inireader.path):
-			GUI.ErrorBox(None,"Ini-filen %s eksisterer ikke!\nKan ikke starte programmet." %self.inipath)
+			GUI.ErrorBox(None,"Ini-filen %s eksisterer ikke!\nKan ikke starte programmet." %self.inireader.path)
 			self.Close()
 		try:
 			self.ini,self.instruments,self.laegter=self.inireader.Read()
@@ -873,7 +867,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		if self.startstate:
 			m1,m2=self.maalere.GetTextValues()
 			fname,bsk=self.fil.GetValues()
-			self.resfile=RESDIR+"/"+fname
+			self.resfile=os.path.join(RESDIR,fname)
 			if os.path.exists(self.resfile):
 				dlg=GUI.OKdialog(self,u"Bem\u00E6rk!","\nFilen findes allerede.\nVil du tilslutte til den?")
 				dlg.ShowModal()

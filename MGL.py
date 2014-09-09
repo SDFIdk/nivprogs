@@ -1032,7 +1032,7 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		wx.Panel.__init__(self,parent)
 		self.aim=None #is set from outside, can be 'back' or 'forward'
 		self.rods=rods #only names, not rod-classes.
-		self.point=GUI.MyTextField(self,size=(120,-1),fontsize=size)
+		self.point=GUI.MyTextField(self,size=(120,-1),fontsize=size-2)
 		pointsizer=GUI.FieldWithLabel(self,field=self.point,size=size,label="Pkt:")
 		self.rod=Core.RodBox(self,rods,(120,-1),fontsize=size)
 		self.dist=MyNumMGL(self,-100,200,2,size=(120,-1),fontsize=size) #distandsfelt
