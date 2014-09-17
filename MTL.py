@@ -17,13 +17,13 @@ import MyModules.Sketch as Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.4"
+PROGRAM.version="beta 0.5"
 PROGRAM.exename="MTLb040.exe"
-PROGRAM.date="2014-06-20"
+PROGRAM.date="2014-09-17"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
-Bugs rettes til simlk@kms.dk
+Bugs sendes til simlk@gst.dk
 """
 DEBUG="debug" in sys.argv
 #TODO: Make sure that num ouput to file has "," replaced by ".". ++ DONE
@@ -45,11 +45,11 @@ class MTLmain(Core.MLBase):
 		#The order that buttons appear in should reflect the ordering of self.instruments (and also in statusdata) 
 		basisbuttons=[instrument.name for instrument in instruments]
 		lower_panel=wx.Panel(self)
+		self.water_box=GUI.ButtonBox(lower_panel,["Basis","Vandovergang"],fontsize=self.size,label="Vandovergang",style="vertical")
 		basisbox_start=GUI.ButtonBox(lower_panel,basisbuttons+[u"Overf\u00F8r h\u00F8jde"],fontsize=self.size,label="Basis-start",style="vertical")
 		middlebox=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
 		basisbox_slut=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
 		self.buttonboxes=[basisbox_start,middlebox,basisbox_slut]
-		
 		self.anamenu.AppendSeparator()
 		FileAnalysis=self.anamenu.Append(wx.ID_ANY,u"Analyse plot","Plot analyse af data i resultatfil.")
 		#EVENT HANDLING SETUP#
@@ -58,13 +58,27 @@ class MTLmain(Core.MLBase):
 		basisbox_start.button[2].Bind(wx.EVT_BUTTON,self.OnTransferHeight)
 		middlebox.button[0].Bind(wx.EVT_BUTTON,self.OnInstrument2Instrument)
 		basisbox_slut.button[0].Bind(wx.EVT_BUTTON,self.OnBasisEnd)
+		self.water_box.button[0].Bind(wx.EVT_BUTTON,self.OnWaterBasis)
+		self.water_box.button[1].Bind(wx.EVT_BUTTON,self.OnWaterMeasurement)
 		#extra menu items binded here#
 		self.Bind(wx.EVT_MENU,self.OnFileAnalysis,FileAnalysis)
 		#end extra menu items   #
+		#add extra menu#
+		menuBar=self.GetMenuBar()
+		self.watermenu=wx.Menu()
+		setWaterMode=self.watermenu.Append(wx.ID_ANY,"Vandovergangs-mode til / fra","Skift mellem vandovergangsmode og normal mode")
+		self.watermenu.AppendSeparator()
+		self.ReadOtherFile=self.watermenu.Append(wx.ID_ANY,"Indlaes vandovergangnsfil","Indlaes vandovergangnsfil fra andet instrument")
+		menuBar.Append(self.watermenu,"&Vandovergang")
+		self.Bind(wx.EVT_MENU,self.OnSetWaterMode,setWaterMode)
+		self.Bind(wx.EVT_MENU,self.OnReadOtherFile,self.ReadOtherFile)
+		self.water_mode=False
+		#end add extra menu#
 		sizer=wx.BoxSizer(wx.HORIZONTAL)
 		sizer.Add(basisbox_start,1,wx.ALL,5)
 		sizer.Add(middlebox,1,wx.ALL,5)
 		sizer.Add(basisbox_slut,1,wx.ALL,5)
+		sizer.Add(self.water_box,1,wx.ALL,5)
 		lower_panel.SetSizer(sizer)
 		self.rightsizer.Add(lower_panel,1,wx.EXPAND|wx.ALL,5)
 		self.SetSizer(self.sizer)
@@ -78,15 +92,35 @@ class MTLmain(Core.MLBase):
 		if self.statusdata.GetSetups()>0:
 			allowed_actions=[False,True,True]
 		instrumentstate=self.statusdata.GetInstrumentState()
-		#Enable buttons according to the current state defined in statusdata#
-		for i in range(3):
-			self.buttonboxes[i].Enable(allowed_actions[i] or DEBUG)
-			
-		if allowed_actions[0]:
-			self.buttonboxes[0].button[2].Enable(instrumentstate>=0 and (self.statusdata.GetLastBasis() is not None))
-			self.buttonboxes[0].SetFocus()
+		if not self.water_mode:
+			self.water_box.Enable(False)
+			#Enable buttons according to the current state defined in statusdata#
+			for i in range(3):
+				self.buttonboxes[i].Enable(allowed_actions[i] or DEBUG)
+				
+			if allowed_actions[0]:
+				self.buttonboxes[0].button[2].Enable(instrumentstate>=0 and (self.statusdata.GetLastBasis() is not None))
+				self.buttonboxes[0].SetFocus()
+			else:
+				self.buttonboxes[1].SetFocus()
 		else:
-			self.buttonboxes[1].SetFocus()
+			self.water_box.Enable(True)
+			for box in self.buttonboxes:
+				box.Enable(False)
+		self.ReadOtherFile.Enable(self.water_mode)
+	def OnReadOtherFile(self,event):
+		self.Log("TODO...")
+	def OnSetWaterMode(self,event):
+		self.water_mode=not self.water_mode
+		self.UpdateStatus()
+		self.Log("Vandovergang: %s" %self.water_mode)
+	def OnWaterBasis(self,event):
+		self.Log(SL)
+		win=MakeBasis(self,0) #always use first instrument for water stuff
+		win.InitializeMap()
+	def OnWaterMeasurement(self,event):
+		self.Log(SL)
+		self.Log("TODO")
 	def OnBasis1(self,event):
 		self.Log(SL)
 		win=MakeBasis(self,0)
