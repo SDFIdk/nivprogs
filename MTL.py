@@ -120,7 +120,7 @@ class MTLmain(Core.MLBase):
 		win.InitializeMap()
 	def OnWaterMeasurement(self,event):
 		self.Log(SL)
-		self.Log("TODO")
+		win=WaterFrame(self)
 	def OnBasis1(self,event):
 		self.Log(SL)
 		win=MakeBasis(self,0)
@@ -206,7 +206,7 @@ class MTLmain(Core.MLBase):
 		#show plot#
 		theplot.Show()
 		
-		
+
 		
 			
 #-------------------------Instrument2Instrument Frame Defined Here----------------------------------------------#
@@ -419,6 +419,8 @@ class SatsPanel(wx.Panel):
 		self.position2.Clear()
 
 
+		
+
 class SatsEdit(GUI.TwoButtonDialog):
 	"""Dialog used to select/delete valid/bad setups"""
 	def __init__(self,parent,setup):
@@ -488,6 +490,65 @@ class SatsEdit(GUI.TwoButtonDialog):
 			self.status.UpdateStatus(["%.4f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
 		self.SetSizer(self.sizer)
 
+
+#------------------------ Vandovergangs GUI ---------------------------------------------------------------------------#
+class WaterFrame(GUI.FullScreenWindow):
+	"""Main window for inst->inst setups"""
+	def __init__(self, parent):
+		GUI.FullScreenWindow.__init__(self, parent)
+		#MODES DEFINED HERE#
+		self.mode=0
+		self.mmode=0  #0 : distances   1: angles, changed in the 2 SetMode fcts. below
+		self.auto_fields=[[],[]] #two 'columns' to store fields for 'auto mode' in.
+		self.modenames=["MANUEL","AUTO","SINGLE AUTO"]
+		self.modecolors=["green","red","yellow"]
+		#END MODE SETUP - inherit stuff from parent#
+		self.statusdata=parent.statusdata
+		self.ini=parent.ini  #data passed in ini-file, error limits relevant here
+		self.resfile=parent.resfile
+		self.instrument=self.statusdata.GetInstruments()[0]
+		#WRITE TO LOG#
+		self.Log(u"Starter m\u00E5ling af vandovergang kl. %s" %Funktioner.Nu())
+		self.instrument.SetLogWindow(self)
+		self.instrument.SetEventHandler(self)
+		#define gui stuff #
+		self.statusbox=GUI.StatusBox2(self,["Mode: "],fontsize=FONTSIZE-1,label="Mode")
+		self.statusbox.UpdateStatus([self.modenames[self.mmode]])
+		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3,fontsize=FONTSIZE-1)
+		self.resultbox.UpdateStatus([])
+		self.main=GUI.ButtonBox2(self,[u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",fontsize=FONTSIZE)
+		#self.main.button[1].Enable(0)
+		#self.main.button[2].Enable(0)
+		#self.main.button[3].Enable(0)
+		#EVENT HANDLING SETUP#
+		self.Bind(Instrument.EVT_LOG,self.OnInstLog)
+		self.Bind(Instrument.EVT_DATA,self.OnData)
+		self.main.button[3].Bind(wx.EVT_BUTTON,self.OnCancel)
+		#self.main.button[3].Bind(wx.EVT_BUTTON,self.OnAccept)
+		#self.main.button[2].Bind(wx.EVT_BUTTON,self.OnCheckSats)
+		
+		#LAYOUT#
+		self.CreateRow() #space in top....
+		self.AddItem((-1,50))
+		self.AddRow(1,wx.ALL)
+		self.CreateRow()
+		row=wx.FlexGridSizer(1,3,15,15)
+		row.Add(self.statusbox,1,wx.ALL,10)
+		row.Add(self.resultbox,1,wx.ALL,10)
+		row.Add(self.main,1,wx.ALL,5,10)
+		self.AddItem(row,1,wx.ALIGN_CENTER|wx.EXPAND)
+		self.AddRow(3,wx.ALL|wx.EXPAND,5)
+		self.ShowMe()
+	def OnInstLog(self,event):
+		self.Log(event.text)
+	def OnData(self,event):
+		pass
+	def OnCancel(self,event):
+		self.Close()
+	def Log(self,text):
+		self.parent.Log(text)
+	
+
 #TODO: Fix id of instruments!!!!
 class Instrument2Instrument(GUI.FullScreenWindow):
 	"""Main window for inst->inst setups"""
@@ -553,7 +614,6 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.AddItem(self.lower)
 		self.AddRow(5,wx.ALIGN_CENTER,10)
 		self.UpdateStatus()
-		
 		#Gaa direkte til afstand#
 		self.SetDistanceMode() 
 		self.ShowMe()
@@ -619,7 +679,16 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.dpanel.StartUp()
 		self.lower.SetSizerAndFit(self.lower.sizer)
 		self.LayoutSizer()
-		
+	def SetWaterMode(self):
+		self.Log(u"Starter afstandsm\u00E5ling.")
+		self.mmode=0
+		self.setup.Clear()
+		self.wpanel.Show()
+		self.spanel.Show(0)
+		self.dpanel.Show(0)
+		#self.dpanel.StartUp()
+		self.lower.SetSizerAndFit(self.lower.sizer)
+		self.LayoutSizer()
 	def SetZMode(self):
 		self.Log(u"Starter satsm\u00E5ling.")
 		self.mmode=1
