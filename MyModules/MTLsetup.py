@@ -12,7 +12,7 @@ else:
 RADIUS=6385000.0   #Jordradius.
 
 #---------------------- Core MTL-classes, state, maths, etc. handled here----------------------------------------------------#
-def StandardZdistanceTranslator(val): # A validator for input in the format ddd.mmss - by using other validators, field 'types' can be changed flexibly
+def DMSZdistanceTranslator(val): # A validator for input in the format ddd.mmss - by using other validators, field 'types' can be changed flexibly
 	sval=val.replace(",",".").strip()
 	digits=""
 	try:
@@ -28,6 +28,49 @@ def StandardZdistanceTranslator(val): # A validator for input in the format ddd.
 	return True,np.pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
 
 
+def GonZdistanceTranslator(val):
+	sval=val.replace(",",".").strip()
+	digits=""
+	try:
+		fval=float(sval)
+	except:
+		return False,0
+	if fval<0 or fval>400:
+		return False,0
+	digits=sval.partition(".")[2]
+	if len(digits)<4:
+		return False,0
+	return True,np.pi*fval/200.0
+
+def DegZdistanceTranslator(val):
+	sval=val.replace(",",".").strip()
+	digits=""
+	try:
+		fval=float(sval)
+	except:
+		return False,0
+	if fval<0 or fval>360:
+		return False,0
+	digits=sval.partition(".")[2]
+	if len(digits)<4:
+		return False,0
+	return True,np.pi*fval/180.0
+	
+# Pointer to 'standard' translator function... Yes- its global. 
+Z_DISTANCE_TRANSLATOR=DMSZdistanceTranslator
+
+def SetZDistanceTranslator(name):
+	#change the global default for z-distance translation for NEW MTLSetup instances...
+	#Rather than this approch we should perhaps give the value as an argument to __init__ , but translator can also be changed with instance method...
+	global Z_DISTANCE_TRANSLATOR
+	name=name.lower()
+	if "gon" in name:
+		Z_DISTANCE_TRANSLATOR=GonZdistanceTranslator
+	elif "deg" in name:
+		Z_DISTANCE_TRANSLATOR=GonZdistanceTranslator
+	else:
+		Z_DISTANCE_TRANSLATOR=DMSZdistanceTranslator
+
 
 #Base class which validates (and translates) input from z-distance fields
 class MTLSetup(object):
@@ -35,7 +78,7 @@ class MTLSetup(object):
 		self.zcol=zcol #column nr. from where columns are z-distance fields (e.g. zcol=1: mrk,pos1,pos2 or  zcol=0: pos1,pos2)
 		self.zrow=zrow #etc.
 		self.Initialize(rows,cols) #Then we can call this method from outside....
-		self.zformat_translator=StandardZdistanceTranslator #a function which translates input format to radians if format is OK,
+		self.zformat_translator=Z_DISTANCE_TRANSLATOR #a function which translates input format to radians if format is OK,
 	def Initialize(self,rows,cols):
 		self.raw_data=np.zeros((rows,cols),dtype="<S20")
 		self.real_data=np.zeros((rows,cols))

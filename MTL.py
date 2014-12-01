@@ -512,11 +512,13 @@ class WaterFrame(GUI.FullScreenWindow):
 		self.instrument.SetLogWindow(self)
 		self.instrument.SetEventHandler(self)
 		#define gui stuff #
-		self.statusbox=GUI.StatusBox2(self,["Mode: "],fontsize=FONTSIZE-1,label="Mode")
+		self.statusbox=GUI.StatusBox2(self,["Mode:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3,fontsize=FONTSIZE-1)
 		self.statusbox.UpdateStatus([self.modenames[self.mmode]])
-		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3,fontsize=FONTSIZE-1)
-		self.resultbox.UpdateStatus([])
 		self.main=GUI.ButtonBox2(self,[u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",fontsize=FONTSIZE)
+		#CONST STUFF
+		self.const_fields=GUI.EditFields(self,numlabels=["Afstand til sigteplader:",u"Hdiff - fjernpunkt \u00D8verste plade",u"Hdiff - fjernpunkt nederste plade"],
+		bounds=[(0,99999),(-99,99),(-99,99)])
+		
 		#self.main.button[1].Enable(0)
 		#self.main.button[2].Enable(0)
 		#self.main.button[3].Enable(0)
@@ -529,14 +531,15 @@ class WaterFrame(GUI.FullScreenWindow):
 		
 		#LAYOUT#
 		self.CreateRow() #space in top....
-		self.AddItem((-1,50))
+		self.AddItem((-1,20))
 		self.AddRow(1,wx.ALL)
 		self.CreateRow()
 		row=wx.FlexGridSizer(1,3,15,15)
 		row.Add(self.statusbox,1,wx.ALL,10)
-		row.Add(self.resultbox,1,wx.ALL,10)
+		
 		row.Add(self.main,1,wx.ALL,5,10)
 		self.AddItem(row,1,wx.ALIGN_CENTER|wx.EXPAND)
+		self.AddItem(self.const_fields)
 		self.AddRow(3,wx.ALL|wx.EXPAND,5)
 		self.ShowMe()
 	def OnInstLog(self,event):
@@ -1393,7 +1396,7 @@ class MTLlaegte(object):
 
 class MTLinireader(Core.IniReader): #add more error handling!
 	def __init__(self):
-		Core.IniReader.__init__(self,BASEDIR+"/MTL.ini",2,1)
+		Core.IniReader.__init__(self,os.path.join(BASEDIR,"MTL.ini"),2,1)
 		self.ini.fbtest=4.0 #frem-tilbage forkast
 		self.ini.fbunit="ne"
 		self.ini.maxdh_basis=0.001 #max. forskel mellem h1 og h2 ved basis, 
@@ -1405,6 +1408,7 @@ class MTLinireader(Core.IniReader): #add more error handling!
 		self.ini.maxsd_setups=0.007 #max. stdafv. ved flere satser
 		self.ini.instport=5 
 		self.ini.instbaud=9600
+		self.ini.angle_unit="dms"
 	def CheckAdditionalKeys(self,key,line):
 		if key=="instrument" and len(line)>3:
 			instrumentname=line[0]
@@ -1432,6 +1436,12 @@ class MTLinireader(Core.IniReader): #add more error handling!
 			name=line[0]
 			zeroshift=float(line[1])
 			self.laegter.append(MTLlaegte(name,zeroshift))
+		if key=="vinkel_enhed" and len(line)>0:
+			unit=line[0]
+			self.ini.angle_unit=unit
+			MTLsetup.SetZDistanceTranslator(unit)
+			
+			
 	
 		
 		

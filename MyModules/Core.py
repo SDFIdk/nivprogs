@@ -204,15 +204,22 @@ class MTLStatusData(StatusData):
 			
 			
 class Ini(object):
+	"""
+	Object for holding stuff defined in ini-file - should be overridden by specific program MTL/MGL
+	"""
 	def __init__(self):
-		self.mapdirs=[]
-		self.gpsport=-1
-		self.gpsbaud=-1
-		self.database=None
+		self.Reset()
 		self.fbtest=3.5
 		self.fbunit="ne"
 		self.project_files=[] #defines files relevant for current project - set up in main window
 		self.fb_use_all=False
+	def Reset(self):
+		#remove things which could be empty with no sensible defaults
+		#a subclass may override sensible defaults above and also this method...
+		self.mapdirs=[]
+		self.database=None
+		self.gbsport=-1
+		self.gbsbaud=-1
 
 class ProgramType(object):
 	def __init__(self):
@@ -860,6 +867,8 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Log("Bruger ALLE %d resultatfiler i mappen %s til frem/tilbage-test." %(len(resfiles),RESDIR_SHORT))
 		else:
 			self.Log("Bruger kun den aktuelle resultatfil til frem/tilbage-test.")
+		if hasattr(self.ini,"angle_unit"):
+			self.Log("Bruger vinkelenhed: %s" %self.ini.angle_unit)
 		self.Log("Dette kan reguleres i ini-filen....")
 		
 	def OnStart(self,event):
@@ -1286,7 +1295,7 @@ class IniReader(object):
 	def Read(self):
 		self.laegter=[]
 		self.instruments=[]
-		self.ini=Ini()
+		self.ini.Reset() #implement this method to reset stuff that should be reset...
 		f=open(self.path,"r")
 		line=Fkt.RemRem(f)
 		while len(line)>0:
