@@ -193,7 +193,7 @@ class MTLTransferSetup(MTLSetup):
 		if not self.IsValid(row=0):
 			return -1,-1,-1,-1,-1,-1,False,False
 		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*pi)*0.5 #1.st row + 2. row
-		self.index_errors=index_errors*180.0/pi*3600.0 #store in seconds
+		self.index_errors=map(lambda x:self.zformat_translator(x,-1),index_errors.flatten()) #store in selected unit
 		z1c,z2c=self.real_data[1]-index_errors
 		s1,s2=self.GetDistances()
 		k1,k2=self.instrument_consts[:,1] #axis 1. inst, axis 2. inst
@@ -207,7 +207,7 @@ class MTLTransferSetup(MTLSetup):
 			z2=tan(k1*sin(z2c))/(s2-k1*cos(z2c))+z2c
 		except:
 			return -1,-1,-1,-1,-1,-1,False,False
-		self.restfejl=(z1+z2-0.87*self.dist/RADIUS-pi)*360*60*60/(2*pi)  #sekunder
+		self.restfejl=self.zformat_translator((z1+z2-0.87*self.dist/RADIUS-pi),-1)
 		self.h1=(cos(z1c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
 		self.h2=(cos(z2c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
 		self.hdiff=(self.h1+self.h2)*0.5
@@ -252,12 +252,12 @@ class MTLTransferSetup(MTLSetup):
 		return np.sum(self.keep_mask)
 	def GetStringData(self):
 		nsats=self.GetNsats()
-		data=["%.2f m" %self.GetDistance(),"%d" %nsats]
+		data=["%.3f m" %self.GetDistance(),"%d" %nsats]
 		if nsats>0:
-			data.append("%.4f m" %self.GetTotalHdiff())
+			data.append("%.5f m" %self.GetTotalHdiff())
 			if nsats>1:
-				data.append("%.4f m" %self.GetStddev())
-				data.append("%.4f m" %self.GetMaxdev())
+				data.append("%.5f m" %self.GetStddev())
+				data.append("%.5f m" %self.GetMaxdev())
 		return data
 	def SetKeepMask(self,mask):
 		self.keep_mask=mask

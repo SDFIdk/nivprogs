@@ -141,8 +141,8 @@ class MTLmain(Core.MLBase):
 		resfile=open(self.resfile,"a")
 		self.Log(u"Overf\u00F8rer instrumenth\u00F8jde til %s" %instname)
 		resfile.write("%*s %*s %*s %s\n" %((-12,"Basis",-12,"Instrument",-18,"Overfoert afstand","Overfoert hoejdeforskel")))
-		resfile.write("%*s %*s %*s %.4fm\n" %(-12,start,-12,instname,-18,"%.2fm"%dist,hdiff))
-		resfile.write("* B1 %s " %start+"%.3f %.6f\n" %(dist,hdiff))
+		resfile.write("%*s %*s %*s %.5fm\n" %(-12,start,-12,instname,-18,"%.3fm"%dist,hdiff))
+		resfile.write("* B1 %s " %start+"%.3f %.7f\n" %(dist,hdiff))
 		if self.gps.isAlive():
 			try:
 				x,y,dop=self.gps.GetPos() #not compl. thread safe
@@ -386,7 +386,7 @@ class SatsPanel(wx.Panel):
 		diff_col=Funktioner.State2Col(hdiff_ok)
 		rf_col=Funktioner.State2Col(rf_ok)
 		colors={0:diff_col,1:diff_col,3:rf_col}
-		self.status.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.4f m" %h,"%.0f%s"%(rf,ANGLE_UNIT),i_err1,i_err2],colours=colors)
+		self.status.UpdateStatus(["%.5f m" %h1,"%.5f m" %h2,"%.5f m" %h,"%.0f%s"%(rf,ANGLE_UNIT),i_err1,i_err2],colours=colors)
 	def OnEnter(self,event):
 		if self.setup.IsValid(row=1) and self.setup.IsValid(row=2):
 			self.UpdateParentStatus()
@@ -434,7 +434,7 @@ class SatsEdit(GUI.TwoButtonDialog):
 		nsats=keep_mask.size
 		hdiffs=setup.GetHdiffs(all)
 		rfejl=setup.GetRerrors(all)
-		labels=["%i. sats, %.4fm, %.0f%s"%(i+1,hdiffs[i],rfejl[i],ANGLE_UNIT) for i in range(nsats)]
+		labels=["%i. sats, %.5fm, %.0f%s"%(i+1,hdiffs[i],rfejl[i],ANGLE_UNIT) for i in range(nsats)]
 		self.lb=wx.CheckListBox(self,choices=labels)
 		for i in range(nsats):
 			self.lb.Check(i,keep_mask[i])
@@ -482,13 +482,13 @@ class SatsEdit(GUI.TwoButtonDialog):
 		nkeep=mask.sum()
 		self.status.Clear()
 		if nkeep==1:
-			self.status.UpdateStatus(["%.4f m"%self.setup.GetTotalHdiff(mask)])
+			self.status.UpdateStatus(["%.5f m"%self.setup.GetTotalHdiff(mask)])
 		elif nkeep>1:
 			mf=self.setup.GetStddev(mask)
 			gen=self.setup.GetTotalHdiff(mask)
 			mx=self.setup.GetMaxdev(mask)
 			colors={2:Funktioner.State2Col(self.setup.MaxDevTest(mask))}
-			self.status.UpdateStatus(["%.4f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
+			self.status.UpdateStatus(["%.5f m"%gen,"%.1f mm"%(mf*1000),"%.1f mm" %(mx*1000)],colours=colors)
 		self.SetSizer(self.sizer)
 
 
@@ -801,7 +801,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.Log(u"Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
 		hdiff=self.setup.GetTotalHdiff()
 		dist=self.setup.GetDistance()
-		self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.4f m" %(dist,hdiff))
+		self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.5f m" %(dist,hdiff))
 		self.statusdata.GotoNextInstrument() #do this before writing data.....
 		self.WriteData()
 		self.statusdata.AddSetup(hdiff,dist) #signal code for setup type
@@ -827,7 +827,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		space1=spaces[0]+4
 		space2=spaces[1]+4
 		resfile.write("%*s %*s %*s %*s %s\n" %(-space,Inst1.GetName(),-space2,Inst2.GetName(),-10,"Satser",-12,"Afstand","Hoejdeforskel"))
-		resfile.write("%*s %*s %*i %*s %.4fm\n" %(-space,Funktioner.Bool2sigte(self.aim[0]),-space2,Funktioner.Bool2sigte(self.aim[1]),-10,nsats,-12,"%.3fm"%dist,hdiff))
+		resfile.write("%*s %*s %*i %*s %.5fm\n" %(-space,Funktioner.Bool2sigte(self.aim[0]),-space2,Funktioner.Bool2sigte(self.aim[1]),-10,nsats,-12,"%.3fm"%dist,hdiff))
 		#write valid data#
 		satser=self.setup.GetSatser() 
 		hdiffs=self.setup.GetHdiffsRaw()
@@ -838,9 +838,9 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			else:
 				d1,d2="",""
 			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
-			+"%*s" %(-10,"")+"%.4fm" %hdiffs[i,0]+"\n")
+			+"%*s" %(-10,"")+"%.5fm" %hdiffs[i,0]+"\n")
 			resfile.write("%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,d2)+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-			+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.4fm" %hdiffs[i,1]+"\n")
+			+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
 		del_mask=np.logical_not(keep_mask)
 		if del_mask.any(): #then write deleted data
 			satser=self.setup.GetSatser(del_mask) 
@@ -848,11 +848,11 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			rerrs=self.setup.GetRerrors(del_mask)
 			for i in range(del_mask.sum()):
 				resfile.write(";%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
-				+"%*s" %(-10,"")+"%.4fm" %hdiffs[i,0]+"(SLETTET)\n")
+				+"%*s" %(-10,"")+"%.5fm" %hdiffs[i,0]+"(SLETTET)\n")
 				resfile.write(";%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-				+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.4fm" %hdiffs[i,1]+"\n")
+				+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
 		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
-		resfile.write("* II %s %.3f %.6f\n"%(newinstrument,dist,hdiff))
+		resfile.write("* II %s %.3f %.7f\n"%(newinstrument,dist,hdiff))
 		resfile.write("; ukorrigerede afst.: %.3f %.3f\n" %tuple(self.setup.GetData()[0].tolist()))
 		if self.parent.gps.isAlive():
 			try:
@@ -1173,8 +1173,8 @@ class MakeBasis(GUI.FullScreenWindow):
 		s,h1,h2,hdiff=self.setup.Calculate()
 		dh=abs(h1-h2)
 		col=Funktioner.State2Col(self.ini.maxdh_basis>=dh)
-		self.controlbox.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.1f mm" %((h1-h2)*1000.0)],colours={2:col})
-		self.resultbox.UpdateStatus(["%.4f m" %s,"%.4f m" %hdiff])
+		self.controlbox.UpdateStatus(["%.5f m" %h1,"%.5f m" %h2,"%.1f mm" %((h1-h2)*1000.0)],colours={2:col})
+		self.resultbox.UpdateStatus(["%.3f m" %s,"%.5f m" %hdiff])
 	def TestMode(self):
 		for i in range(0,4):
 			self.maal.columns[0][i].SetValue(str(3-i*0.5))
@@ -1295,7 +1295,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			#log to parents log
 			self.parent.Log("Hoved:\nFra %s til %s" %(start,slut))
 			self.parent.Log("Journalside: %s" %jside)
-			self.parent.Log("Hdiff: %.4f m Afstand: %.2f m Opstillinger: %d" %(hdiff,dist,nopst)) 
+			self.parent.Log("Hdiff: %.5f m Afstand: %.2f m Opstillinger: %d" %(hdiff,dist,nopst)) 
 			#now print
 			if ekstra.find("dontprint")==-1:
 				try:
@@ -1323,17 +1323,17 @@ class MakeBasis(GUI.FullScreenWindow):
 		resfile.write("%*s %*s %*s %*s %s\n" %(-13,"Basis",-space,"Instrument",-rspace,"Laegte",-10,"Afstand","Hoejdeforskel"))
 		self.Log("Punkt: %s" %point)
 		self.Log(u"L\u00E6gte: %s\n" %rod_name)
-		resfile.write("%*s %*s %*s %*s %.4fm\n" %(-13,point,-space,self.instrument.GetName(),-rspace,rod_name,-10,"%.2fm"%dist,hdiff))
+		resfile.write("%*s %*s %*s %*s %.5fm\n" %(-13,point,-space,self.instrument.GetName(),-rspace,rod_name,-10,"%.2fm"%dist,hdiff))
 		tup=tuple(map(lambda x:"%.2fm"%x, self.setup.GetData()[:,0]))
 		resfile.write("%-8s %-8s %-8s %-8s\n" %tup)
 		resfile.write("%-8s %-8s %-8s %-8s "%tuple(self.setup.GetRawData()[:,1].tolist()))
-		resfile.write("%.4fm\n" %(h1))
+		resfile.write("%.5fm\n" %(h1))
 		resfile.write("%-8s %-8s %-8s %-8s "%tuple(self.setup.GetRawData()[:,2].tolist()))
-		resfile.write("%.4fm\n" %(h2))
+		resfile.write("%.5fm\n" %(h2))
 		if self.sigte==-1:
-			resfile.write("* B1 %s %.3f %.6f\n" %(point,dist,hdiff))
+			resfile.write("* B1 %s %.3f %.7f\n" %(point,dist,hdiff))
 		else:
-			resfile.write("* B2 %s %.3f %.6f\n" %(point,dist,hdiff)) #Well we break the backw. comp. of the file format here... Shouldn't be important.
+			resfile.write("* B2 %s %.3f %.7f\n" %(point,dist,hdiff)) #Well we break the backw. comp. of the file format here... Shouldn't be important.
 		if self.parent.gps.isAlive():
 			try:
 				x,y,dop=self.parent.gps.GetPos() 
@@ -1342,7 +1342,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			else:
 				if dop<30:
 					resfile.write("GPS: %.1f %.1f %.1f\n" %(x,y,dop))
-		self.Log("Afstand: %.2f m\nH1: %.4f m   H2: %.4f m   Hdiff: %.4f m" %(dist,h1,h2,hdiff))
+		self.Log("Afstand: %.2f m\nH1: %.5f m   H2: %.5f m   Hdiff: %.5f m" %(dist,h1,h2,hdiff))
 		resfile.write("\n")
 		resfile.close()
 	def InputAction(self,text): #called from subpanel containing text fields. Test for input with special significance...
