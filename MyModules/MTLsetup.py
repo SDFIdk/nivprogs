@@ -48,7 +48,7 @@ def GonZdistanceTranslator(val,direct=1):
 		return True,pi*fval/200.0
 	else:
 		#radians to milli-gon
-		return float(val)*200.0/pi*1e3
+		return float(val)*200.0/pi
 	
 
 def DegZdistanceTranslator(val,direct=1):
@@ -67,7 +67,7 @@ def DegZdistanceTranslator(val,direct=1):
 		return True,pi*fval/180.0
 	else:
 		#From radians to milli-degrees
-		return degrees(float(val))*1e3
+		return degrees(float(val))
 	
 	
 # Pointer to 'standard' translator function... Yes- its global. 
@@ -81,13 +81,13 @@ def SetZDistanceTranslator(name):
 	name=name.lower()
 	if "gon" in name:
 		Z_DISTANCE_TRANSLATOR=GonZdistanceTranslator
-		return "mgon"
+		return "gon","{0:.4f}"
 	elif "deg" in name:
-		Z_DISTANCE_TRANSLATOR=GonZdistanceTranslator
-		return "mdg"
+		Z_DISTANCE_TRANSLATOR=DegZdistanceTranslator
+		return "dg","{0:.4f}"
 	else:
 		Z_DISTANCE_TRANSLATOR=DMSZdistanceTranslator
-		return "''"
+		return "''","{0:.0f}"
 
 
 #Base class which validates (and translates) input from z-distance fields

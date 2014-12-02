@@ -34,6 +34,7 @@ MAX_LENGTH_MUTUAL=10000 # Value which determines the max input for the distance 
 SL="*"*50
 FONTSIZE=12
 ANGLE_UNIT="''"  #seconds... default for DMS... changed by ini-reader...
+ANGLE_FORMAT="{0:.1f}"
 #---------Main Windows defined here--------------------------------------#
 class MTLmain(Core.MLBase):
 	""" Main frame of MTL-prog. Derived from Core.MLBase """
@@ -381,12 +382,13 @@ class SatsPanel(wx.Panel):
 		self.rows[0][0].SetFocus()
 	def UpdateStatus(self):
 		h1,h2,h,rf,i_err1,i_err2,hdiff_ok,rf_ok=self.setup.Calculate()
-		i_err1="%.0f%s"%(i_err1,ANGLE_UNIT)
-		i_err2="%.0f%s"%(i_err2,ANGLE_UNIT)
+		i_err1=ANGLE_FORMAT.format(i_err1)+ANGLE_UNIT
+		i_err2=ANGLE_FORMAT.format(i_err2)+ANGLE_UNIT
+		rf=ANGLE_FORMAT.format(rf)+ANGLE_UNIT
 		diff_col=Funktioner.State2Col(hdiff_ok)
 		rf_col=Funktioner.State2Col(rf_ok)
 		colors={0:diff_col,1:diff_col,3:rf_col}
-		self.status.UpdateStatus(["%.5f m" %h1,"%.5f m" %h2,"%.5f m" %h,"%.0f%s"%(rf,ANGLE_UNIT),i_err1,i_err2],colours=colors)
+		self.status.UpdateStatus(["%.5f m" %h1,"%.5f m" %h2,"%.5f m" %h,rf,i_err1,i_err2],colours=colors)
 	def OnEnter(self,event):
 		if self.setup.IsValid(row=1) and self.setup.IsValid(row=2):
 			self.UpdateParentStatus()
@@ -434,7 +436,7 @@ class SatsEdit(GUI.TwoButtonDialog):
 		nsats=keep_mask.size
 		hdiffs=setup.GetHdiffs(all)
 		rfejl=setup.GetRerrors(all)
-		labels=["%i. sats, %.5fm, %.0f%s"%(i+1,hdiffs[i],rfejl[i],ANGLE_UNIT) for i in range(nsats)]
+		labels=["%i. sats, %.5fm, %s"%(i+1,hdiffs[i],ANGLE_FORMAT.format(rfejl[i])+ANGLE_UNIT) for i in range(nsats)]
 		self.lb=wx.CheckListBox(self,choices=labels)
 		for i in range(nsats):
 			self.lb.Check(i,keep_mask[i])
@@ -840,7 +842,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
 			+"%*s" %(-10,"")+"%.5fm" %hdiffs[i,0]+"\n")
 			resfile.write("%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,d2)+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-			+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
+			+"%*s"%(-10,"%s"%(ANGLE_FORMAT.format(rerrs[i])+ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
 		del_mask=np.logical_not(keep_mask)
 		if del_mask.any(): #then write deleted data
 			satser=self.setup.GetSatser(del_mask) 
@@ -850,7 +852,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 				resfile.write(";%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
 				+"%*s" %(-10,"")+"%.5fm" %hdiffs[i,0]+"(SLETTET)\n")
 				resfile.write(";%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-				+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
+				+"%*s"%(-10,"%s"%(ANGLE_FORMAT.format(rerrs[i])+ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
 		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
 		resfile.write("* II %s %.3f %.7f\n"%(newinstrument,dist,hdiff))
 		resfile.write("; ukorrigerede afst.: %.3f %.3f\n" %tuple(self.setup.GetData()[0].tolist()))
@@ -949,7 +951,7 @@ class OverfPanel(wx.Panel):
 			self.setup.SetData(row,col,text)
 			row_validity=self.setup.IsValid(row=row)
 			if row_validity:
-				self.columns[3][row].SetValue("%.0f"%self.setup.GetIndexError(row))
+				self.columns[3][row].SetValue(ANGLE_FORMAT.format(self.setup.GetIndexError(row)))
 				self.columns[3][row].Validate()
 			if self.setup.IsValid():
 				self.parent.UpdateHeightStatus()
@@ -1441,7 +1443,8 @@ class MTLinireader(Core.IniReader): #add more error handling!
 			unit=line[0]
 			self.ini.angle_unit=unit
 			global ANGLE_UNIT
-			ANGLE_UNIT=MTLsetup.SetZDistanceTranslator(unit)
+			global ANGLE_FORMAT
+			ANGLE_UNIT,ANGLE_FORMAT=MTLsetup.SetZDistanceTranslator(unit)
 			
 			
 	
