@@ -3,7 +3,7 @@
 #fixed the old 'basis bug', 2012-01-04
 
 import numpy as np
-from math import cos, sin, tan, atan, pi
+from math import cos, sin, tan, atan, pi, degrees, radians
 import sys
 if "debug" in sys.argv:
 	DEBUG=True
@@ -12,49 +12,63 @@ else:
 RADIUS=6385000.0   #Jordradius.
 
 #---------------------- Core MTL-classes, state, maths, etc. handled here----------------------------------------------------#
-def DMSZdistanceTranslator(val): # A validator for input in the format ddd.mmss - by using other validators, field 'types' can be changed flexibly
-	sval=val.replace(",",".").strip()
-	digits=""
-	try:
-		fval=float(sval)
-	except:
-		return False,0
-	digits=sval.partition(".")[2]
-	if len(digits)!=4 or int(digits[0:2])>59 or int(digits[2:])>59:
-		return False,0
-	S=int(sval[-2:]) #sekunder
-	M=int(sval[-4:-2]) #minutter
-	G=int(sval[0:-5])  #grader
-	return True,np.pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
+def DMSZdistanceTranslator(val,direct=1): # A validator for input in the format ddd.mmss - by using other validators, field 'types' can be changed flexibly
+	if direct>0:
+		sval=val.replace(",",".").strip()
+		digits=""
+		try:
+			fval=float(sval)
+		except:
+			return False,0
+		digits=sval.partition(".")[2]
+		if len(digits)!=4 or int(digits[0:2])>59 or int(digits[2:])>59:
+			return False,0
+		S=int(sval[-2:]) #sekunder
+		M=int(sval[-4:-2]) #minutter
+		G=int(sval[0:-5])  #grader
+		return True,pi*(G+M/60.0+S/3600.0)/180.0   #returns radians
+	else:
+		#From radians to sekunds
+		return degrees(float(val))*3600.0
 
 
-def GonZdistanceTranslator(val):
-	sval=val.replace(",",".").strip()
-	digits=""
-	try:
-		fval=float(sval)
-	except:
-		return False,0
-	if fval<0 or fval>400:
-		return False,0
-	digits=sval.partition(".")[2]
-	if len(digits)<4:
-		return False,0
-	return True,np.pi*fval/200.0
+def GonZdistanceTranslator(val,direct=1):
+	if direct>0:
+		sval=val.replace(",",".").strip()
+		digits=""
+		try:
+			fval=float(sval)
+		except:
+			return False,0
+		if fval<0 or fval>400:
+			return False,0
+		digits=sval.partition(".")[2]
+		if len(digits)<4:
+			return False,0
+		return True,pi*fval/200.0
+	else:
+		#radians to milli-gon
+		return float(val)*200.0/pi*1e3
+	
 
-def DegZdistanceTranslator(val):
-	sval=val.replace(",",".").strip()
-	digits=""
-	try:
-		fval=float(sval)
-	except:
-		return False,0
-	if fval<0 or fval>360:
-		return False,0
-	digits=sval.partition(".")[2]
-	if len(digits)<4:
-		return False,0
-	return True,np.pi*fval/180.0
+def DegZdistanceTranslator(val,direct=1):
+	if direct>0:
+		sval=val.replace(",",".").strip()
+		digits=""
+		try:
+			fval=float(sval)
+		except:
+			return False,0
+		if fval<0 or fval>360:
+			return False,0
+		digits=sval.partition(".")[2]
+		if len(digits)<4:
+			return False,0
+		return True,pi*fval/180.0
+	else:
+		#From radians to milli-degrees
+		return degrees(float(val))*1e3
+	
 	
 # Pointer to 'standard' translator function... Yes- its global. 
 Z_DISTANCE_TRANSLATOR=DMSZdistanceTranslator
@@ -62,14 +76,18 @@ Z_DISTANCE_TRANSLATOR=DMSZdistanceTranslator
 def SetZDistanceTranslator(name):
 	#change the global default for z-distance translation for NEW MTLSetup instances...
 	#Rather than this approch we should perhaps give the value as an argument to __init__ , but translator can also be changed with instance method...
+	#Return the unit as a string... (in millis / seconds)
 	global Z_DISTANCE_TRANSLATOR
 	name=name.lower()
 	if "gon" in name:
 		Z_DISTANCE_TRANSLATOR=GonZdistanceTranslator
+		return "mgon"
 	elif "deg" in name:
 		Z_DISTANCE_TRANSLATOR=GonZdistanceTranslator
+		return "mdg"
 	else:
 		Z_DISTANCE_TRANSLATOR=DMSZdistanceTranslator
+		return "''"
 
 
 #Base class which validates (and translates) input from z-distance fields
@@ -88,10 +106,10 @@ class MTLSetup(object):
 		self.zformat_translator=func
 	def Position1Validator(self,val):
 		ok,val=self.zformat_translator(val)
-		return ok and 0<=val<=np.pi
+		return ok and 0<=val<=pi
 	def Position2Validator(self,val):
 		ok,val=self.zformat_translator(val)
-		return ok and np.pi<=val<=2*np.pi
+		return ok and pi<=val<=2*pi
 	def SetValidity(self,row,col,validity):
 		self.validity_mask[row,col]=validity
 	def IsValid(self,row=None,col=None):
@@ -106,7 +124,7 @@ class MTLSetup(object):
 			val=float(val)
 		self.real_data[row,col]=val
 	def GetIndexError(self,row): #for now always returns index error in seconds....Works rowwise, thus not for the transfer setup...
-		ierr=((self.real_data[row,self.zcol]+self.real_data[row,self.zcol+1]-2*np.pi)*0.5)*180.0/np.pi*3600.0
+		ierr=self.zformat_translator(((self.real_data[row,self.zcol]+self.real_data[row,self.zcol+1]-2*pi)*0.5),-1)
 		self.index_errors[row]=ierr
 		return ierr
 	def GetIndexErrors(self):
@@ -174,22 +192,22 @@ class MTLTransferSetup(MTLSetup):
 	def Calculate(self):  #beregn aktuelle sats
 		if not self.IsValid(row=0):
 			return -1,-1,-1,-1,-1,-1,False,False
-		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*np.pi)*0.5 #1.st row + 2. row
-		self.index_errors=index_errors*180.0/np.pi*3600.0 #store in seconds
+		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*pi)*0.5 #1.st row + 2. row
+		self.index_errors=index_errors*180.0/pi*3600.0 #store in seconds
 		z1c,z2c=self.real_data[1]-index_errors
 		s1,s2=self.GetDistances()
 		k1,k2=self.instrument_consts[:,1] #axis 1. inst, axis 2. inst
 		if DEBUG:
-			print("Index err: %s" %repr(index_errors*180.0/np.pi))
+			print("Index err: %s" %repr(index_errors*180.0/pi))
 			print("Raw: %s" %repr(self.raw_data))
 			print("Dist: %s" %repr(self.real_data[0]))
-			print("Real: %s" %repr(self.real_data[1:,:]*180.0/np.pi))
+			print("Real: %s" %repr(self.real_data[1:,:]*180.0/pi))
 		try:
 			z1=tan(k2*sin(z1c))/(s1-k2*cos(z1c))+z1c #Korrigeret for Inst2's prisme-objektiv afst.
 			z2=tan(k1*sin(z2c))/(s2-k1*cos(z2c))+z2c
 		except:
 			return -1,-1,-1,-1,-1,-1,False,False
-		self.restfejl=(z1+z2-0.87*self.dist/RADIUS-np.pi)*360*60*60/(2*np.pi)  #sekunder
+		self.restfejl=(z1+z2-0.87*self.dist/RADIUS-pi)*360*60*60/(2*pi)  #sekunder
 		self.h1=(cos(z1c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
 		self.h2=(cos(z2c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
 		self.hdiff=(self.h1+self.h2)*0.5
@@ -270,7 +288,7 @@ class MTLBasisSetup(MTLSetup):
 			return False
 		return self.rod_min<=val<=self.rod_max
 	def Calculate(self):
-		index_err=(self.real_data[:,1]+self.real_data[:,2]-2*np.pi)*0.5
+		index_err=(self.real_data[:,1]+self.real_data[:,2]-2*pi)*0.5
 		z_corr=self.real_data[:,1]-index_err  #standard formel fra KES...
 		M=self.real_data[:,0]  #only a 'view' not a copy!
 		cot=1.0/np.tan(z_corr)

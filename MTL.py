@@ -32,7 +32,8 @@ MAX_ROD=30.0      #Maximum rod size accepted in input fields
 MIN_DECREMENT=0.0005 # A bit overdone perhaps - a var which holds the minimal allowed decrement of marks (which should decrease - measurements from top to bottom).....
 MAX_LENGTH_MUTUAL=10000 # Value which determines the max input for the distance fields....
 SL="*"*50
-FONTSIZE=12  
+FONTSIZE=12
+ANGLE_UNIT="''"  #seconds... default for DMS... changed by ini-reader...
 #---------Main Windows defined here--------------------------------------#
 class MTLmain(Core.MLBase):
 	""" Main frame of MTL-prog. Derived from Core.MLBase """
@@ -185,7 +186,7 @@ class MTLmain(Core.MLBase):
 		pind1=GUI.plot.PolyMarker(ind1,colour="blue",size=1,legend=instnames[0],marker='square')
 		pind2=GUI.plot.PolyMarker(ind2,colour="red",size=1,legend=instnames[1],marker='cross')
 		graphics=[pind1,pind2]
-		gc = GUI.plot.PlotGraphics(graphics,"Indeksfejl v. gensidige opstillinger","Opstilling","Indeksfejl ['']")
+		gc = GUI.plot.PlotGraphics(graphics,"Indeksfejl v. gensidige opstillinger","Opstilling","Indeksfejl [%s]" %ANGLE_UNIT)
 		theplot.plotter[0].Draw(gc)
 		#plot dist#
 		line = GUI.plot.PolyLine(dists, colour='blue', width=2)
@@ -195,7 +196,7 @@ class MTLmain(Core.MLBase):
 		#plot r_errs#
 		#line = GUI.plot.PolyLine(r_errs, colour='blue', width=2)
 		markers=GUI.plot.PolyMarker(r_errs,colour="red",size=1,marker='square')
-		gc=GUI.plot.PlotGraphics([markers],"Restfejl v. gensidige opstillinger","Opstilling","Restfejl ['']")
+		gc=GUI.plot.PlotGraphics([markers],"Restfejl v. gensidige opstillinger","Opstilling","Restfejl [%s]" %ANGLE_UNIT)
 		theplot.plotter[2].Draw(gc)
 		#plot temp#
 		if len(temps)>0:
@@ -380,12 +381,12 @@ class SatsPanel(wx.Panel):
 		self.rows[0][0].SetFocus()
 	def UpdateStatus(self):
 		h1,h2,h,rf,i_err1,i_err2,hdiff_ok,rf_ok=self.setup.Calculate()
-		i_err1="%.0f''"%i_err1
-		i_err2="%.0f''"%i_err2
+		i_err1="%.0f%s"%(i_err1,ANGLE_UNIT)
+		i_err2="%.0f%s"%(i_err2,ANGLE_UNIT)
 		diff_col=Funktioner.State2Col(hdiff_ok)
 		rf_col=Funktioner.State2Col(rf_ok)
 		colors={0:diff_col,1:diff_col,3:rf_col}
-		self.status.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.4f m" %h,"%.0f''"%rf,i_err1,i_err2],colours=colors)
+		self.status.UpdateStatus(["%.4f m" %h1,"%.4f m" %h2,"%.4f m" %h,"%.0f%s"%(rf,ANGLE_UNIT),i_err1,i_err2],colours=colors)
 	def OnEnter(self,event):
 		if self.setup.IsValid(row=1) and self.setup.IsValid(row=2):
 			self.UpdateParentStatus()
@@ -433,7 +434,7 @@ class SatsEdit(GUI.TwoButtonDialog):
 		nsats=keep_mask.size
 		hdiffs=setup.GetHdiffs(all)
 		rfejl=setup.GetRerrors(all)
-		labels=["%i. sats, %.4fm, %.0f''"%(i+1,hdiffs[i],rfejl[i]) for i in range(nsats)]
+		labels=["%i. sats, %.4fm, %.0f%s"%(i+1,hdiffs[i],rfejl[i],ANGLE_UNIT) for i in range(nsats)]
 		self.lb=wx.CheckListBox(self,choices=labels)
 		for i in range(nsats):
 			self.lb.Check(i,keep_mask[i])
@@ -839,7 +840,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
 			+"%*s" %(-10,"")+"%.4fm" %hdiffs[i,0]+"\n")
 			resfile.write("%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,d2)+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-			+"%*s"%(-10,"%.0f''"%rerrs[i])+"%.4fm" %hdiffs[i,1]+"\n")
+			+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.4fm" %hdiffs[i,1]+"\n")
 		del_mask=np.logical_not(keep_mask)
 		if del_mask.any(): #then write deleted data
 			satser=self.setup.GetSatser(del_mask) 
@@ -849,7 +850,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 				resfile.write(";%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
 				+"%*s" %(-10,"")+"%.4fm" %hdiffs[i,0]+"(SLETTET)\n")
 				resfile.write(";%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-				+"%*s"%(-10,"%.0f''"%rerrs[i])+"%.4fm" %hdiffs[i,1]+"\n")
+				+"%*s"%(-10,"%.0f%s"%(rerrs[i],ANGLE_UNIT))+"%.4fm" %hdiffs[i,1]+"\n")
 		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
 		resfile.write("* II %s %.3f %.6f\n"%(newinstrument,dist,hdiff))
 		resfile.write("; ukorrigerede afst.: %.3f %.3f\n" %tuple(self.setup.GetData()[0].tolist()))
@@ -887,7 +888,7 @@ class OverfPanel(wx.Panel):
 		self.parent=parent
 		self.setup=basis_setup #a class which handles field validation, data storage and calculation
 		self.sizer=wx.GridSizer(5,4,5,5)
-		headings=[u"M\u00E6rke","1. kikkertstilling","2. kikkertstilling","Indeksfejl ('')"]
+		headings=[u"M\u00E6rke","1. kikkertstilling","2. kikkertstilling","Indeksfejl (%s)" %ANGLE_UNIT]
 		for text in headings:
 			field=GUI.MyText(self,text,fontsize+2,style=wx.ALIGN_CENTER)
 			self.sizer.Add(field,1,wx.ALL,0)
@@ -1439,7 +1440,8 @@ class MTLinireader(Core.IniReader): #add more error handling!
 		if key=="vinkel_enhed" and len(line)>0:
 			unit=line[0]
 			self.ini.angle_unit=unit
-			MTLsetup.SetZDistanceTranslator(unit)
+			global ANGLE_UNIT
+			ANGLE_UNIT=MTLsetup.SetZDistanceTranslator(unit)
 			
 			
 	
