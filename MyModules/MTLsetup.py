@@ -92,11 +92,12 @@ def SetZDistanceTranslator(name):
 
 #Base class which validates (and translates) input from z-distance fields
 class MTLSetup(object):
-	def __init__(self,rows,cols,zrow,zcol): #zrow, zcol indicates where z-field subarray starts
+	def __init__(self,rows,cols,zrow,zcol,use_corrections=True): #zrow, zcol indicates where z-field subarray starts
 		self.zcol=zcol #column nr. from where columns are z-distance fields (e.g. zcol=1: mrk,pos1,pos2 or  zcol=0: pos1,pos2)
 		self.zrow=zrow #etc.
 		self.Initialize(rows,cols) #Then we can call this method from outside....
 		self.zformat_translator=Z_DISTANCE_TRANSLATOR #a function which translates input format to radians if format is OK,
+		self.use_corrections=use_corrections
 	def Initialize(self,rows,cols):
 		self.raw_data=np.zeros((rows,cols),dtype="<S20")
 		self.real_data=np.zeros((rows,cols))
@@ -144,8 +145,8 @@ class DummyErrs(object):
 
 
 class MTLTransferSetup(MTLSetup):
-	def __init__(self,aim,instrument_consts,err_limits=DummyErrs()):
-		MTLSetup.__init__(self,3,2,1,0) #1. row = distance, 2.row pos 1, 3. row pos 2., z-fields start at row 1 =(row 2)
+	def __init__(self,aim,instrument_consts,err_limits=DummyErrs(),use_corrections=True):
+		MTLSetup.__init__(self,3,2,1,0,use_corrections=use_corrections) #1. row = distance, 2.row pos 1, 3. row pos 2., z-fields start at row 1 =(row 2)
 		self.aim=np.array(aim)
 		self.instrument_consts=np.array(instrument_consts) #row 0: first inst, row 1: second inst, col 0: add const, col 1: axis const
 		self.err_limits=err_limits
@@ -208,8 +209,12 @@ class MTLTransferSetup(MTLSetup):
 		except:
 			return -1,-1,-1,-1,-1,-1,False,False
 		self.restfejl=self.zformat_translator((z1+z2-0.87*self.dist/RADIUS-pi),-1)
-		self.h1=(cos(z1c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
-		self.h2=(cos(z2c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
+		if self.use_corrections:
+			self.h1=(cos(z1c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
+			self.h2=(cos(z2c)*self.dist+(0.87*self.dist**2)/(2*RADIUS)-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
+		else:
+			self.h1=(cos(z1c)*self.dist-k2)*self.aim[0]   #Refraktion saettes til k=0.13 (1-k)=0.87
+			self.h2=(cos(z2c)*self.dist-k1)*self.aim[1]   #Tages hensyn til afstand mellem objektiv og prisme....
 		self.hdiff=(self.h1+self.h2)*0.5
 		#perform various tests#
 		self.dh_test=abs(self.h1-self.h2)<self.err_limits.maxdh_mutual*self.dist/100.0 #error pr. 100 m
@@ -274,8 +279,8 @@ class MTLTransferSetup(MTLSetup):
 #The class has been prepared for the possibility of handling input in formats other than ddd.mmss, e.g. angles in gon or whatever.... Only need to set relevant translator and validator methods 
 
 class MTLBasisSetup(MTLSetup):
-	def __init__(self,aim=1):
-		MTLSetup.__init__(self,4,3,0,1) #1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
+	def __init__(self,aim=1,use_corrections=True):
+		MTLSetup.__init__(self,4,3,0,1,use_corrections=use_corrections) #1. soejle=maerker, 2. soejle=1. kikkerstilling, 3, soejle=2. kikkertstilling
 		self.aim=aim
 		self.h1=None
 		self.h2=None
@@ -297,8 +302,12 @@ class MTLBasisSetup(MTLSetup):
 		dist=(s1+s2)*0.5
 		#Instrumenthoejder (KES HOVMTL05.BAS) Minus sigte giver det rigtige fortegn!
 		#important bugfix: () must include the correction term!!!!
-		self.h1=-self.aim*((M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS)   # Earth radius
-		self.h2=-self.aim*((M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS)
+		if self.use_corrections:
+			self.h1=-self.aim*((M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]) - 0.5 * (dist**2) / RADIUS)   # Earth radius
+			self.h2=-self.aim*((M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]) - 0.5 * (dist**2) / RADIUS)
+		else:
+			self.h1=-self.aim*((M[2]*cot[0] - M[0]*cot[2] )/(cot[0] - cot[2]))   # Earth radius
+			self.h2=-self.aim*((M[3]*cot[1] - M[1]*cot[3] )/(cot[1] - cot[3]))
 		self.hdiff=(self.h1+self.h2)*0.5
 		self.dist=dist
 		return self.dist,self.h1,self.h2,self.hdiff

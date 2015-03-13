@@ -869,6 +869,9 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Log("Bruger kun den aktuelle resultatfil til frem/tilbage-test.")
 		if hasattr(self.ini,"angle_unit"):
 			self.Log("Bruger vinkelenhed: %s" %self.ini.angle_unit)
+		if hasattr(self.ini,"use_corrections"):
+			if not self.ini.use_corrections:
+				self.Log(u"NB: Korrektioner er sl\u00E5et FRA!")
 		self.Log("Dette kan reguleres i ini-filen....")
 		
 	def OnStart(self,event):

@@ -74,7 +74,16 @@ class MTLmain(Core.MLBase):
 		menuBar.Append(self.watermenu,"&Vandovergang")
 		self.Bind(wx.EVT_MENU,self.OnSetWaterMode,setWaterMode)
 		self.Bind(wx.EVT_MENU,self.OnReadOtherFile,self.ReadOtherFile)
-		self.water_mode=False
+		self.water_mode=False  #attribute for water method
+		#add basismethod menu#
+		self.basismenu=wx.Menu()
+		setBasisMethodNormal=self.basismenu.AppendRadioItem(wx.ID_ANY,"Normal basismetode","Normal basismetode med 4 maerker.")
+		setBasisMethodPrism=self.basismenu.AppendRadioItem(wx.ID_ANY,"Prisme basismetode","Prisme basismetode med 1 prisme og gentagne satser.")
+		menuBar.Append(self.basismenu,"&Basismetode")
+		self.basis_prism=False  #Attribute for 'prism basis method'
+		setBasisMethodNormal.Check(not self.basis_prism)
+		self.Bind(wx.EVT_MENU,self.OnSetBasisMethodNormal,setBasisMethodNormal)
+		self.Bind(wx.EVT_MENU,self.OnSetBasisMethodPrism,setBasisMethodPrism)
 		#end add extra menu#
 		sizer=wx.BoxSizer(wx.HORIZONTAL)
 		sizer.Add(basisbox_start,1,wx.ALL,5)
@@ -88,6 +97,8 @@ class MTLmain(Core.MLBase):
 		basisbox_start.SetFocus()
 		self.mwindow=GUI.DummyWindow() #alwyas has a measurement window attribute,
 		self.UpdateStatus()
+		if not ini.use_corrections:
+			self.Log(u"NB: korrektioner for jordkrumning + refraktion er sl\u00E5et FRA!")
 	def UpdateStatus(self):
 		self._UpdateStatus()
 		allowed_actions=[True,False,False]
@@ -123,6 +134,12 @@ class MTLmain(Core.MLBase):
 	def OnWaterMeasurement(self,event):
 		self.Log(SL)
 		win=WaterFrame(self)
+	def OnSetBasisMethodNormal(self,event):
+		self.basis_prism=False
+		self.Log("Skifter til normal basismetode")
+	def OnSetBasisMethodPrism(self,event):
+		self.basis_prism=True
+		self.Log("Skifter til prisme-basismetode")
 	def OnBasis1(self,event):
 		self.Log(SL)
 		win=MakeBasis(self,0)
@@ -580,7 +597,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		inames=map(lambda x:x+": ",inames)
 		self.aim=self.statusdata.GetInstrumentAims()
 		#define setup class#
-		self.setup=MTLsetup.MTLTransferSetup(self.aim,[[inst.addconst,inst.axisconst] for inst in self.instruments],self.ini)
+		self.setup=MTLsetup.MTLTransferSetup(self.aim,[[inst.addconst,inst.axisconst] for inst in self.instruments],self.ini,use_corrections=self.ini.use_corrections)
 		#define gui stuff #
 		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=3,minlengths=[7,7,11],bold_list=[2])
 		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
@@ -1021,7 +1038,7 @@ class MakeBasis(GUI.FullScreenWindow):
 		self.modecolors=["green","red","yellow"]
 		self.auto_fields=[] #an ordered list of fields from subpanel to receive data from instrument
 		self.sigte=-2*int((self.statusdata.GetSetups())==0)+1
-		self.setup=MTLsetup.MTLBasisSetup(self.sigte)
+		self.setup=MTLsetup.MTLBasisSetup(self.sigte,use_corrections=self.ini.use_corrections)
 		self.instrument=self.statusdata.GetInstruments()[instrument_number]
 		GUI.FullScreenWindow.__init__(self, parent)
 		self.status=GUI.StatusBox2(self,["Instrument: ","Sigte: ","Mode: "],fontsize=FONTSIZE-1,bold=True)
@@ -1412,6 +1429,7 @@ class MTLinireader(Core.IniReader): #add more error handling!
 		self.ini.instport=5 
 		self.ini.instbaud=9600
 		self.ini.angle_unit="dms"
+		self.ini.use_corrections=True
 	def CheckAdditionalKeys(self,key,line):
 		if key=="instrument" and len(line)>3:
 			instrumentname=line[0]
@@ -1445,6 +1463,10 @@ class MTLinireader(Core.IniReader): #add more error handling!
 			global ANGLE_UNIT
 			global ANGLE_FORMAT
 			ANGLE_UNIT,ANGLE_FORMAT=MTLsetup.SetZDistanceTranslator(unit)
+		if key=="korrektioner" and len(line)>0:
+			val=line[0].lower()
+			if val=="-" or val=="nej":
+				self.ini.use_corrections=False
 			
 			
 	
