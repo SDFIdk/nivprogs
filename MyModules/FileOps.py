@@ -7,8 +7,10 @@ except:
 else:
 	HAS_WIN32=True
 import time
+import math
 import Funktioner
 import shutil
+import MTLsetup
 ATTACH_MSG=";Tilslutter til fil..."
 DEBUG="debug" in sys.argv
 #En faelles funktion til laesning af MTL/MGL resultatfiler....
@@ -145,6 +147,8 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 		f.close()
 	return True,(not has_extra_lines),msg
 			
+
+
 				
 def MTLPlotData(fname):
 	f=open(fname)
@@ -167,13 +171,26 @@ def MTLPlotData(fname):
 			for i in range(N):
 				line1=f.readline().split()
 				line2=f.readline().split()
-				z11=line1[-3]
-				z12=line1[-2]
-				z21=line2[-4]
-				z22=line2[-3]
-				r_errs.append([nopst,int(line2[-2].replace("''",""))])
-				ind1.append((nopst,(Funktioner.Dec2Grad(z11)+Funktioner.Dec2Grad(z12)-360)/2.0*60*60)) #I sekunder
-				ind2.append((nopst,(Funktioner.Dec2Grad(z21)+Funktioner.Dec2Grad(z22)-360)/2.0*60*60))
+				r_err_term=line2[-2]
+				#from the r_error term we can (also) read what unit is used...
+				translator,unit,fconv=MTLsetup.Unit2Translator(r_err_term)
+				r_err=float(r_err_term.replace(unit,""))*fconv*180/math.pi*3600 #in seconds
+				ok,z11=translator(line1[-3])
+				assert(ok)
+				ok,z12=translator(line1[-2])
+				assert(ok)
+				ok,z21=translator(line2[-4])
+				assert(ok)
+				ok,z22=translator(line2[-3])
+				assert(ok)
+				is_buggy=abs(z11+z12-2*math.pi)>math.pi*0.5#stupid bug
+				if is_buggy:
+					zz=z12
+					z12=z21
+					z21=zz
+				r_errs.append((nopst,r_err))
+				ind1.append((nopst,((z11+z12)/math.pi-2)*90*3600)) #I sekunder
+				ind2.append((nopst,((z21+z22)/math.pi-2)*90*3600)) #I sekunder
 			dists.append((nopst,d))
 			if current_temp is not None:
 				temps.append((nopst,current_temp))

@@ -17,9 +17,9 @@ import MyModules.Sketch as Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
-PROGRAM.version="beta 0.5"
+PROGRAM.version="beta 0.6"
 PROGRAM.exename="MTLb040.exe"
-PROGRAM.date="2014-09-17"
+PROGRAM.date="2015-04-08"
 PROGRAM.type="MTL" #vigtigt signal til diverse faellesfunktioner for MGL og MTL....
 PROGRAM.about="""
 MTL program skrevet i Python. 
@@ -204,7 +204,7 @@ class MTLmain(Core.MLBase):
 		pind1=GUI.plot.PolyMarker(ind1,colour="blue",size=1,legend=instnames[0],marker='square')
 		pind2=GUI.plot.PolyMarker(ind2,colour="red",size=1,legend=instnames[1],marker='cross')
 		graphics=[pind1,pind2]
-		gc = GUI.plot.PlotGraphics(graphics,"Indeksfejl v. gensidige opstillinger","Opstilling","Indeksfejl [%s]" %ANGLE_UNIT)
+		gc = GUI.plot.PlotGraphics(graphics,"Indeksfejl v. gensidige opstillinger","Opstilling","Indeksfejl [%s]" %"''")
 		theplot.plotter[0].Draw(gc)
 		#plot dist#
 		line = GUI.plot.PolyLine(dists, colour='blue', width=2)
@@ -214,7 +214,7 @@ class MTLmain(Core.MLBase):
 		#plot r_errs#
 		#line = GUI.plot.PolyLine(r_errs, colour='blue', width=2)
 		markers=GUI.plot.PolyMarker(r_errs,colour="red",size=1,marker='square')
-		gc=GUI.plot.PlotGraphics([markers],"Restfejl v. gensidige opstillinger","Opstilling","Restfejl [%s]" %ANGLE_UNIT)
+		gc=GUI.plot.PlotGraphics([markers],"Restfejl v. gensidige opstillinger","Opstilling","Restfejl [%s]" %"''")
 		theplot.plotter[2].Draw(gc)
 		#plot temp#
 		if len(temps)>0:
@@ -856,20 +856,20 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 				d1,d2=map(lambda x: "%.3fm" %x,self.setup.GetDistances())
 			else:
 				d1,d2="",""
-			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
-			+"%*s" %(-10,"")+"%.5fm" %hdiffs[i,0]+"\n")
-			resfile.write("%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,d2)+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-			+"%*s"%(-10,"%s"%(ANGLE_FORMAT.format(rerrs[i])+ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
+			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,1,0])
+			+"%*s" %(-14,"")+"%.5fm" %hdiffs[i,0]+"\n")
+			resfile.write("%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,d2)+"%*s"%(-10,satser[i,0,1])+"%*s"%(-10,satser[i,1,1])
+			+"%*s"%(-14,"%s"%(ANGLE_FORMAT.format(rerrs[i])+ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
 		del_mask=np.logical_not(keep_mask)
 		if del_mask.any(): #then write deleted data
 			satser=self.setup.GetSatser(del_mask) 
 			hdiffs=self.setup.GetHdiffsRaw(del_mask)
 			rerrs=self.setup.GetRerrors(del_mask)
 			for i in range(del_mask.sum()):
-				resfile.write(";%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,0,1])
-				+"%*s" %(-10,"")+"%.5fm" %hdiffs[i,0]+"(SLETTET)\n")
-				resfile.write(";%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,1,0])+"%*s"%(-10,satser[i,1,1])
-				+"%*s"%(-10,"%s"%(ANGLE_FORMAT.format(rerrs[i])+ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
+				resfile.write(";%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,1,0])
+				+"%*s" %(-14,"")+"%.5fm" %hdiffs[i,0]+"(SLETTET)\n")
+				resfile.write(";%*s"%(-space,Inst2.GetName()+":")+"%*s" %(-10,"")+"%*s"%(-10,satser[i,0,1])+"%*s"%(-10,satser[i,1,1])
+				+"%*s"%(-14,"%s"%(ANGLE_FORMAT.format(rerrs[i])+ANGLE_UNIT))+"%.5fm" %hdiffs[i,1]+"\n")
 		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
 		resfile.write("* II %s %.3f %.7f\n"%(newinstrument,dist,hdiff))
 		resfile.write("; ukorrigerede afst.: %.3f %.3f\n" %tuple(self.setup.GetData()[0].tolist()))

@@ -90,6 +90,17 @@ def SetZDistanceTranslator(name):
 		return "''","{0:.0f}"
 
 
+
+
+def Unit2Translator(name): #hacky convenience fct to read a unit and needed data to convert 'lowest' term to radians...
+	if "gon" in name:
+		return GonZdistanceTranslator,"gon",pi/200
+	elif "deg" in name:
+		return DegZdistanceTranslator,"deg",pi/180
+	elif "''" in name:
+		return DMSZdistanceTranslator,"''",pi/(180*3600)
+	raise ValueError("Unrecognized angle unit: "+name)
+	
 #Base class which validates (and translates) input from z-distance fields
 class MTLSetup(object):
 	def __init__(self,rows,cols,zrow,zcol,use_corrections=True): #zrow, zcol indicates where z-field subarray starts
