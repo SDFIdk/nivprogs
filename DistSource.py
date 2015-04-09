@@ -2,7 +2,7 @@
 import sys,os,time,shutil,glob
 SUITE="NivProgs"
 WSCRIPTS=["VisFix.py","MGL.py","MTL.py","ImportTest.py"] #gui apps
-SCRIPTS=["SummaRho.py","VisFix_main.py","nivover.py"]  #console scripts
+SCRIPTS=["SummaRho.py","VisFix_main.py","nivover.py","Hoveder2Excel.py","MTLdata2Excel.py"]  #console scripts
 VER_INFO=os.path.join(SUITE,"version.txt")
 if os.path.exists(SUITE):
 	shutil.rmtree(SUITE)
