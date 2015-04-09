@@ -96,17 +96,26 @@ def GetTransferSetupData(fname):
 				r_err_raw=(z1c+z2c)-math.pi
 				setup_data.append([nopst,d,rad_to_sec(ind1),rad_to_sec(ind2),r_err,rad_to_sec(r_err_raw),h1,h2,current_date,current_time,current_temp,-9999,-9999])
 			if len(setup_data)>0:
+				#read until the sats has endend - and dont read too far!
+				n_read=0
+				while len(sline)>0:
+					line=f.readline()
+					sline=line.split()
+					if len(sline)>2 and sline[0]=="*" and sline[1]=="II":
+						break
+					n_read+=1
+				#sats endend
+				line=f.readline()
+				sline=line.split()
+				if len(sline)>0 and sline[0]=="GPS:": #may go wrong for basis setup
+					current_x=float(sline[2])
+					current_y=float(sline[1])
+					for sats in setup_data:
+						sats[-1]=current_y
+						sats[-2]=current_x
 				all_data.append(setup_data)
-		if "Basis" in sline and "Instrument" in sline and line.strip()[0]!=";":
-			is_transfer_setup=False
-		if sline[0]=="GPS:" and is_transfer_setup: #may go wrong for basis setup
-			current_x=float(sline[2])
-			current_y=float(sline[1])
-			if len(all_data)>0: #append this info to last stuff
-				setup_data=all_data[-1]
-				for sats in setup_data:
-					sats[-1]=current_y
-					sats[-2]=current_x
+				if len(sline)==0:
+					continue
 		if sline[0]=="#":
 			current_temp=float(sline[-2])
 			current_date=sline[3]
