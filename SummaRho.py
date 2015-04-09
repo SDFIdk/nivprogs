@@ -58,6 +58,7 @@ def main(args):
 		exc_pts=None
 	print("Reading %s, writing %s...\n" %(resfile,outfile))
 	f_out=open(outfile,"w")
+	f_out.write("jside;p1;p2;n_frem;n_tilbage;dist;rho\n")
 	ok,msg=GetSummaRho(resfile,inc_pts,exc_pts,f_out)
 	if not ok:
 		print("Something wrong::")

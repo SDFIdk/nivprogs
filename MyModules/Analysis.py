@@ -1,6 +1,120 @@
 #GUI-less stuff here...
 import FileOps
 import numpy as np
+import math
+import MTLsetup
+
+def MTLPlotData(fname):
+	data=GetTransferSetupData(fname)
+	dists=[]
+	temps=[]
+	r_errs=[]
+	ind1=[]
+	ind2=[]
+	for setup in data:
+		for sats in setup:
+			#slow...
+			n_opst,d,i1,i2,r_err=sats[0:5]
+			t=sats[10]
+			dists.append((n_opst,d))
+			temps.append((n_opst,t))
+			r_errs.append((n_opst,r_err))
+			ind1.append((n_opst,i1))
+			ind2.append((n_opst,i2))
+	return dists,temps,r_errs,ind1,ind2				
+
+
+def rad_to_sec(val):
+	return math.degrees(val)*3600
+
+def GetTransferSetupData(fname):
+	#extract all relevant data from 'transfer setup' - similar to above
+	#extract each setup and return data...
+	f=open(fname)
+	#start by extracting position data and temp.
+	current_temp=None
+	current_date=None
+	current_time=None
+	is_transfer_setup=False
+	nopst=0
+	for line in f:
+		sline=line.split()
+		if len(sline)>3 and sline[0]=="#":
+			current_temp=float(sline[-2])
+			current_date=sline[3]
+			current_time=sline[4]
+			break
+	f.close()
+	f=open(fname)
+	line="X"
+	all_data=[]
+	while len(line)>0:  #loeb igennem filen nu
+		line=f.readline()
+		sline=line.split()
+		if len(sline)==0:
+			continue
+		if "Satser" in sline and "Afstand" in sline and line.strip()[0]!=";":
+			setup_data=[] #data for this setup
+			nopst+=1
+			is_transfer_setup=True
+			#we have a setup - now read 'satser'
+			line=f.readline().split()
+			N=int(line[2])
+			d=float(line[3].replace("m",""))
+			for i in range(N):
+				line1=f.readline().split()
+				line2=f.readline().split()
+				r_err_term=line2[-2]
+				#from the r_error term we can (also) read what unit is used...
+				try:
+					translator,unit,fconv=MTLsetup.Unit2Translator(r_err_term)
+					r_err=float(r_err_term.replace(unit,""))*fconv*180/math.pi*3600 #in seconds
+					ok,z11=translator(line1[-3])
+					assert(ok)
+					ok,z12=translator(line1[-2])
+					assert(ok)
+					ok,z21=translator(line2[-4])
+					assert(ok)
+					ok,z22=translator(line2[-3])
+					assert(ok)
+					is_buggy=abs(z11+z12-2*math.pi)>math.pi*0.5#stupid bug
+					if is_buggy:
+						zz=z12
+						z12=z21
+						z21=zz
+					h1=float(line1[-1].replace("m",""))
+					h2=float(line2[-1].replace("m",""))
+				except Exception,e:
+					print("Exception: %s\nSpringer denne sats over.."%str(e))
+					continue
+				ind1=((z11+z12)-2*math.pi)*0.5
+				ind2=((z21+z22)-2*math.pi)*0.5
+				#calculate adjusted angles
+				z1c=z11-ind1
+				z2c=z21-ind2
+				#print z1c+z2c
+				r_err_raw=(z1c+z2c)-math.pi
+				setup_data.append([nopst,d,rad_to_sec(ind1),rad_to_sec(ind2),r_err,rad_to_sec(r_err_raw),h1,h2,current_date,current_time,current_temp,-9999,-9999])
+			if len(setup_data)>0:
+				all_data.append(setup_data)
+		if "Basis" in sline and "Instrument" in sline and line.strip()[0]!=";":
+			is_transfer_setup=False
+		if sline[0]=="GPS:" and is_transfer_setup: #may go wrong for basis setup
+			current_x=float(sline[2])
+			current_y=float(sline[1])
+			if len(all_data)>0: #append this info to last stuff
+				setup_data=all_data[-1]
+				for sats in setup_data:
+					sats[-1]=current_y
+					sats[-2]=current_x
+		if sline[0]=="#":
+			current_temp=float(sline[-2])
+			current_date=sline[3]
+			current_time=sline[4]
+					
+	f.close()
+	return all_data			
+
 def GetSummaRho(fil,include=None,exclude=None,f_out=None):
 	nerrors=0
 	msg=""
@@ -85,7 +199,7 @@ def GetSummaRho(fil,include=None,exclude=None,f_out=None):
 				summa_rho+=h_all
 				total_dist+=d
 				if f_out is not None:
-					f_out.write("%d,%s,%s,%d,%d,%.2f,%.6f\n" %(jside,fra,til,n_forward,n_back,d,h_all))
+					f_out.write("'%d';'%s';'%s';%d;%d;%s;%s\n" %(jside,fra,til,n_forward,n_back,("%.2f"%d).replace(".",","),("%.6f"%h_all).replace(".",",")))
 					
 				
 	if n_used>0:

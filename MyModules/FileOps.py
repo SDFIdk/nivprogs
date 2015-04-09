@@ -7,10 +7,9 @@ except:
 else:
 	HAS_WIN32=True
 import time
-import math
 import Funktioner
 import shutil
-import MTLsetup
+
 ATTACH_MSG=";Tilslutter til fil..."
 DEBUG="debug" in sys.argv
 #En faelles funktion til laesning af MTL/MGL resultatfiler....
@@ -149,57 +148,6 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 			
 
 
-				
-def MTLPlotData(fname):
-	f=open(fname)
-	temps=[]
-	r_errs=[]
-	ind1=[]
-	ind2=[]
-	dists=[]
-	line="X"
-	nopst=0
-	current_temp=None
-	while len(line)>0:  #loeb igennem filen nu
-		line=f.readline()
-		sline=line.split()
-		if line.find("Satser")!=-1 and line.find("Afstand")!=-1 and line.strip()[0]!=";": #ikke slettede...
-			nopst+=1
-			line=f.readline().split()
-			N=int(line[2])
-			d=float(line[3].replace("m",""))
-			for i in range(N):
-				line1=f.readline().split()
-				line2=f.readline().split()
-				r_err_term=line2[-2]
-				#from the r_error term we can (also) read what unit is used...
-				translator,unit,fconv=MTLsetup.Unit2Translator(r_err_term)
-				r_err=float(r_err_term.replace(unit,""))*fconv*180/math.pi*3600 #in seconds
-				ok,z11=translator(line1[-3])
-				assert(ok)
-				ok,z12=translator(line1[-2])
-				assert(ok)
-				ok,z21=translator(line2[-4])
-				assert(ok)
-				ok,z22=translator(line2[-3])
-				assert(ok)
-				is_buggy=abs(z11+z12-2*math.pi)>math.pi*0.5#stupid bug
-				if is_buggy:
-					zz=z12
-					z12=z21
-					z21=zz
-				r_errs.append((nopst,r_err))
-				ind1.append((nopst,((z11+z12)/math.pi-2)*90*3600)) #I sekunder
-				ind2.append((nopst,((z21+z22)/math.pi-2)*90*3600)) #I sekunder
-			dists.append((nopst,d))
-			if current_temp is not None:
-				temps.append((nopst,current_temp))
-		if len(sline)>0 and sline[0]=="#":
-			current_temp=float(sline[-2])
-	f.close()
-	return dists,temps,r_errs,ind1,ind2				
-				
-			
 # This is only essential in case someone tries to attach to a resfile with instruments defined in a different way than the current instruments!
 def TjekMTLHeader(lines,instruments):
 	nfound=0
@@ -353,11 +301,9 @@ def Hoveder(fullfile):
 	f=open(fullfile,"r")
 	heads=[]
 	for line in f:
-		if len(line.strip())>2:
-			#line=line.split()
-			if line.strip()[0]=="#":
-				line=line.strip()[1:].split()
-				heads.append(line)
+		sline=line.split()
+		if len(sline)>3 and sline[0]=="#":
+			heads.append(sline[1:])
 	return heads
 	
 def LaesSidsteHoved(fullfile):

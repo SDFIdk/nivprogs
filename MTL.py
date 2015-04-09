@@ -12,6 +12,7 @@ import numpy as np
 import MyModules.MTLsetup as MTLsetup # all MTL math stuff handled here.... This is the real thing!
 import MyModules.Funktioner as Funktioner
 import MyModules.FileOps as FileOps
+import MyModules.Analysis as Analysis
 import sys,os
 import MyModules.Sketch as Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
@@ -191,7 +192,7 @@ class MTLmain(Core.MLBase):
 			self.Log("Tilsyneladende ikke en MTL-resultatfil!")
 			GUI.ErrorBox(self,"Tilsyneladende ikke en MTL-resultatfil!")
 			return
-		dists,temps,r_errs,ind1,ind2=FileOps.MTLPlotData(fname)
+		dists,temps,r_errs,ind1,ind2=Analysis.MTLPlotData(fname)
 		if len(dists)==0:
 			GUI.ErrorBox(self,"Ingen gensidige opstillinger fundet i filen.")
 			return
