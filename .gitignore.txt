@@ -1,0 +1,8 @@
+MyModules/__pycache__/
+__pycache__/
+ImportLog.txt
+data/
+MAPS/
+mconent/
+resultatfiler/
+README.docx
