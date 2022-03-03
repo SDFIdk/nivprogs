@@ -1,8 +1,8 @@
 #GUI-less stuff here...
-import FileOps
+from . import FileOps
 import numpy as np
 import math
-import MTLsetup
+from . import MTLsetup
 
 def MTLPlotData(fname):
 	data=GetTransferSetupData(fname)
@@ -84,8 +84,8 @@ def GetTransferSetupData(fname):
 						z21=zz
 					h1=float(line1[-1].replace("m",""))
 					h2=float(line2[-1].replace("m",""))
-				except Exception,e:
-					print("Exception: %s\nSpringer denne sats over.."%str(e))
+				except Exception as e:
+					print(("Exception: %s\nSpringer denne sats over.."%str(e)))
 					continue
 				ind1=((z11+z12)-2*math.pi)*0.5
 				ind2=((z21+z22)-2*math.pi)*0.5
@@ -158,7 +158,7 @@ def GetSummaRho(fil,include=None,exclude=None,f_out=None):
 				err=True
 			if err:
 				nerrors+=1
-				msg+=u"Ukurankt journalside: %s, str\u00E6kning: %s til %s, fil: %s\n" %(jside,fra,til,os.path.basename(file))
+				msg+="Ukurankt journalside: %s, str\u00E6kning: %s til %s, fil: %s\n" %(jside,fra,til,os.path.basename(file))
 			else:
 				if jside in jsides:
 					jsides[jside].append((fra,til,ext,dist,hdiff))

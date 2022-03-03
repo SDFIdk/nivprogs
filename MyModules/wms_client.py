@@ -28,7 +28,7 @@ http://kortforsyningen.kms.dk/service?request=GetCapabilities
 import threading
 import wx
 import urllib
-import cStringIO
+import io
 import wx.lib.newevent
 (WMSMapEvent,EVT_WMS) = wx.lib.newevent.NewEvent()
 wx.InitAllImageHandlers()
@@ -100,7 +100,7 @@ class WMSthread(threading.Thread):
 		self.msg=msg
 		if self.alive:
 			if self.OK:
-				self.im=cStringIO.StringIO(self.im)
+				self.im=io.StringIO(self.im)
 				self.im=wx.ImageFromStream(self.im)
 			event=WMSMapEvent(OK=self.OK)
 			try:
@@ -109,7 +109,7 @@ class WMSthread(threading.Thread):
 				pass
 	def GetMap(self,width,height):
 		if not self.OK:
-			map=wx.EmptyBitmap(width,height)
+			map=wx.Bitmap(width,height)      #py39 emptyBitmap ->Bitmap
 			dc=wx.MemoryDC(map)
 			dc.SetFont(wx.Font(14,wx.SWISS,wx.NORMAL,wx.NORMAL))
 			dc.SetTextForeground("white")
@@ -134,7 +134,7 @@ class WMSthread(threading.Thread):
 			return self.im.ConvertToBitmap(),self.OK,self.x1,self.x2,self.y1,self.y2
 		
 def WMSmap(x1,x2,y1,y2,width,height,servicename="DTK_Skaermkort"):
-	url=basstring.replace("xmin",str(x1)).replace("ymin",str(y1)).replace("xmax",str(x2)).replace("ymax",str(y2))
+	url=basestring.replace("xmin",str(x1)).replace("ymin",str(y1)).replace("xmax",str(x2)).replace("ymax",str(y2))
 	url=url.replace("WIDTH=WIDTH","WIDTH=%i" %width).replace("HEIGHT=HEIGHT","HEIGHT=%i" %height)
 	url=url.replace("=servicename","=%s" %servicename)
 	if servicename=="ortofoto":
@@ -158,7 +158,7 @@ def WMSmap(x1,x2,y1,y2,width,height,servicename="DTK_Skaermkort"):
 	except:
 		return False, None, u"Kunne ikke \u00E5bne wms-forbindelse"
 	if inf.find("image")!=-1:
-		g=cStringIO.StringIO(g)
+		g=io.StringIO(g)
 		im=wx.ImageFromStream(g)
 		im=im.ConvertToBitmap()
 		return True, im, "All OK"

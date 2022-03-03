@@ -224,24 +224,24 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		#self.clearddsum=wx.CheckBox(self,label=u"Nulstil sum \u2206afst v. hovede.")
 		#self.clearddsum.SetFont(GUI.DefaultFont(size-2))
 		#self.clearddsum.Bind(wx.EVT_CHECKBOX,self.OnClearDDsum)
-		self.clearddsum_now=GUI.MyButton(self,u"Nulstil afstandssum",size-2)
+		self.clearddsum_now=GUI.MyButton(self,"Nulstil afstandssum",size-2)
 		self.clearddsum_now.Bind(wx.EVT_BUTTON,self.OnClearDDsum_now)
 		#end check boxes#
 		if self.pmode=='detail':
-			self.back=MGLpanel(self,u"Tilbagem\u00E5ling",self.rodnames,size)
-			self.forward=MGLpanel(self,u"Fremm\u00E5ling",self.rodnames,size)
+			self.back=MGLpanel(self,"Tilbagem\u00E5ling",self.rodnames,size)
+			self.forward=MGLpanel(self,"Fremm\u00E5ling",self.rodnames,size)
 		else:
-			self.back=MGLPpanel(self,u"Tilbagem\u00E5ling",self.rodnames,size-1)
-			self.forward=MGLPpanel(self,u"Fremm\u00E5ling",self.rodnames,size-1)
+			self.back=MGLPpanel(self,"Tilbagem\u00E5ling",self.rodnames,size-1)
+			self.forward=MGLPpanel(self,"Fremm\u00E5ling",self.rodnames,size-1)
 		self.fields={'back':self.back,'forward':self.forward} #dict to acces fields by aim
 		self.back.aim='back'   #flags for event handling - enables us to see which field should receive data.
 		self.forward.aim='forward'
 		#Button-panels
-		self.optionpanel=GUI.ButtonPanel(self,buttons=[u"Slet m\u00E5ling","Afslut","Kort"],fontsize=size)
+		self.optionpanel=GUI.ButtonPanel(self,buttons=["Slet m\u00E5ling","Afslut","Kort"],fontsize=size)
 		if self.pmode=='detail':
-			self.nextpanel=GUI.ButtonPanel(self,buttons=[u"N\u00E6ste opstilling"],fontsize=size)
+			self.nextpanel=GUI.ButtonPanel(self,buttons=["N\u00E6ste opstilling"],fontsize=size)
 		else:
-			self.nextpanel=GUI.ButtonPanel(self,buttons=[u"N\u00E6ste opstilling",u"Dobbeltm\u00E5ling"])
+			self.nextpanel=GUI.ButtonPanel(self,buttons=["N\u00E6ste opstilling","Dobbeltm\u00E5ling"])
 			self.doublebutton=self.nextpanel.button[1]
 			self.doublebutton.Enable(0)
 		self.deletebutton=self.optionpanel.button[0]
@@ -271,21 +271,21 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.back.DefineNextItem2(self.forward.hd2)
 			self.forward.DefineNextItem2(self.nextbutton)
 			self.doublebutton.Bind(wx.EVT_BUTTON,self.OnDouble)
-			opstitems=["Afst:",u"\u2206 afst.:",u"\u2206 h:","|h1-h2|:","Mode:"]
+			opstitems=["Afst:","\u2206 afst.:","\u2206 h:","|h1-h2|:","Mode:"]
 			opstminl=[4,4,6,6,6]
 		else:
-			opstitems=["Afst:",u"\u2206 afst.:",u"\u2206 h:","Mode:"]
+			opstitems=["Afst:","\u2206 afst.:","\u2206 h:","Mode:"]
 			opstminl=[4,4,6,6]
 		#status-boxes
 		
-		bfitems=["Sd:","#Afls.:" ,"Sigtelgd.:",u"L\u00E6gte:"]
-		strkitems=[u"Sum \u2206 afst.:","Startpunkt:","Afst. punkt:",u"\u2206H til punkt:","#Opst.:",u"Sum 'lambda':"]
+		bfitems=["Sd:","#Afls.:" ,"Sigtelgd.:","L\u00E6gte:"]
+		strkitems=["Sum \u2206 afst.:","Startpunkt:","Afst. punkt:","\u2206H til punkt:","#Opst.:","Sum 'lambda':"]
 		strkminl=[2,12,2,5,3]
 		self.backstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-tilbage")
 		self.forwardstatus=GUI.StatusBox2(self,bfitems,colsize=2,fontsize=size-2,label="Kontrol-frem")
 		self.bfstatus={'back':self.backstatus,'forward':self.forwardstatus} #utility dict for neater access.
 		self.opststatus=GUI.StatusBox2(self,opstitems,colsize=2,fontsize=size-2,label="Opstilling",minlengths=opstminl)
-		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-2,label=u"Str\u00E6kning",minlengths=strkminl)
+		self.strkstatus=GUI.StatusBox2(self,strkitems,colsize=2,fontsize=size-2,label="Str\u00E6kning",minlengths=strkminl)
 		self.backstatus.UpdateStatus()
 		self.forwardstatus.UpdateStatus()
 		self.opststatus.UpdateStatus()
@@ -368,14 +368,14 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		if self.instrument.TestPort():
 			self.Log("Instrumentet er klar...")
 		else:
-			self.Log(u"Kunne ikke \u00E5bne instrumentets com-port...")
+			self.Log("Kunne ikke \u00E5bne instrumentets com-port...")
 		#PREPARE FOR STARTUP		
 		self.back.rod.SetSelection(0)
 		self.forward.rod.SetSelection(1)
 		self.StartNew()
 		self.SetManualMode() #the first time go to manual mode!
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
-		if self.parent.gps.isAlive():
+		if self.parent.gps.is_alive():
 			self.parent.map.DetachGPS()
 			self.map.AttachGPS(self.parent.gps)
 			self.map.SetGPSMode()
@@ -403,7 +403,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 	def OnGoBack(self,event):
 		self.SetManualMode()
 		self.Show(0)
-		if self.parent.gps.isAlive():
+		if self.parent.gps.is_alive():
 			self.map.DetachGPS()
 			self.parent.map.AttachGPS(self.parent.gps)
 		self.parent.UpdateStatus() 
@@ -425,7 +425,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 	#	self.clearddsum.Refresh()
 	def OnClearDDsum_now(self,event):
 		if self.statusdata.GetSetups()>0:
-			self.Log(u"Kan ikke nulstille afstandssum midt i en str\u00E6kning.")
+			self.Log("Kan ikke nulstille afstandssum midt i en str\u00E6kning.")
 			return
 		else:
 			self.statusdata.ClearDD()
@@ -437,13 +437,13 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		rod=self.rods[self.fields[aim].GetRod()]
 		self.setup.aim[aim].SetRod(rod)
 		if aim=='forward' and rod.zone_high<2.0 and self.forward.point.IsEmpty():
-			GUI.ErrorBox(self,u"Advarsel kort l\u00E6gte i fremsigte!")
+			GUI.ErrorBox(self,"Advarsel kort l\u00E6gte i fremsigte!")
 	def RodEnterHandler(self,aim):
 		Core.SoundKey()
 		rod=self.rods[self.fields[aim].GetRod()]
 		self.setup.aim[aim].SetRod(rod)
 		if aim=='forward' and rod.zone_high<2.0 and self.forward.point.IsEmpty():
-			GUI.ErrorBox(self,u"Advarsel kort l\u00E6gte i fremsigte!")
+			GUI.ErrorBox(self,"Advarsel kort l\u00E6gte i fremsigte!")
 		if self.instrument.GetPortStatus() and self.mmode=="manual":
 			self.AutoHandler(aim)
 		else:
@@ -502,7 +502,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.aim=aim  #so that OnData knows where to put data
 			self.mmode='auto'
 			self.opststatus.UpdateStatus(field=-1,text="auto",colour="green")
-			self.Log(u"L\u00E6ser data fra instrumentet...")
+			self.Log("L\u00E6ser data fra instrumentet...")
 			if self.nmode==1:
 				self.setup.aim[aim].SetRod(self.rods[self.fields[aim].GetRod()]) #set the rod here
 				self.fields[aim].DisableTop()
@@ -551,7 +551,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 						Core.SoundGoodData()
 					else:
 						Core.SoundBadData()
-			self.Log("Data fra instrument: %s"%data)
+			self.Log("Data fra instrument: %s"%data.decode()) ## ændret fra %data
 			self.SetStatus()
 			#THEN DECIDE WHICH MODE TO GO TO!
 			if self.nmode==1:
@@ -571,9 +571,9 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					self.nextbutton.SetFocus()
 		else:  #if error, we set 'manual' mode
 			if event.hascon:
-				self.Log(u"Kunne ikke l\u00E6se data fra instrumentet!")
+				self.Log("Kunne ikke l\u00E6se data fra instrumentet!")
 			else: #then we couldnt open connection
-				self.Log(u"Kunne ikke \u00E5bne instrumentets com-port!")
+				self.Log("Kunne ikke \u00E5bne instrumentets com-port!")
 			self.SetManualMode()
 	def SetManualMode(self,aim=None):
 		if self.instrument.IsReading(): #should not happen....
@@ -713,8 +713,8 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.back.hd2.SetFocus()
 		else:
 			if not self.setup.HasData():
-				dlg=GUI.MyMessageDialog(self,u"Bem\u00E6rk",
-				u"Hvis du vil slette flere data m\u00E5 du editere resultatfilen,\neller bruge redigeringsfunktioner i hovedvindue")
+				dlg=GUI.MyMessageDialog(self,"Bem\u00E6rk",
+				"Hvis du vil slette flere data m\u00E5 du editere resultatfilen,\neller bruge redigeringsfunktioner i hovedvindue")
 				dlg.ShowModal()
 			self.back.ClearTop()
 			self.forward.ClearTop()
@@ -759,32 +759,32 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		errmsg=""
 		if not self.setup.back.DistanceTest(self.ini.maxsl):
 			nerrors+=1
-			errmsg+=u"For langt bagudsigte.\n"
+			errmsg+="For langt bagudsigte.\n"
 		if not self.setup.forward.DistanceTest(self.ini.maxsl):
 			nerrors+=1
-			errmsg+=u"For langt fremsigte.\n"
+			errmsg+="For langt fremsigte.\n"
 		if not self.setup.DistanceTest(self.ini.maxdd):
 			nerrors+=1
-			errmsg+=u"For h\u00F8j forskel mellem afst.-frem og afst.-tilbage: %.2f m.\n" %(abs(self.setup.GetDistanceDifference()))
+			errmsg+="For h\u00F8j forskel mellem afst.-frem og afst.-tilbage: %.2f m.\n" %(abs(self.setup.GetDistanceDifference()))
 		if self.pmode=='precision':
 			dh,OK=self.setup.HDTest(self.ini.maxhd)
 			if not OK:
 				nerrors+=1
-				errmsg+=u"For h\u00F8j forskel mellem dobbeltm\u00E5lte h\u00F8jdeforskelle!\n"
+				errmsg+="For h\u00F8j forskel mellem dobbeltm\u00E5lte h\u00F8jdeforskelle!\n"
 		if not self.setup.back.SDTest(self.ini.maxsd):
 			nerrors+=1
-			errmsg+=u"For h\u00F8j standardafv. fra instrument i tilbagesigte.\n"
+			errmsg+="For h\u00F8j standardafv. fra instrument i tilbagesigte.\n"
 		if not self.setup.forward.SDTest(self.ini.maxsd):
 			nerrors+=1
-			errmsg+=u"For h\u00F8j standardafv. fra instrument i fremsigte.\n"
+			errmsg+="For h\u00F8j standardafv. fra instrument i fremsigte.\n"
 		if not self.setup.back.RodTest():
 			nerrors+=1
-			errmsg+=u"Tilbagesigte ikke i tilladeligt omr\u00E5de af l\u00E6gten.\n"
+			errmsg+="Tilbagesigte ikke i tilladeligt omr\u00E5de af l\u00E6gten.\n"
 		if not self.setup.forward.RodTest():
 			nerrors+=1
-			errmsg+=u"Fremsigte ikke i tilladeligt omr\u00E5de af l\u00E6gten.\n"
+			errmsg+="Fremsigte ikke i tilladeligt omr\u00E5de af l\u00E6gten.\n"
 		if nerrors>0:
-			msg=u"F\u00F8lgende fejlkriterier overskredet:\n"+errmsg+u"Vil du forts\u00E6tte alligevel?"
+			msg="F\u00F8lgende fejlkriterier overskredet:\n"+errmsg+"Vil du forts\u00E6tte alligevel?"
 			dlg=GUI.OKdialog(self,"Fejl!",msg,buttonlabels=["JA","NEJ"])
 			dlg.ShowModal()
 			OK=dlg.WasOK()
@@ -820,7 +820,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					self.Log(msg)
 					return True
 				else:
-					msg+=u"\nVil du godkende m\u00E5lingen?"
+					msg+="\nVil du godkende m\u00E5lingen?"
 					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
 					dlg.ShowModal()
 					OK=dlg.WasOK()
@@ -922,14 +922,14 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			if ekstra.find("dontprint")==-1:
 				try:
 					FileOps.Jside(self.resfile,mode=1,program="MGL")
-				except Exception, msg:
+				except Exception as msg:
 					GUI.ErrorBox(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
 			#update data 
 			if self.parent.fbtest is not None:
 				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.GetHdiff(),self.statusdata.GetDistance(),dato,tid)
 				#self.Log(repr(OK))
 				if not OK:
-					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
+					GUI.ErrorBox(self,"Kunne ikke inds\\u00E6tte str\\u00E6kningen i forkastelses-databasen.")
 			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
 			self.statusdata.StartNewStretch()
 			
@@ -987,7 +987,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			point=self.statusdata.slutpunkt
 		resfile.write("* %s %.2f %.2f %.6f %s\n" %(code,self.setup.GetDistance(),self.setup.GetDistanceDifference(),self.setup.GetHD(),point))
 		if not self.footsetup.IsChecked():
-			if self.parent.gps.isAlive():
+			if self.parent.gps.is_alive():
 				try:
 					x,y,dop=self.parent.gps.GetPos() #not compl. thread safe
 				except:
@@ -1020,7 +1020,7 @@ class MyNumMGL(GUI.MyNum): #a MGL version of the classic GUI-class :-)
 	def OnEnter(self,event): #Overides prev event-handler 
 		if (not self.ok) and self.sound and (not self.IsEmpty()):
 			Core.SoundAlert()
-		elif self.next!=None:
+		elif self.__next__!=None:
 			self.next.SetFocus()
 			event.Skip()
 		else:
@@ -1036,7 +1036,7 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		pointsizer=GUI.FieldWithLabel(self,field=self.point,size=size,label="Pkt:")
 		self.rod=Core.RodBox(self,rods,(120,-1),fontsize=size)
 		self.dist=MyNumMGL(self,-100,200,2,size=(120,-1),fontsize=size) #distandsfelt
-		rodsizer=GUI.FieldWithLabel(self,field=self.rod,label=u"Lgt:",size=size)
+		rodsizer=GUI.FieldWithLabel(self,field=self.rod,label="Lgt:",size=size)
 		self.hd=MyNumMGL(self,-100,200,5,size=(120,-1),fontsize=size) #sigtehoejdefelt
 		self.hds=[self.hd] 
 		distsizer=GUI.FieldWithLabel(self,field=self.dist,size=size,label="L:")
@@ -1142,7 +1142,7 @@ class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 		MGLpanel.__init__(self,parent,title,rods,size)
 		self.hd2=MyNumMGL(self,-100,100,5,size=(120,-1),fontsize=size)
 		self.hds=[self.hd,self.hd2]
-		maalsizer=GUI.FieldWithLabel(self,field=self.hd2,size=size,label=u"H2:")
+		maalsizer=GUI.FieldWithLabel(self,field=self.hd2,size=size,label="H2:")
 		self.bsizer.Insert(4,maalsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)
 		self.SetSizerAndFit(self.sizer)
 	def DefineNextItem2(self,item):
@@ -1156,7 +1156,7 @@ class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 	def EnableBottom(self):
 		self.hd2.Enable()
 	def DisableBottom(self):
-		self.hd2.Enable(0)
+		self.hd2.Enable() #FROM (0)
 	
 	
 
@@ -1171,7 +1171,7 @@ class MGLmain(Core.MLBase):
 		Core.MLBase.__init__(self,parent,resfil,data,gps,ini,statusdata,PROGRAM,size)
 		self.instrument=instrument
 		self.laegter=laegter
-		buttonbox=GUI.ButtonBox(self,[u"Detailm\u00E5ling",u"Pr\u00E6cisionsm\u00E5ling"],fontsize=self.size,label=u"M\u00E5ling")
+		buttonbox=GUI.ButtonBox(self,["Detailm\u00E5ling","Pr\u00E6cisionsm\u00E5ling"],fontsize=self.size,label="M\u00E5ling")
 		buttonbox.button[0].Bind(wx.EVT_BUTTON,self.OnGoToMeasurement)
 		buttonbox.button[1].Bind(wx.EVT_BUTTON,self.OnGoToPMeasurement)
 		self.rightsizer.Add(buttonbox,1,wx.EXPAND|wx.ALL,5)
@@ -1186,7 +1186,7 @@ class MGLmain(Core.MLBase):
 			if self.mwindow.pmode=="precision":
 				OK=True
 				if self.mwindow.setup.HasData():
-					dlg=GUI.OKdialog(self,u"Bem\u00E6rk",msg=u"Vil du skifte til 'detailmode' og slette den aktuelle opstilling?")
+					dlg=GUI.OKdialog(self,"Bem\u00E6rk",msg="Vil du skifte til 'detailmode' og slette den aktuelle opstilling?")
 					dlg.ShowModal()
 					OK=dlg.WasOK()
 					dlg.Destroy()
@@ -1203,7 +1203,7 @@ class MGLmain(Core.MLBase):
 			if self.mwindow.pmode=="detail":
 				OK=True
 				if self.mwindow.setup.HasData():
-					dlg=GUI.OKdialog(self,u"Bem\u00E6rk",msg=u"Vil du skifte til 'pr\u00E6cisionsmode' og slette den aktuelle opstilling?")
+					dlg=GUI.OKdialog(self,"Bem\u00E6rk",msg="Vil du skifte til 'pr\u00E6cisionsmode' og slette den aktuelle opstilling?")
 					dlg.ShowModal()
 					OK=dlg.WasOK()
 					dlg.Destroy()

@@ -43,11 +43,11 @@ def NytDatoFormat(dato): #oversaetter aarmddag til dag,md.aar f.eks. 091014 til 
 	return "20%s%s%s" %(aar,md,dag)
 
 def Usage():
-	print "Oversaettelsesprogram til MGL (/MTL) datafiler."
-	print "INGEN oversaettelse af punktnavne - what you see is what you get!"
-	print "Kald: %s indfil udfil (-tkorr)" %(PROGRAM)
-	print "-tkorr slaar temperaturkorrektioner TIL - kun MGL."
-	print "Og KUN hvis du IKKE allerede har koert kalibreringsprogram!"
+	print("Oversaettelsesprogram til MGL (/MTL) datafiler.")
+	print("INGEN oversaettelse af punktnavne - what you see is what you get!")
+	print("Kald: %s indfil udfil (-tkorr)" %(PROGRAM))
+	print("-tkorr slaar temperaturkorrektioner TIL - kun MGL.")
+	print("Og KUN hvis du IKKE allerede har koert kalibreringsprogram!")
 	sys.exit()
 
 def main(args):
@@ -56,12 +56,12 @@ def main(args):
 	try:
 		ind=open(args[1],"r")
 		ud=open(args[2],"w")
-	except Exception,msg:
-		print(str(msg))
+	except Exception as msg:
+		print((str(msg)))
 		Usage()
 	tkorr="-tkorr" in args
 	indfilnavn=os.path.basename(args[1])
-	print "Koerer %s paa filen %s." %(PROGRAM,indfilnavn)
+	print("Koerer %s paa filen %s." %(PROGRAM,indfilnavn))
 	hvd=[]
 	nbad=0
 	nbadnames=0
@@ -74,23 +74,23 @@ def main(args):
 		MTL=True
 	if not (MTL or MGL): #saa tjek om det er output fra det gamle digniv.
 		if firstline.find("FILNAVN")!=-1:
-			print "Tilsyneladende er %s en MGL-datafil genereret med det gamle digniv-program." %indfilnavn
+			print("Tilsyneladende er %s en MGL-datafil genereret med det gamle digniv-program." %indfilnavn)
 		else: 
-			print "Kunne ikke genkende header-formatet i datafilen.\nVi antager det er en MGL-datafil."
+			print("Kunne ikke genkende header-formatet i datafilen.\nVi antager det er en MGL-datafil.")
 		MGL=True  #well, saa antager vi bare at det er en MGL-fil og ser hvad der sker.
 	else:
-		print "Datafil genereret med: %s" %firstline.replace("PROGRAM:","").lower().strip()
+		print("Datafil genereret med: %s" %firstline.replace("PROGRAM:","").lower().strip())
 	if MGL:
 		if not tkorr:
-			print "Bruger IKKE laegte-temperaturudvidelse for maalte hoejdeforskelle!"
-			print "Koer istedet laegtekalibreringsprogram paa raadata!"
-			print "(Hvis du IKKE allerede har gjort det :-) )"
+			print("Bruger IKKE laegte-temperaturudvidelse for maalte hoejdeforskelle!")
+			print("Koer istedet laegtekalibreringsprogram paa raadata!")
+			print("(Hvis du IKKE allerede har gjort det :-) )")
 		else:
-			print "Temperaturudvidelseskorrektion (pyhhh) slaaet til!"
-			print "ADVARSEL: GOER kun dette, hvis du IKKE allerede har koert kalibreringsprogram!!!!!" 
+			print("Temperaturudvidelseskorrektion (pyhhh) slaaet til!")
+			print("ADVARSEL: GOER kun dette, hvis du IKKE allerede har koert kalibreringsprogram!!!!!") 
 		ud.write(MGLP)  #skriv header preacisions-kommentar
 	else:
-		print "Bruger IKKE laegte-temperaturudvidelse for maalte hoejdeforskelle..."
+		print("Bruger IKKE laegte-temperaturudvidelse for maalte hoejdeforskelle...")
 		ud.write(MTLP)
 	nopst=0 #kun noedv. ved mgl-filer i gammelt format
 	line=ind.readline()
@@ -109,8 +109,8 @@ def main(args):
 		line=ind.readline()
 	ind.close()
 	msg=Analyse(hvd)
-	print "Antal hoveder: %i." %(len(hvd))
-	print msg
+	print("Antal hoveder: %i." %(len(hvd)))
+	print(msg)
 	for line in hvd:
 		fra=line[0]
 		til=line[1]
@@ -132,9 +132,9 @@ def main(args):
 			temp=float(temp)
 			afst=round(float(afst)) 
 			jside=float(jside)*10
-		except Exception,msg:
+		except Exception as msg:
 			nbad+=1
-			print msg
+			print(msg)
 		else:#saa skriv til udfil...
 			if MGL and tkorr: #ved MGL brug temp.-udvidelse - bruges ikke mere (koer istedet rod_calibration.py!)
 				hdiff=hdiff*(1-(20-temp)*TMP_CORR)  #temperatur-udvidelse....
@@ -143,9 +143,9 @@ def main(args):
 			ud.write("      %8s,%5s   %2s   \n" %(dato, tid, nopst))
 	ud.write("\n\n-1a\n") #aflustningstegn
 	ud.close()
-	print "Antal ukurante eller slettede hoveder: %i." %nbad
-	print "Antal ukurante punktnavne: %i." %nbadnames
-	print "Genererede udfilen %s." %args[2]
+	print("Antal ukurante eller slettede hoveder: %i." %nbad)
+	print("Antal ukurante punktnavne: %i." %nbadnames)
+	print("Genererede udfilen %s." %args[2])
 	sys.exit()
 
 if __name__=="__main__":

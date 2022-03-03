@@ -1,22 +1,23 @@
-import GUIclasses2 as GUI
+from . import GUIclasses2 as GUI
 import os
 import sys
 import serial
-import GPS 
-import MLmap as Map
+from . import GPS 
+from . import MLmap as Map
 import wx
-import DataClass3 as DataClass
-from GdalMaps import INDEXNAME
-from ExtractKMS import IdenticalTranslation
+from playsound import playsound # added
+from . import DataClass3 as DataClass
+from .GdalMaps import INDEXNAME
+from .ExtractKMS import IdenticalTranslation
 #We do not want to support pointname translations from to old 'numeric format anymore'
 Numformat2Pointname=IdenticalTranslation
 Pointname2Numformat=IdenticalTranslation
-from Analysis import GetSummaRho
+from .Analysis import GetSummaRho
 import time
-import Funktioner as Fkt
-import FileOps
+from . import Funktioner as Fkt
+from . import FileOps
 import numpy as np
-import FBtest
+from . import FBtest
 import glob
 import sqlite3
 #no more support for frozen dists...
@@ -179,7 +180,7 @@ class MGLStatusData(StatusData):
 class MTLStatusData(StatusData):
 		def __init__(self):
 			StatusData.__init__(self)
-			self.instrumentstate=None #defines which instrument that 'holds the height' (should be 0 or 1 tp point into the instrument list)
+			self.instrumentstate=0 #defines which instrument that 'holds the height' (should be 0 or 1 tp point into the instrument list)
 			self.instruments=[]
 		def SetInstruments(self,instruments): #This must be set before this class can be used to anything
 			self.instruments=instruments
@@ -261,7 +262,7 @@ class MLBase(GUI.MainWindow):
 		self.size=size
 		self.mwindow=GUI.DummyWindow() #both MGL and MTL progs should have a mwindow with a map attr. (when shown)
 		#--INIT THE FRAME AND SETUP GUI-STUFF--#
-		GUI.MainWindow.__init__(self,parent, title=programtype.name,style=wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU|wx.CAPTION|wx.CLIP_CHILDREN)
+		GUI.MainWindow.__init__(self,parent, title=programtype.name,style=wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU|wx.CAPTION|wx.CLIP_CHILDREN)
 		self.SetIcon(wx.Icon(MMDIR+"icon.bmp", wx.BITMAP_TYPE_ICO))
 		# Setting up the menu.
 		self.filemenu= wx.Menu()
@@ -272,30 +273,30 @@ class MLBase(GUI.MainWindow):
 		self.filemenu.AppendSeparator()
 		exit=self.filemenu.Append(wx.ID_ANY,"E&xit"," Afslut programmet")
 		#Punkt-Menu#
-		self.GPSsetup=self.punktmenu.Append(wx.ID_ANY,"Tilslut GPS",u"Fors\u00F8g at tilutte USB-GPS via virtuel COM-port")
+		self.GPSsetup=self.punktmenu.Append(wx.ID_ANY,"Tilslut GPS","Fors\u00F8g at tilutte USB-GPS via virtuel COM-port")
 		self.ShowMap=self.punktmenu.Append(wx.ID_ANY,"Vis kort","Viser den aktuelle (gps) position")
 		#Analyse-Menu#
-		MeasTemp=self.anamenu.Append(wx.ID_ANY,u"M\u00E5l temperatur",u"Opdater temperatur")
-		WriteComment=self.anamenu.Append(wx.ID_ANY,"Skriv kommentar til fil",u"Skriv en kommentar (tryk/temp osv.) til resultatfil")
+		MeasTemp=self.anamenu.Append(wx.ID_ANY,"M\u00E5l temperatur","Opdater temperatur")
+		WriteComment=self.anamenu.Append(wx.ID_ANY,"Skriv kommentar til fil","Skriv en kommentar (tryk/temp osv.) til resultatfil")
 		self.anamenu.AppendSeparator()
-		CompareHdiff=self.anamenu.Append(wx.ID_ANY,u"Sammenlign h\u00F8jdeforskelle",u"Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
-		SumHeights=self.anamenu.Append(wx.ID_ANY,u"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
-		ShowFBdata=self.anamenu.Append(wx.ID_ANY,u"Vis forkastelseskriterie-database","Viser data i forkastelseskriteriedatabasen.")
-		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,u"Forkastelseskriterie-analyse",u"Foretag en outlier analyse af str\u00E6kninger.") 
-		SummaRho=self.anamenu.Append(wx.ID_ANY,u"Summa rho-analyse",u"Foretag en detaljeret summa rho analyse af resultatfilen.")
+		CompareHdiff=self.anamenu.Append(wx.ID_ANY,"Sammenlign h\u00F8jdeforskelle","Sammenlign m\u00E5lte h\u00F8jdeforskelle med database.")
+		SumHeights=self.anamenu.Append(wx.ID_ANY,"Summer h\u00F8jdeforskelle","Beregn lukkesummer etc....")
+		ShowFBdata=self.anamenu.Append(wx.ID_ANY,"Vis forkastelseskriterie-database","Viser data i forkastelseskriteriedatabasen.")
+		OutlierAnalysis=self.anamenu.Append(wx.ID_ANY,"Forkastelseskriterie-analyse","Foretag en outlier analyse af str\u00E6kninger.") 
+		SummaRho=self.anamenu.Append(wx.ID_ANY,"Summa rho-analyse","Foretag en detaljeret summa rho analyse af resultatfilen.")
 		#SetProjectFiles=self.anamenu.Append(wx.ID_ANY,u"Definer projekt-resultatfiler",u"Definer resultatfiler til frem/tilbage test.")
 		#MakeReject=self.anamenu.Append(wx.ID_ANY,u"Generer forkastelseskriterie-database",u"Genererer sqlite-datafil til test af frem-tilbage m\u00E5linger")
 		self.anamenu.AppendSeparator()
 		TTgraph=self.anamenu.Append(wx.ID_ANY,"&Temperatur-Tid","Graf over temperatur efter opstart.")
-		FBgraph=self.anamenu.Append(wx.ID_ANY,u"Plot frem-tilbage testkriterie","Plot af testkriterie.")
+		FBgraph=self.anamenu.Append(wx.ID_ANY,"Plot frem-tilbage testkriterie","Plot af testkriterie.")
 		#Rediger-Menu#
 		ShowFile=self.funkmenu.Append(wx.ID_ANY,"Vis resultatfil","Viser resultatfilen i et nyt vindue.")
 		SkrivJS=self.funkmenu.Append(wx.ID_ANY,"Udskriv journalside","Udksriver journalsider fra datafilen.")
 		#SET UP EXTRA MENU ITEMS#
 		self.funkmenu.AppendSeparator()
-		DeleteLast=self.funkmenu.Append(wx.ID_ANY,u"Slet seneste m\u00E5ling",u"Sletter seneste opstilling i datafilen!")
-		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,u"Slet til seneste hovede","Sletter til seneste hoved i datafilen!")
-		EditHead=self.funkmenu.Append(wx.ID_ANY,u"Rediger et hoved","Rediger et hovede i datafilen.")
+		DeleteLast=self.funkmenu.Append(wx.ID_ANY,"Slet seneste m\u00E5ling","Sletter seneste opstilling i datafilen!")
+		DeleteToLastHead=self.funkmenu.Append(wx.ID_ANY,"Slet til seneste hovede","Sletter til seneste hoved i datafilen!")
+		EditHead=self.funkmenu.Append(wx.ID_ANY,"Rediger et hoved","Rediger et hovede i datafilen.")
 		#TjekPunkter=self.funkmenu.Append(wx.ID_ANY,"Tjek punktnumre",u"Tjek overs\u00E6ttelse af punktnumre i datafilen.")
 		TjekJsider=self.funkmenu.Append(wx.ID_ANY,"Tjek journalsider","Tjek journalsider i datafil(er).")
 		# Creating the menubar.
@@ -333,10 +334,10 @@ class MLBase(GUI.MainWindow):
 		self.logger = Logger(self,size)
 		#Status Bokse#
 		self.status1=GUI.StatusBox2(self,["Dato: ","Fil: ","Projekt: ","Temperatur: "],label="Data",colsize=2,fontsize=self.size)
-		sl=[u"Str\u00E6kninger: ",u"Opm\u00E5lt distance: ","#opstillinger: ","Seneste pkt.: "]
-		self.status2=GUI.StatusBox2(self,sl,label=u"Afsluttede Str\u00E6kninger",colsize=2,fontsize=self.size)
-		sl=["Punkt: ",u"\u2206H: ","#opstillinger: ","Afstand: "]
-		self.status3=GUI.StatusBox2(self,sl,label=u"Aktuel Str\u00E6kning",colsize=2,fontsize=self.size)
+		sl=["Str\u00E6kninger: ","Opm\u00E5lt distance: ","#opstillinger: ","Seneste pkt.: "]
+		self.status2=GUI.StatusBox2(self,sl,label="Afsluttede Str\u00E6kninger",colsize=2,fontsize=self.size)
+		sl=["Punkt: ","\u2206H: ","#opstillinger: ","Afstand: "]
+		self.status3=GUI.StatusBox2(self,sl,label="Aktuel Str\u00E6kning",colsize=2,fontsize=self.size)
 		self.sizer=wx.BoxSizer(wx.HORIZONTAL)
 		self.rightsizer=wx.BoxSizer(wx.VERTICAL)
 		self.sizer.Add(self.logger,1,wx.EXPAND|wx.ALL,5)
@@ -360,7 +361,7 @@ class MLBase(GUI.MainWindow):
 		#set and log status.
 		self.Log("%s %s igangsat %s." %(self.program.name,self.program.version,self.starttime))
 		self.Log("Core.py version: %s" %CORE_VERSION)
-		self.Log(u"Punktnumre / navne overs\u00E6ttes ikke mere. What you see is what you get!")
+		self.Log("Punktnumre / navne overs\u00E6ttes ikke mere. What you see is what you get!")
 		self.AttachFBtest()
 		if self.data is None or not self.data.IsInitialized():
 			self.map.DisablePoints()
@@ -378,14 +379,14 @@ class MLBase(GUI.MainWindow):
 		text=field.GetValue()
 		try:
 			exec(text)
-		except Exception,msg:
-			print msg
+		except Exception as msg:
+			print(msg)
 		else:
 			field.Clear()
 		
 	def OnClose(self,event):
 		self.gps.kill()
-		if self.gps.isAlive():
+		if self.gps.is_alive():
 			self.gps.join()
 		event.Skip()
 	def UpdateStatus(self): #should be overruled bu subclasses
@@ -422,7 +423,7 @@ class MLBase(GUI.MainWindow):
 			vals=dlg.GetNumValues()
 			port=int(vals[0])-1 #Python indeksering af porte!
 			baud=int(vals[1])
-			self.Log(u"Fors\u00F8ger tilslutning af GPS med port %i, baudrate %i"%(port+1,baud))
+			self.Log("Fors\u00F8ger tilslutning af GPS med port %i, baudrate %i"%(port+1,baud))
 			self.gps=GPS.GpsThread(self,port,baud)
 			self.gps.start()
 			self.map.AttachGPS(self.gps)
@@ -446,10 +447,10 @@ class MLBase(GUI.MainWindow):
 	def GetNetData(self):
 		if self.fbtest is None or self.data is None:
 			return [],[]
-		lines=self.fbtest.GetDatabase().keys()
-		stations=map( lambda x:x[0],lines)
-		stations.extend(map(lambda x:x[1],lines))
-		stations=map(Numformat2Pointname,stations)
+		lines=list(self.fbtest.GetDatabase().keys())
+		stations=[x[0] for x in lines]
+		stations.extend([x[1] for x in lines])
+		stations=list(map(Numformat2Pointname,stations))
 		unique_stations=list(set(stations))
 		data=self.data.GetManyCoordinates(unique_stations)
 		s_lines=[np.empty((0,2)),np.empty((0,2))]
@@ -459,7 +460,7 @@ class MLBase(GUI.MainWindow):
 			s_data[Pointname2Numformat(station)]=(x,y)
 		for line in lines:
 			s1,s2=line
-			if s_data.has_key(s1) and s_data.has_key(s2):
+			if s1 in s_data and s2 in s_data:
 				fromp=s_data[s1]
 				top=s_data[s2]
 				if (s2,s1) in lines:
@@ -486,7 +487,7 @@ class MLBase(GUI.MainWindow):
 			dlg.Destroy()
 			return
 		msg=FileOps.FilStatus(fil)
-		dlg = MySumDialog( self, u"Summer H\u00F8jdeforskelle.",msg+u"V\u00E6lg str\u00E6kning(er):", heads)
+		dlg = MySumDialog( self, "Summer H\u00F8jdeforskelle.",msg+"V\u00E6lg str\u00E6kning(er):", heads)
 		dlg.ShowModal()
 	def OnCompareHdiff(self,event):
 		if self.data is not None:
@@ -507,9 +508,9 @@ class MLBase(GUI.MainWindow):
 				resfiles=[self.resfile]
 		data,nerrors=FBtest.MakeRejectData(resfiles)
 		self.fbtest=FBtest.FBreject(data,self.program.type,self.ini.fbtest,self.ini.fbunit)
-		self.Log(u"Dannede forkastelseskriterie database med %d resultatfil(er) og %d str\u00E6kninger." %(len(resfiles),len(data)))
+		self.Log("Dannede forkastelseskriterie database med %d resultatfil(er) og %d str\u00E6kninger." %(len(resfiles),len(data)))
 		if nerrors>0:
-			self.Log(u"%d fejl i l\u00E6sning af filer ved dannelse af database..." %nerrors)
+			self.Log("%d fejl i l\u00E6sning af filer ved dannelse af database..." %nerrors)
 		if DEBUG:
 			self.Log("%s" %repr(resfiles))
 			self.Log(repr(data))
@@ -546,7 +547,7 @@ class MLBase(GUI.MainWindow):
 		else:
 			GUI.ErrorBox(self,msg)
 	def OnMeasTemp(self,e):
-		tframe=GUI.InputDialog(self,title=u"Temperaturm\u00E5ling",numlabels=["Temperatur: "],bounds=[(-50,55)],pedantic=True)
+		tframe=GUI.InputDialog(self,title="Temperaturm\u00E5ling",numlabels=["Temperatur: "],bounds=[(-50,55)],pedantic=True)
 		tframe.ShowModal()
 		if tframe.WasOK():
 			t=tframe.GetNumValues()[0]
@@ -576,7 +577,7 @@ class MLBase(GUI.MainWindow):
 			line = GUI.plot.PolyLine(data, colour=col, width=1,legend="%.2f %s" %(param,unit))
 			graphics.append(line)
 			next+=1
-		line_global_min=GUI.plot.PolyLine(FBtest.GetGlobalMinLine(self.program),colour="lightblue",legend=u"bagatelgr\u00E6nse")
+		line_global_min=GUI.plot.PolyLine(FBtest.GetGlobalMinLine(self.program),colour="lightblue",legend="bagatelgr\u00E6nse")
 		graphics.append(line_global_min)
 		gc = GUI.plot.PlotGraphics(graphics,"Plot af forkastelseskriterie","Afstand [m]","Tolerance [mm]")
 		theplot.plotter.Draw(gc)
@@ -601,7 +602,7 @@ class MLBase(GUI.MainWindow):
 			return
 		list=[felt[6] for felt in heads]
 		dlg = GUI.MyMultiChoiceDialog( self,
-		"Udskriv journalside(r).",  u"V\u00E6lg journalside(r):",list)
+		"Udskriv journalside(r).",  "V\u00E6lg journalside(r):",list)
 		#dlg.SetFont(wx.Font(14,wx.SWISS,wx.NORMAL,wx.NORMAL))
 		dlg.ShowModal()
 		if DEBUG:
@@ -648,19 +649,19 @@ class MLBase(GUI.MainWindow):
 		if self.statusdata.GetSetups()>0:
 			self.DeleteToLastHead()
 		else:
-			GUI.ErrorBox(self,u"Der er ingen m\u00E5linger efter seneste hovede.")
+			GUI.ErrorBox(self,"Der er ingen m\u00E5linger efter seneste hovede.")
 	def OnDeleteLastAction(self,e):
 		if self.statusdata.GetSetups()>0:
 			self.DeleteLastAction()
 		else:
-			GUI.ErrorBox(self,u"Kan ikke slette f\u00F8r seneste hovede.\nRediger selv i datafilen og tilslut.") 
+			GUI.ErrorBox(self,"Kan ikke slette f\u00F8r seneste hovede.\nRediger selv i datafilen og tilslut.") 
 	def EditHead(self):
 		heads=FileOps.Hoveder(self.resfile)
 		if len(heads)==0:
 			dlg=GUI.ErrorBox(self,"Ingen hoveder fundet i resultatfilen.")
 			return
 		choices=["Fra %s til %s. J.side: %s" %(head[0],head[1],head[6]) for head in heads]
-		dlg=GUI.MySingleChoiceDialog(self,"Hoveder",u"v\u00E6lg et hovede",choices)
+		dlg=GUI.MySingleChoiceDialog(self,"Hoveder","v\u00E6lg et hovede",choices)
 		dlg.ShowModal()
 		if not dlg.WasOK():
 			dlg.Destroy()
@@ -681,7 +682,7 @@ class MLBase(GUI.MainWindow):
 		self.Log("Erstatter hovede: %s" %(choices[sel]))
 		FileOps.EditHead(self.resfile,sel,newhead)
 	def DeleteToLastHead(self):
-		if not GUI.YesNo(self,u"Er du sikker p\u00E5 at du vil slette?","Slet til hovede."):
+		if not GUI.YesNo(self,"Er du sikker p\u00E5 at du vil slette?","Slet til hovede."):
 			return
 		self.statusdata.ClearCurrentStretch()
 		FileOps.DeleteToLastHead(self.resfile)
@@ -692,7 +693,7 @@ class MLBase(GUI.MainWindow):
 		nopst=self.statusdata.GetSetups()
 		if nopst==0:
 			return
-		if not GUI.YesNo(self,u"Er du sikker p\u00E5 at du vil slette?",u"Slet seneste m\u00E5ling."):
+		if not GUI.YesNo(self,"Er du sikker p\u00E5 at du vil slette?","Slet seneste m\u00E5ling."):
 			return
 		if nopst==1:
 			self.statusdata.ClearCurrentStretch()
@@ -701,18 +702,18 @@ class MLBase(GUI.MainWindow):
 			self.statusdata.SubtractSetup()
 		FileOps.DeleteLastAction(self.resfile)
 		self.Log(SL)
-		self.Log(u"Sletter seneste m\u00E5ling. Tjek evt. resultatfil i menupunkt 'rediger'.")
+		self.Log("Sletter seneste m\u00E5ling. Tjek evt. resultatfil i menupunkt 'rediger'.")
 		self.UpdateStatus()
 	
 
 class FilPanel(wx.Panel):
 	def __init__(self, parent,size=12):
 		wx.Panel.__init__(self,parent)
-		self.fields=GUI.EditFields(self,textlabels=["Resultatfil:","Projektbeskrivelse:"],textsize=200,fontsize=size)
+		self.fields=GUI.EditFields(self,textlabels=["Resultatfil:","Projektbeskrivelse:"],textsize=200,fontsize=size)  #ændret
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
 		self.field1=self.fields.field[0]
 		self.field2=self.fields.field[1]
-		self.knap=GUI.MyButton(self,u"F\u00F8j til eksisterende fil",size)
+		self.knap=GUI.MyButton(self,"F\u00F8j til eksisterende fil",size)
 		self.sizer.Add(self.fields,1,wx.ALL,5)
 		self.sizer.Add(self.knap,0,wx.ALL,5)
 		self.SetSizer(self.sizer)
@@ -754,7 +755,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_RICH2)
 		self.log.SetFont(wx.Font(self.size-1,wx.MODERN,wx.NORMAL,wx.NORMAL))
 		#self.criterium=GUI.EditFields(self,textlabels=["Forkastelseskriterie:"],textvalues=["%.2f %s"%(self.ini.fbtest,self.ini.fbunit)],fontsize=self.size,textsize=100)
-		self.maalere=GUI.EditFields(self,textlabels=[u"M\u00E5ler-1:",u"M\u00E5ler-2:"],fontsize=self.size,style='horizontal',textsize=100)
+		self.maalere=GUI.EditFields(self,textlabels=["M\u00E5ler-1:","M\u00E5ler-2:"],fontsize=self.size,style='horizontal',textsize=100)
 		self.fil=FilPanel(self,size=self.size)
 		buttons=GUI.ButtonPanel(self,["START","OPDATER"],fontsize=self.size)
 		self.startbutton=buttons.button[0]
@@ -808,8 +809,8 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Close()
 		try:
 			self.ini,self.instruments,self.laegter=self.inireader.Read()
-		except Exception,msg:
-			GUI.ErrorBox(None,u"Fejl under l\u00E6sning af ini-fil:\n%s\nKan ikke starte programmet."%str(msg))
+		except Exception as msg:
+			GUI.ErrorBox(None,"Fejl under l\u00E6sning af ini-fil:\n%s\nKan ikke starte programmet."%str(msg))
 			self.Close()
 		else:
 			#Setup GPS#
@@ -818,8 +819,8 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		#decide whether precision_mode should be set#
 		SetPrecisionMode(self.ini,self.program.type)
 		if DEBUG:
-			for key in self.ini.__dict__.keys():
-				print key,self.ini.__dict__[key]
+			for key in list(self.ini.__dict__.keys()):
+				print(key,self.ini.__dict__[key])
 		
 		
 	def LogStatus(self):
@@ -827,15 +828,15 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Log(inst.PresentYourself())
 		self.Log("GPS: port %i, baudrate %i" %(self.ini.gpsport,self.ini.gpsbaud))
 		if self.gps.GetConnectionStatus():
-			self.Log(u"GPS-enheden er tilsluttet.")
+			self.Log("GPS-enheden er tilsluttet.")
 		else:
-			self.Log(u"GPS-enheden er ikke tilsluttet.","RED")
-		self.Log(u"L\u00E6gter:")
+			self.Log("GPS-enheden er ikke tilsluttet.","RED")
+		self.Log("L\u00E6gter:")
 		for laegte in self.laegter:
 			self.Log("%s" %laegte.PresentYourself())
-		self.Log(u"Forkastelseskriterie for frem-tilbage str\u00E6kninger: %.2f %s" %(self.ini.fbtest,self.ini.fbunit))
+		self.Log("Forkastelseskriterie for frem-tilbage str\u00E6kninger: %.2f %s" %(self.ini.fbtest,self.ini.fbunit))
 		if IS_PRECISION:
-			self.Log(u"Der m\u00E5les i pr\u00E6cisions-tilstand.")
+			self.Log("Der m\u00E5les i pr\u00E6cisions-tilstand.")
 		for mappe in self.ini.mapdirs:
 			if mappe[-1] not in ["/","\\"]:
 					mappe+="/"
@@ -859,7 +860,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 				msg="OK."
 				style=None
 			else:
-				msg=u"kunne ikke \u00E5bnes!"
+				msg="kunne ikke \u00E5bnes!"
 				style="RED"
 			self.Log("%s: port %i %s" %(inst.GetName(),inst.GetPort(),msg),style=style)
 		resfiles=GetResultFiles()
@@ -871,7 +872,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Log("Bruger vinkelenhed: %s" %self.ini.angle_unit)
 		if hasattr(self.ini,"use_corrections"):
 			if not self.ini.use_corrections:
-				self.Log(u"NB: Korrektioner er sl\u00E5et FRA!")
+				self.Log("NB: Korrektioner er sl\u00E5et FRA!")
 		self.Log("Dette kan reguleres i ini-filen....")
 		
 	def OnStart(self,event):
@@ -881,7 +882,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			fname,bsk=self.fil.GetValues()
 			self.resfile=os.path.join(RESDIR,fname)
 			if os.path.exists(self.resfile):
-				dlg=GUI.OKdialog(self,u"Bem\u00E6rk!","\nFilen findes allerede.\nVil du tilslutte til den?")
+				dlg=GUI.OKdialog(self,"Bem\u00E6rk!","\nFilen findes allerede.\nVil du tilslutte til den?")
 				dlg.ShowModal()
 				OK=dlg.WasOK()
 				dlg.Destroy()
@@ -897,10 +898,10 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		resfil=open(fname,"w")
 		#Start resultatfil#
 		resfil.write("%*s %s %s %s\n"%(-19,"Program:",self.program.name,self.program.version,self.program.date))
-		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname.encode('utf-8')))
-		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk.encode('utf-8')))
+		resfil.write("%*s %s\n"%(-19,"Filnavn:",fname))
+		resfil.write("%*s %s\n" %(-19,"Projektbeskrivelse:",bsk))
 		resfil.write("%*s %s %s\n" %(-19,"Dato og tid:",Fkt.Dato(),Fkt.Nu()))
-		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1.encode('utf-8'),m2.encode('utf-8')))
+		resfil.write("%*s %s %s\n" %(-19,"Maalerinitialer:",m1,m2))
 		for instrument in self.instruments:
 			resfil.write("%s\n" %instrument.PresentYourself(short=True))
 		resfil.write("Laegter:\n")
@@ -914,7 +915,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 	def StartProgram(self): #should be overridden by subclass -append is a flag to see if we are appending to a file
 		pass
 	def OnAddToFile(self,event):
-		dlg = wx.FileDialog(self, message=u"V\u00E6lg en fil",defaultDir=RESDIR, defaultFile="",
+		dlg = wx.FileDialog(self, message="V\u00E6lg en fil",defaultDir=RESDIR, defaultFile="",
 		wildcard="*.*",
 		style=wx.OPEN)
 		if dlg.ShowModal()==wx.ID_OK:
@@ -922,7 +923,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			dir=dlg.GetDirectory()
 			if os.path.realpath(dir)==os.path.realpath(RESDIR):
 				if fname.find("backup")!=-1:
-					GUI.ErrorBox(self,u"Backup filen skal omd\u00F8bes, inden der kan tilsluttes til den.")
+					GUI.ErrorBox(self,"Backup filen skal omd\u00F8bes, inden der kan tilsluttes til den.")
 				else:
 					self.resfile=RESDIR+"/"+fname
 					self.fil.field1.SetValue(fname)
@@ -937,19 +938,19 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 		if True:#try:
 			isres,isok,msg=FileOps.ReadResultFile(self.resfile,self.statusdata,self.instruments,self.program.type)  #was self.filereader(self.resfile,self.statusdata)
 		else: #except Exception,msg:
-			GUI.ErrorBox(self,u"Fejl under l\u00E6sning af fil:\n %s\nMuligvis er den forkert formateret." %str(msg))
+			GUI.ErrorBox(self,"Fejl under l\u00E6sning af fil:\n %s\nMuligvis er den forkert formateret." %str(msg))
 			return
 		if isres:
 			data=self.statusdata
 			self.fil.field2.SetValue(data.GetProject().decode('utf-8'))
 			imsg="Data for resultatfil:\n"
 			imsg+="Projekt: %s\n" %data.GetProject().decode('utf-8')
-			imsg+=u"Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
+			imsg+="Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
 			if data.GetSetups()>0:
-				imsg+=u"Uafsluttet str\u00E6kning:\n"
-				imsg+=u"Fra: %s, #opst: %i, afstand: %.2f m\n" %(data.GetStart(),data.GetSetups(),data.GetDistance())
+				imsg+="Uafsluttet str\u00E6kning:\n"
+				imsg+="Fra: %s, #opst: %i, afstand: %.2f m\n" %(data.GetStart(),data.GetSetups(),data.GetDistance())
 			msg=imsg+msg+"\n\nVil du tilslutte til filen?"
-			dlg=GUI.OKdialog(self,u"Bem\u00E6rk!",msg)
+			dlg=GUI.OKdialog(self,"Bem\u00E6rk!",msg)
 			dlg.ShowModal()
 			OK=dlg.WasOK()
 			dlg.Destroy()
@@ -982,7 +983,7 @@ def CompareHdiffs(win,file,data): #a bit messy, could be better
 		return
 	list=["Fra %s til %s" %(felt[0],felt[1]) for felt in heads]
 	msg=FileOps.FilStatus(file)
-	dlg = GUI.MyMultiChoiceDialog( win, u"Sammenlign H\u00F8jdeforskelle.", msg+u"V\u00E6lg str\u00E6kning(er):", list)
+	dlg = GUI.MyMultiChoiceDialog( win, "Sammenlign H\u00F8jdeforskelle.", msg+"V\u00E6lg str\u00E6kning(er):", list)
 	dlg.ShowModal()
 	if dlg.WasOK():
 		selections = dlg.GetSelections()
@@ -994,17 +995,17 @@ def CompareHdiffs(win,file,data): #a bit messy, could be better
 			valgte.append(heads[i])
 			Fra[heads[i][0]]=-999 #ogsaa nodata-value i datafil!
 			Til[heads[i][1]]=-999
-		FindFra=map(Numformat2Pointname,Fra.keys())
-		FindTil=map(Numformat2Pointname,Til.keys()) 
+		FindFra=list(map(Numformat2Pointname,list(Fra.keys())))
+		FindTil=list(map(Numformat2Pointname,list(Til.keys()))) 
 		FraH=data.GetHeights(FindFra)
 		TilH=data.GetHeights(FindTil)
 		notfoundfra=[]
 		notfoundtil=[]
-		for h,valgt in zip(FraH,Fra.keys()):
+		for h,valgt in zip(FraH,list(Fra.keys())):
 			Fra[valgt]=h
 			if h is None or h<-100: #means not found or no height
 				notfoundfra.append(valgt)
-		for h,valgt in zip(TilH,Til.keys()):
+		for h,valgt in zip(TilH,list(Til.keys())):
 			Til[valgt]=h
 			if h is None or h<-100:
 				notfoundtil.append(valgt)
@@ -1019,12 +1020,12 @@ def CompareHdiffs(win,file,data): #a bit messy, could be better
 				h_m=float(hoved[5])
 				diff=(h_m-h_db)*1e3
 				ne=abs(diff)/np.sqrt(float(hoved[4])*1e-3)
-				msg+=u"M\u00E5lt: %s m, Database: %.4f m, diff: %.2f mm, %.2f ne\n" %(hoved[5],h_db,diff,ne)
+				msg+="M\u00E5lt: %s m, Database: %.4f m, diff: %.2f mm, %.2f ne\n" %(hoved[5],h_db,diff,ne)
 		if len(notfound)>0:
-			msg+=u"F\u00F8lgende punkters koter blev ikke fundet i databasen:\n"
+			msg+="F\u00F8lgende punkters koter blev ikke fundet i databasen:\n"
 			for station in notfound:
 				msg+=station+"\n"
-		dlg2=GUI.MyLongMessageDialog(win,u"Sammenligning af h\u00F8jder.",msg,12)
+		dlg2=GUI.MyLongMessageDialog(win,"Sammenligning af h\u00F8jder.",msg,12)
 		dlg2.ShowModal()
 		dlg2.Destroy()
 	dlg.Destroy()
@@ -1038,7 +1039,7 @@ def AnalyserNet(win,fil):
 		dlg.Destroy()
 		return
 	msg=FileOps.FilStatus(fil)
-	dlg = MySumDialog( win, u"Summer H\u00F8jdeforskelle.",msg+u"V\u00E6lg str\u00E6kning(er):", heads)
+	dlg = MySumDialog( win, "Summer H\u00F8jdeforskelle.",msg+"V\u00E6lg str\u00E6kning(er):", heads)
 	dlg.ShowModal()
 
 
@@ -1071,23 +1072,23 @@ def TjekJsider(files): #tjekker journalsider i en liste af res-filer.
 					err=True
 			if err:
 				nerrors+=1
-				msg+=u"Ukurankt journalside: %s, str\u00E6kning: %s til %s, fil: %s\n" %(jside,fra,til,os.path.basename(file))
+				msg+="Ukurankt journalside: %s, str\u00E6kning: %s til %s, fil: %s\n" %(jside,fra,til,os.path.basename(file))
 			else:
 				cur.execute("INSERT INTO head VALUES (?,?,?,?,?,?)",(fra,til,head[2],float(head[5]),jside,os.path.basename(file))) #this first
 				jside=spl[0]
-				if Jsides.has_key(jside):
+				if jside in Jsides:
 					Jsides[jside].append(ext)
 				else:
 					Jsides[jside]=[ext]
 				
 				ndone+=1
 	con.commit()
-	for jside in Jsides.keys():
+	for jside in list(Jsides.keys()):
 		data=Jsides[jside]
 		data.sort()
 		if data[0]!=1 or len(data)!=data[len(data)-1]:
 			nerrors+=1
-			msg+=u"Fejl ved journalside %s, f\u00F8lgende sider fundet:\n" %(jside)
+			msg+="Fejl ved journalside %s, f\u00F8lgende sider fundet:\n" %(jside)
 			pattern="%s%s" %(jside,"%")
 			cur.execute("SELECT * FROM head WHERE jside like ?",(pattern,))
 			found=cur.fetchall()
@@ -1111,7 +1112,7 @@ class MySumDialog(GUI.TwoButtonDialog):
 		self.lb=wx.CheckListBox(self,choices=list,size=(300,-1))
 		self.lb.Bind(wx.EVT_CHECKLISTBOX,self.OnCheck)
 		self.result1=GUI.MyText(self,"Sum:  ",12)
-		self.result2=GUI.MyText(self,u"Sum/sqrt(afst):  ",12)
+		self.result2=GUI.MyText(self,"Sum/sqrt(afst):  ",12)
 		self.InsertObject(self.result2,0,wx.ALL,10)
 		self.InsertObject(self.result1,0,wx.ALL,10)
 		self.InsertObject(self.lb,1,wx.ALL,10)
@@ -1126,7 +1127,7 @@ class MySumDialog(GUI.TwoButtonDialog):
 				dist+=float(self.heads[i][4])**2
 		dist=np.sqrt(dist)
 		self.result1.SetLabel("Sum: %.4f m" %sum)
-		self.result2.SetLabel(u"Sum/sqrt(afst): %.4f m/sqrt(km)" %(sum/dist*1000))
+		self.result2.SetLabel("Sum/sqrt(afst): %.4f m/sqrt(km)" %(sum/dist*1000))
 
 
 def GetResultFiles(program="MGL"):
@@ -1140,11 +1141,11 @@ def GetResultFiles(program="MGL"):
 def SelectResultFiles(win,program="MGL"):
 	goodfiles=GetResultFiles()
 	if len(goodfiles)==0:
-		GUI.ErrorBox(win,u"Programmet s\u00F8ger efter filer i %s, men kunne ikke finde nogen %s-resultatfiler!"  %(RESDIR_SHORT,program))
+		GUI.ErrorBox(win,"Programmet s\u00F8ger efter filer i %s, men kunne ikke finde nogen %s-resultatfiler!"  %(RESDIR_SHORT,program))
 		return []
 	dlg = GUI.MyMultiChoiceDialog( win, 
-	u"V\u00E6lg resultatfiler",
-	"Fundne filer", map(os.path.basename,goodfiles))
+	"V\u00E6lg resultatfiler",
+	"Fundne filer", list(map(os.path.basename,goodfiles)))
 	dlg.ShowModal()
 	OK=dlg.WasOK()
 	if OK:
@@ -1195,7 +1196,7 @@ class Logger(wx.Panel):
 			fname=Fkt.Dato().replace(".","-").replace(":","-")+"_"+str(Nlog)+".log"
 		self.log.AppendText("Saving %s...\n" %fname)
 		f=open(os.path.join(BASEDIR,fname),"w") 
-		f.write(self.log.GetValue().encode('utf-8'))
+		f.write(self.log.GetValue()) # .encode('utf-8')) py2to3
 		f.close()
 	def OnClear(self,event):
 		self.log.SetValue("")
@@ -1222,7 +1223,7 @@ class MakeHead(GUI.InputDialog):
 		else:
 			numvals=[temp]
 		GUI.InputDialog.__init__(self,parent,"Hoved",textlabels,textvals,numlabels,numvals,bounds=bounds,pedantic=True)
-		status=GUI.StatusBox2(self,[u"H\u00F8jdeforskel:","Afstand:","#Opst:"],colsize=1,label=u"Str\u00E6kning")
+		status=GUI.StatusBox2(self,["H\u00F8jdeforskel:","Afstand:","#Opst:"],colsize=1,label="Str\u00E6kning")
 		testbox=GUI.StatusBox2(self,["Frem-tilbage test:"],label="Forkastelseskriterie")
 		if test is not None:
 			
@@ -1350,17 +1351,14 @@ class IniReader(object):
 # Sound Alert  
 #-------------------------------------#
 def SoundAlert():
-	sound = wx.Sound(MMDIR+'chord.wav')
-	sound.Play(wx.SOUND_ASYNC)
+	playsound(MMDIR+'chord.wav')
 def SoundGotData():
-	sound = wx.Sound(MMDIR+'gotdata.wav')
-	sound.Play(wx.SOUND_SYNC)
+	playsound(MMDIR+'gotdata.wav')
 def SoundBadData():
-	sound = wx.Sound(MMDIR+'alert.wav')
-	sound.Play(wx.SOUND_SYNC)
+	playsound(MMDIR+'alert.wav')
 def SoundGoodData():
-	sound = wx.Sound(MMDIR+'gooddata.wav')
-	sound.Play(wx.SOUND_SYNC)
+	playsound(MMDIR+'gooddata.wav')
 def SoundKey():
-	sound = wx.Sound(MMDIR+'ding.wav')
-	sound.Play(wx.SOUND_ASYNC)
+	playsound(MMDIR+'ding.wav')
+	#sound = wx.Sound(MMDIR+'ding.wav')  #adv added
+	#sound.Play(wx.SOUND_ASYNC)

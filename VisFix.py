@@ -11,7 +11,7 @@ else:
 	sys.stdout=sys.stderr
 import VisFix_main
 def main():
-	print("Running %s on %s." %(sys.argv[0],time.asctime()))
+	print(("Running %s on %s." %(sys.argv[0],time.asctime())))
 	VisFix_main.main()
 	sys.exit()
 if __name__=='__main__':

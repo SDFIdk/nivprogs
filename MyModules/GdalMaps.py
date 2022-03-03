@@ -145,7 +145,7 @@ class MapDir():
 		if self.INITIALIZED:
 			self.CURSOR.execute("SELECT filename FROM mapindex WHERE TestOverlap(xmin,xmax,ymin,ymax,?,?,?,?)",(xmin,xmax,ymin,ymax))
 			names=self.CURSOR.fetchall()
-			return map(lambda x: str(x[0]), names)
+			return [str(x[0]) for x in names]
 		else:
 			return []
 	
@@ -261,7 +261,7 @@ class MapEngine(object):
 	def IsInitialized(self):
 		return self.INITIALIZED
 	def ReturnError(self,text,xwin,ywin):
-		buffer=wx.EmptyBitmap(xwin,ywin)
+		buffer=wx.Bitmap(xwin,ywin)  # Py39 .EmptyBitmap -> Bitmap
 		dc=wx.MemoryDC(buffer)
 		dc.SetFont(wx.Font(14,wx.SWISS,wx.NORMAL,wx.NORMAL))
 		dc.SetTextForeground("white")
@@ -303,9 +303,9 @@ class MapEngine(object):
 					raster[by1:by2,bx1:bx2]=self.UseGdal(dataset,sx1,sy1,sx2-sx1,sy2-sy1,bufx,bufy)
 			if raster.ndim<3:
 				raster=self.COLORMAP[Array2Color(raster)[:,:],:]
-			return wx.BitmapFromBuffer(xwin,ywin,raster),xmin,xmax,ymin,ymax  #whole span of map from top corner to lower right corner (NOT center of pixels!)
-		except Exception, msg:
-			print str(msg)
+			return wx.Bitmap.FromBuffer(xwin,ywin,raster),xmin,xmax,ymin,ymax  #whole span of map from top corner to lower right corner (NOT center of pixels!)
+		except Exception as msg:
+			print(str(msg))
 			M=self.ReturnError("Error: %s" %str(msg),xwin,ywin)
 			return M,xmin,xmax,ymin,ymax
 	def GetExtent(self,x1,x2,y1,y2,x1r,x2r,y1r,y2r,w,h): 
@@ -418,7 +418,7 @@ def GetMap(mapfile,xwin=600,colortable=GRAY):
 		for i in range(0,3):
 			band=dataset.GetRasterBand(i+1)
 			raster[:,:,i]=band.ReadAsArray(0,0,xsize,ysize,xwin,ywin)
-	return wx.BitmapFromBuffer(xwin,ywin,raster),xmin,xmax,ymin,ymax  #whole span of map from top corner to lower right corner (NOT center of pixels!)
+	return wx.Bitmap.FromBuffer(xwin,ywin,raster),xmin,xmax,ymin,ymax  #whole span of map from top corner to lower right corner (NOT center of pixels!)
 
 
 def GetPixel(self,xulc,yulc,x,y): #ul-center! faas fra kortnavn i kms-standard kortdir.
@@ -543,8 +543,8 @@ class PolygonReader(): #reads polygon (opmaalingsdistrikter) from shapefile
 		try:
 			self.source=ogr.Open(fname)
 			self.layer=self.source.GetLayer(0) #we assume its the first layer we want
-		except Exception,msg:
-			print repr(msg)
+		except Exception as msg:
+			print(repr(msg))
 		else:
 			self.INITIALIZED=True
 	def IsInitialized(self):
@@ -557,7 +557,7 @@ class PolygonReader(): #reads polygon (opmaalingsdistrikter) from shapefile
 		self.layer.SetSpatialFilterRect(minx,miny,maxx,maxy)
 		nf=self.layer.GetFeatureCount()
 		polygons=[]
-		for i in xrange(0,nf):
+		for i in range(0,nf):
 			feature=self.layer.GetNextFeature()
 			label=feature.GetFieldAsString(0) # we assume that this field is the label for the feature
 			geom=feature.GetGeometryRef()  #geometry class
@@ -606,9 +606,9 @@ class LineReader(object):
 		try:
 			self.source=ogr.Open(str(fname))
 			self.layer=self.source.GetLayer(0) #we assume its the first layer we want
-		except Exception,msg:
+		except Exception as msg:
 			self.INITIALIZED=False
-			print msg
+			print(msg)
 		else:
 			self.INITIALIZED=True
 	def IsInitialized(self):

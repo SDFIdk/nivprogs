@@ -1,9 +1,9 @@
 import wx
-from GUIclasses2 import MyButton,MyDscDialog,MyMessageDialog,FileLikeTextCtrl,ButtonPanel
-from DataClass2 import PointData
-import GPS
+from .GUIclasses2 import MyButton,MyDscDialog,MyMessageDialog,FileLikeTextCtrl,ButtonPanel
+from .DataClass2 import PointData
+from . import GPS
 import numpy as np
-import MapBase
+from . import MapBase
 #Last update/bugfix 05.08.09, simlk
 #GUI interface wrapping MapBase.py for ML-programs. Simple interface designed for in-field use....
 class MapPanel(wx.Panel):
@@ -67,7 +67,7 @@ class MapPanel(wx.Panel):
 		self.SetPanMode()
 	def AttachGPS(self,gps):
 		self.Map.AttachGPS(gps)
-		if gps.isAlive():
+		if gps.is_alive():
 			self.modebutton.Enable(1)
 		else:
 			self.SetPanMode(log=False)
@@ -96,13 +96,13 @@ class MapPanel(wx.Panel):
 	def OnToggleMode(self,event):
 		if not self.panmode:
 			self.SetPanMode()
-		elif self.Map.gps.isAlive():
+		elif self.Map.gps.is_alive():
 			self.SetGPSMode()
 	def SetPanMode(self,log=True): #naar  gps doer saa gaa til navmode!
 		if not self.panmode and log:
 			self.Log("Skifter til navigation via venstreklik...")
 		#self.modebutton.SetLabel("GPS-CENTR.")
-		#if self.Map.gps.isAlive():
+		#if self.Map.gps.is_alive():
 		#	self.modebutton.Enable(1)
 		#else:
 		#	self.modebutton.Enable(0)
@@ -111,7 +111,7 @@ class MapPanel(wx.Panel):
 		self.Map.SetGpsCentering(False)
 	def SetGPSMode(self):
 		if not self.gpsmode:
-			self.Log(u"Centrerer via GPS.")
+			self.Log("Centrerer via GPS.")
 			self.modebutton.SetLabel("NAVIGER")
 			self.modebutton.Enable(1)
 		self.gpsmode=True
@@ -132,7 +132,7 @@ class MapPanel(wx.Panel):
 			skitse,w,h,found2=self.Map.GetLocatedSkitse()
 			punkt=self.Map.GetLocatedLabel()
 			if found2 or found1:
-				skitse=wx.BitmapFromBuffer(w,h,skitse)
+				skitse=wx.Bitmap.FromBuffer(w,h,skitse)
 				dlg=MyDscDialog(self,title="Beskrivelse for %s" %punkt,msg=bsk,image=skitse,point=punkt)
 				dlg.ShowModal()
 			else:

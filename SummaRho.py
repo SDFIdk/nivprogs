@@ -2,7 +2,7 @@ import os,sys
 from MyModules.Analysis import GetSummaRho
 
 def usage():
-	print("Call: %s <datafile> <outputfile> [<inc_points_file>] [<exclude_points_file>]" %os.path.basename(sys.argv[0]))
+	print(("Call: %s <datafile> <outputfile> [<inc_points_file>] [<exclude_points_file>]" %os.path.basename(sys.argv[0])))
 	print("If include file is not present, all points will be used")
 	print("Last argument (exclude file) is optional")
 	print("Include and exclude files should contain one point per line:")
@@ -34,7 +34,7 @@ def main(args):
 		exc_pts_file=None
 	for name in [resfile,inc_pts_file,exc_pts_file]:
 		if(name is not None) and (not os.path.exists(name)):
-			print("%s does not exist" %name)
+			print(("%s does not exist" %name))
 			usage()
 	if inc_pts_file is not None:
 		f=open(inc_pts_file)
@@ -43,7 +43,7 @@ def main(args):
 		if len(inc_pts)==0:
 			print("No points specified in include file.")
 			usage()
-		print("Including %d points" %len(inc_pts))
+		print(("Including %d points" %len(inc_pts)))
 	else:
 		inc_pts=None
 	if exc_pts_file is not None:
@@ -53,10 +53,10 @@ def main(args):
 		if len(exc_pts)==0:
 			print("No points specified in include file.")
 			usage()
-		print("Excluding %d points" %len(exc_pts))
+		print(("Excluding %d points" %len(exc_pts)))
 	else:
 		exc_pts=None
-	print("Reading %s, writing %s...\n" %(resfile,outfile))
+	print(("Reading %s, writing %s...\n" %(resfile,outfile)))
 	f_out=open(outfile,"w")
 	f_out.write("jside;p1;p2;n_frem;n_tilbage;dist;rho\n")
 	ok,msg=GetSummaRho(resfile,inc_pts,exc_pts,f_out)

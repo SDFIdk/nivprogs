@@ -1,9 +1,9 @@
 import wx
-import GUIclasses2 as GUI 
-from DataClass2 import PointData
-import GPS
+from . import GUIclasses2 as GUI 
+from .DataClass2 import PointData
+from . import GPS
 import numpy as np
-import MapBase
+from . import MapBase
 #Last update/bugfix 11.03,2010 simlk
 #Two GUI interfaces wrapping MapBase.py for ML-programs. Simple interface designed for in-field use....
 class BasePanel(wx.Panel): #This one mainly handles states and clicks - used in the two real wrappings, one in a frame and one in a panel
@@ -67,7 +67,7 @@ class BasePanel(wx.Panel): #This one mainly handles states and clicks - used in 
 		if not self.panmode:
 			self.SetPanMode()
 		else: 
-			if self.Map.gps.isAlive(): #then we are in panmode
+			if self.Map.gps.is_alive(): #then we are in panmode
 				self.SetGPSMode()
 			else:
 				self.Log("GPS ikke tilsluttet...")
@@ -79,7 +79,7 @@ class BasePanel(wx.Panel): #This one mainly handles states and clicks - used in 
 		self.Map.SetGpsCentering(False)
 	def SetGPSMode(self):
 		if not self.gpsmode:
-			self.Log(u"Centrerer via GPS.")
+			self.Log("Centrerer via GPS.")
 		self.gpsmode=True
 		self.panmode=False
 		self.Map.SetGpsCentering(True)
@@ -98,7 +98,7 @@ class BasePanel(wx.Panel): #This one mainly handles states and clicks - used in 
 			skitse,w,h,found2=self.Map.GetLocatedSkitse()
 			punkt=self.Map.GetLocatedLabel()
 			if found2 or found1:
-				skitse=wx.BitmapFromBuffer(w,h,skitse)
+				skitse=wx.Bitmap.FromBuffer(w,h,skitse)
 				dlg=GUI.MyDscDialog(self,title="Beskrivelse for %s" %punkt,msg=bsk,image=skitse,point=punkt)
 				dlg.ShowModal()
 			else:
@@ -161,7 +161,7 @@ class MapFrame(wx.Frame):
 		self.Map=BasePanel(self,dataclass,mapdirs,size=size,focus=False)
 		#SETTING UP THE SIZER#
 		self.sizer=wx.BoxSizer(wx.VERTICAL)
-		self.sizer.Add(self.Map,6,wx.CENTER|wx.ALIGN_CENTER|wx.ALL|wx.EXPAND,10)
+		self.sizer.Add(self.Map,6,wx.CENTER|wx.ALL|wx.EXPAND,10)
 		self.sizer.Add(self.bottompanel,0,wx.ALL,5)
 		self.SetSizerAndFit(self.sizer)
 		#Generate a dlg message for the user at init
@@ -212,7 +212,7 @@ class MapFrame(wx.Frame):
 	def EnableGPS(self):
 		self.button[3].Enable()
 	def AttachGPS(self,gps):
-		if gps.isAlive():
+		if gps.is_alive():
 			self.Map.AttachGPS(gps)
 			self.EnableGPS()
 	def DetachGPS(self):

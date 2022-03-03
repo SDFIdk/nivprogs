@@ -205,15 +205,15 @@ class MTLTransferSetup(MTLSetup):
 		if not self.IsValid(row=0):
 			return -1,-1,-1,-1,-1,-1,False,False
 		index_errors=(self.real_data[1,:]+self.real_data[2,:]-2*pi)*0.5 #1.st row + 2. row
-		self.index_errors=map(lambda x:self.zformat_translator(x,-1),index_errors.flatten()) #store in selected unit
+		self.index_errors=[self.zformat_translator(x,-1) for x in index_errors.flatten()] #store in selected unit
 		z1c,z2c=self.real_data[1]-index_errors
 		s1,s2=self.GetDistances()
 		k1,k2=self.instrument_consts[:,1] #axis 1. inst, axis 2. inst
 		if DEBUG:
-			print("Index err: %s" %repr(index_errors*180.0/pi))
-			print("Raw: %s" %repr(self.raw_data))
-			print("Dist: %s" %repr(self.real_data[0]))
-			print("Real: %s" %repr(self.real_data[1:,:]*180.0/pi))
+			print(("Index err: %s" %repr(index_errors*180.0/pi)))
+			print(("Raw: %s" %repr(self.raw_data)))
+			print(("Dist: %s" %repr(self.real_data[0])))
+			print(("Real: %s" %repr(self.real_data[1:,:]*180.0/pi)))
 		try:
 			z1=tan(k2*sin(z1c))/(s1-k2*cos(z1c))+z1c #Korrigeret for Inst2's prisme-objektiv afst.
 			z2=tan(k1*sin(z2c))/(s2-k1*cos(z2c))+z2c

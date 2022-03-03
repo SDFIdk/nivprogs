@@ -46,7 +46,7 @@ def GetBsk(ind):
 			navn=bsk[0].strip().replace(":","")
 			navn=navn.replace(" ","")  #slet mellemrum
 			if len(navn)>4: #maaske bedre validering?
-				if Stations.has_key(navn):
+				if navn in Stations:
 					Nd+=1
 				else:
 					bsk=bsk[1:]
@@ -54,7 +54,7 @@ def GetBsk(ind):
 					for line in bsk:
 						if line!="@=":
 							text+=line+"\n"
-					text=unicode(text.decode("latin1"))
+					text=str(text.decode("latin1"))
 					if len(text)>0:
 						Stations[navn]=text
 					else:
@@ -78,7 +78,7 @@ def GetCrd(ind): #deprecated
 			else:
 				if N>1000000 and E>99999 and Z>-1: #this should ensure right format, I hope!
 					navn=line[0]
-					if Stations.has_key(navn):
+					if navn in Stations:
 						Nd+=1
 					else:
 						if line[-2].upper()=="TRANSFORMEREDE":
@@ -133,9 +133,9 @@ def GetIDs(ind):
 	while len(line)>0 and line.strip()!="quit!":
 		hsnavn=GetPointName(line)
 		if hsnavn!=-1:
-			if Stations.has_key(hsnavn):
+			if hsnavn in Stations:
 				Nd+=1
-				print hsnavn
+				print(hsnavn)
 			else:
 				gpsnavn=None
 				gmginavn=None
@@ -161,7 +161,7 @@ def GetLoc(ind):#tidligere GetKanKoLoc
 		if len(sline)>0 and "m" in sline:
 			navn=GetPointName(line)
 			if navn!=-1:
-				if  Stations.has_key(navn):
+				if  navn in Stations:
 						Nd+=1
 				else:
 					i=line.find("m")
@@ -199,7 +199,7 @@ def GetSkitser(dir):
 				name="K"+name[3:]
 			while name[0]=="0":
 				name=name[1:]
-			if Stations.has_key(name):
+			if name in Stations:
 				Nd+=1
 			else:
 				Stations[name]=file
@@ -232,7 +232,7 @@ def Pointname2Numformat(name):
 			try:
 				int(sname[-1])
 			except:
-				 print "Error:",name
+				 print("Error:",name)
 			else:
 				SNR=sname[-1]
 				if len(SNR)==1:

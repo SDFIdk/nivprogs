@@ -26,7 +26,7 @@ class PointData(object):
                     self.cur.execute("select min(easting),max(easting),min(northing),max(northing) from main")
                     data=self.cur.fetchone()
                     self.x1,self.x2,self.y1,self.y2=data
-                except Exception,msg:
+                except Exception as msg:
                     f=open("data_error.log","w")
                     f.write(repr(msg))
                     f.close()
@@ -93,7 +93,7 @@ class PointData(object):
         draw=ImageDraw.Draw(im)
         draw.text((30,90),"Skitse ikke fundet.","red")
         del draw
-        return im.tostring(),200,200
+        return im.tobytes(),200,200        # py39 .tostring -> .tobytes
     def GetSkitse(self,id):
         found=False
         if id is None:
@@ -106,14 +106,14 @@ class PointData(object):
             else:
                 data=self.cur.fetchone()
                 if data is not None and len(data)>0:
-                    im=zlib.decompress(str(data[0]))
+                    im=zlib.decompress(bytes(data[0]))     # Py39 (str(data[0]))-> (bytes(data[0]))    str(data[0]).encode("utf-8")
                     mode=data[1]
                     w=data[2]
                     h=data[3]
-                    im=Image.fromstring(mode,(w,h),im)
+                    im=Image.frombytes(mode,(w,h),im)       # Py39 fromstring ->frombytes
                     if mode!="RGB":
                         im=im.convert("RGB")
-                    im=im.tostring()
+                    im=im.tobytes()     # Py39 tostring -> tobytes
                     found=True
                 else:
                     im,w,h=self.ReturnNoSkitse()
@@ -132,7 +132,7 @@ class PointData(object):
         self.cur.execute("select id,hsnavn from main where (hsnavn like ? or gpsnavn like ? or gmginavn like ?)  and (id in (select id from beskrivelse) or id in (select id from skitse))",(pattern,pattern,pattern))
         ids=self.cur.fetchall()
         if ids is not None and len(ids)>0: #hmm, got to know return type, when "error"
-            ids=map(lambda x: x[1],ids)
+            ids=[x[1] for x in ids]
         else:
             ids=None
         return ids
@@ -314,14 +314,14 @@ class PointData(object):
         self.cur.execute("select total_changes()")
         ntc=self.cur.fetchall()[0][0]
         msg="%*s %i\n" %(-40,"# punkter med (x,y)-koordinater:",ng)
-        msg+="%*s %i\n"%(-40,u"# punkter markeret som tabtg\u00E5et:",nt)
+        msg+="%*s %i\n"%(-40,"# punkter markeret som tabtg\u00E5et:",nt)
         msg+="%*s %i\n" %(-40,"# punkter med kote:",nz)
         msg+="%*s %i\n" %(-40,"# beskrivelser:",nb)
         msg+="%*s %i\n" %(-40,"# skitser:",ns)
         #msg+="# punkter med koordinater og beskrivelser: %i\n" %ng_b
         #msg+="# punkter med koordinater og skitser     : %i\n" %ng_s
         #msg+="# punkter med beskrivelse eller skitse men uden lokation: %i\n" %nng_bs
-        msg+="%*s %i\n" %(-40,u"# totale \u00E6ndringer i datafilen:",ntc)
+        msg+="%*s %i\n" %(-40,"# totale \u00E6ndringer i datafilen:",ntc)
         return msg
     #STUFF FOR UPDATING THE FILE
     def GetNotFoundFile(self):
@@ -335,7 +335,7 @@ class PointData(object):
         return f
     def StationDoesNotExist(self,station):
         #perhaps write to some other error log....
-        print("%s kunne ikke findes i alias-tabellen." %station)
+        print(("%s kunne ikke findes i alias-tabellen." %station))
     def MarkAsLost(self,stations):
         #will set all stations to tabtgaaet=0, then mark stations in list as tabtgaaet.
         self.cur.execute("update main set tabtgaaet = 0")
@@ -362,7 +362,7 @@ class PointData(object):
     def CreateNewPoints(self,stations,tabt=False):
         #insert only rows that do not exist already
         nd=0
-        for station in stations.keys():
+        for station in list(stations.keys()):
             gmginavn,gpsnavn=stations[station]
             try:
                 self.cur.execute("insert into main(hsnavn,gmginavn,gpsnavn,tabtgaaet) values(?,?,?,?)",(station,gmginavn,gpsnavn,tabt))
@@ -374,7 +374,7 @@ class PointData(object):
         #Update or insert ids. Tricky beacause if a row already exsist we don't wanna change the tabtgaaet column.
         #insert or replace will not work as it will replace the tabtgaaet value and other attrs.,
         nd=0
-        for station in stations.keys():
+        for station in list(stations.keys()):
             gmginavn,gpsnavn=stations[station]
             #See if station exists already
             self.cur.execute("select id from main where (hsnavn = ?)",(station,))
@@ -392,7 +392,7 @@ class PointData(object):
         notfound=0
         done=0
         f=self.GetNotFoundFile()
-        for station in BSK.keys():
+        for station in list(BSK.keys()):
             bsk=BSK[station] 
             id=self.GetID(station)
             if id is not None:
@@ -402,17 +402,17 @@ class PointData(object):
                 notfound+=1
                 f.write("%s\n" %station)
             if done%500==0:
-                print done,notfound
+                print(done,notfound)
         f.write("-1z")
         f.close()
         if notfound>0:
-            print("#Stations not found: %i\nSee names in file." %notfound)
+            print(("#Stations not found: %i\nSee names in file." %notfound))
         self.con.commit()
     def UpdateCoords(self,coords): #accepts a dictionary with tuples as values
         f=self.GetNotFoundFile()
         notfound=0
         done=0
-        for station in coords.keys():
+        for station in list(coords.keys()):
             crd=coords[station]
             N,E=crd
             id=self.GetID(station)
@@ -424,17 +424,17 @@ class PointData(object):
                 f.write("%s\n" %station)
                 notfound+=1
             if done%500==0:
-                print done,notfound
+                print(done,notfound)
         f.write("-1z")
         f.close()
         if notfound>0:
-            print("#Stations not found: %i\nSee names in file." %notfound)
+            print(("#Stations not found: %i\nSee names in file." %notfound))
         self.con.commit()
     def UpdateZs(self,coords): #accepts a dictionary with tuples as values
         f=self.GetNotFoundFile()
         notfound=0
         done=0
-        for station in coords.keys():
+        for station in list(coords.keys()):
             crd=coords[station]
             #if station exists a replace will happen since name was set to unique in the create cmd
             Z,T=crd
@@ -446,17 +446,17 @@ class PointData(object):
                 f.write("%s\n" %station)
                 notfound+=1
             if done%500==0:
-                print done,notfound	
+                print(done,notfound)	
         f.write("-1z")
         f.close()
         if notfound>0:
-            print("#Stations not found: %i\nSee names in file." %notfound)
+            print(("#Stations not found: %i\nSee names in file." %notfound))
         self.con.commit()
     def UpdateSkitser(self,skitser): #a dictionary of station names and file names
         notfound=0
         done=0
         f=self.GetNotFoundFile()
-        for station in skitser.keys():
+        for station in list(skitser.keys()):
             file=skitser[station]
             try:
                 im=Image.open(file)
@@ -471,7 +471,7 @@ class PointData(object):
                     mode="L"
                     width=im.size[0]
                     height=im.size[1]
-                    im=buffer(zlib.compress(im.tostring())) #kun fordi sqlite gerne vil ha' det!
+                    im=zlib.compress(im.tostring()) #kun fordi sqlite gerne vil ha' det! py39 -> buffer(udtryk) -> udtryk
                     t=(id,im,mode,width,height)
                     try:
                         self.cur.execute("insert or replace into skitse values (?,?,?,?,?)",t)
@@ -483,11 +483,11 @@ class PointData(object):
                     f.write("%s\n" %station)
                     notfound+=1
                 if done%100==0:
-                    print done,notfound
+                    print(done,notfound)
         f.write("-1z")
         f.close()
         if notfound>0:
-            print("#Stations not found: %i\nSee names in file." %notfound)
+            print(("#Stations not found: %i\nSee names in file." %notfound))
         self.con.commit()
 
 

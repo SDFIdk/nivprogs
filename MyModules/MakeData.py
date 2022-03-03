@@ -8,11 +8,11 @@ import sys
 koder=["N","T","L","M"]
 oversaet=["DVR90","Transformeret","Lokalt system","MSL"]
 fixopl="R:\\Fixopl2009\\"
-kotefiles=["Fyn\\koterfyn","Jylland\\koterjyl",u"Sj\u00E6lland\\kotersjl",u"Sj\u00E6lland\\koterkbf","Bornholm\\koterbor"]
+kotefiles=["Fyn\\koterfyn","Jylland\\koterjyl","Sj\u00E6lland\\kotersjl","Sj\u00E6lland\\koterkbf","Bornholm\\koterbor"]
 lockanko="DK\\lockanko" #skal behandels specielt
 #og heraf afledes lrl og msl-filer
-bskfiles=["Fyn\\bskphfyn","Jylland\\bskphjyl",u"Sj\u00E6lland\\bskphsjl","Bornholm\\bskphbor","DK\\bsk_kanko"]
-skitsedirs=["Fyn\\skitse\\","Jylland\\skitse\\",u"Sj\u00E6lland\\skitse\\","Bornholm\\skitse\\"]
+bskfiles=["Fyn\\bskphfyn","Jylland\\bskphjyl","Sj\u00E6lland\\bskphsjl","Bornholm\\bskphbor","DK\\bsk_kanko"]
+skitsedirs=["Fyn\\skitse\\","Jylland\\skitse\\","Sj\u00E6lland\\skitse\\","Bornholm\\skitse\\"]
 def MakeTables(database):
 	con=sqlite3.connect("C:\Data\mtl.sqlite")
 	cur=con.cursor()
@@ -44,7 +44,7 @@ def MakeGeo(database):
 		for ext in ["",".lrl",".msl"]:
 			filename=fixopl+file+ext
 			if os.path.exists(filename):
-				print filename
+				print(filename)
 				f=open(filename)
 				for line in f:
 					line=line.split()
@@ -106,7 +106,7 @@ def MakeGeo(database):
 	con.commit()
 	cur.close()
 	con.close()
-	print "Dubletter: ",Nd
+	print("Dubletter: ",Nd)
 	
 def MakeBsk(database):
 	con=sqlite3.connect(database)
@@ -122,7 +122,7 @@ def MakeBsk(database):
 	Nd=0
 	for file in bskfiles:
 		filename=fixopl+file
-		print filename
+		print(filename)
 		Bsk=[] #til beskrivelser...
 		ind=open(filename)
 		Lines=ind.readlines()
@@ -170,7 +170,7 @@ def MakeBsk(database):
 		con.commit()
 	cur.close()
 	con.close()
-	print "Dubletter: ",Nd
+	print("Dubletter: ",Nd)
 	return
 	
 def MakeSkitse(database):
@@ -188,7 +188,7 @@ def MakeSkitse(database):
 			except:
 				pass
 			else:
-				print file
+				print(file)
 				mode=im.mode
 				width=im.size[0]
 				height=im.size[1]
@@ -211,7 +211,7 @@ def MakeSkitse(database):
 						con.commit()
 	cur.close()
 	con.close()
-	print "Dubletter: ",Nd
+	print("Dubletter: ",Nd)
 	return 
 def DoAll(database):
 	MakeTables(database)

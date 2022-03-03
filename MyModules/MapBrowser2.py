@@ -1,10 +1,10 @@
 import wx
-import MapPanel
-import GdalMaps
-import GPS 
-import MapBase
-from DataClass2 import PointData
-import wms_client
+from . import MapPanel
+from . import GdalMaps
+from . import GPS 
+from . import MapBase
+from .DataClass2 import PointData
+from . import wms_client
 import numpy as np
 wms_client.SetLogin("kms1","adgang") #should be setup by the user...
 #Implements a base class MapBase for handling maps via wms or GDALMaps and point data (sqlite) via DataClass2
@@ -47,7 +47,7 @@ class MiniMap(wx.MiniFrame): #old style implementation,. Kunne godt bruge MapPan
 		self.Show()
 	def SetupMap(self,mapfile):
 		if mapfile is None:
-			self.map=wx.EmptyBitmap(400,400)
+			self.map=wx.Bitmap(400,400)     #py39
 			self.xpix=400
 			self.ypix=400
 			self.x1=450000
@@ -159,7 +159,7 @@ class Map(MapBase.MapBase):
 		self.drawlayer=np.array(self.GetValidLayers())
 		self.drawlayer|=[True,False,True,False,True] #this is the default
 		self.pointlayer=2 #index to pointlayer - easier to change here
-		self.layernames=["Kortbaggrund","Kystlinie","Punkt-database",u"Opm\u00E5lingsdistrikter","Kortskala"]
+		self.layernames=["Kortbaggrund","Kystlinie","Punkt-database","Opm\u00E5lingsdistrikter","Kortskala"]
 		self.Layer_Methods=[self.DrawMap,self.DrawLines,self.DrawPoints,self.DrawPolygons,self.DrawScaleBar]
 		self.LastDrawExtents=np.zeros((len(self.layernames),5)) #first col=intersects yes/no, col 1-5=x1,x2,y1,y2
 		#stuff for determining drawing of layers
@@ -181,13 +181,13 @@ class Map(MapBase.MapBase):
 		self.Log("Afstand: %.0f m" %dist)
 	def CloseDown(self):
 		self.wmsthread.kill()
-		if self.gps.isAlive(): #saa skal vi ikke logge data til dette vindue!
+		if self.gps.is_alive(): #saa skal vi ikke logge data til dette vindue!#py39 isAlive-> is_alive
 			self.gps.DetachWindow()
 		if self.data is not None:
 			self.data.Disconnect()
 		self.MapEngine.Close()
 	def KillWMS(self):
-		if self.wmsthread.isAlive():
+		if self.wmsthread.is_alive():#py39 isAlive-> is_alive
 			self.wmsthread.kill()
 			self.Log("Stopper wms-download")
 	def EnableDistance(self):
@@ -195,7 +195,7 @@ class Map(MapBase.MapBase):
 	def DisableDistance(self):
 		self.MapPanel.DisableDistance()
 	def ZoomIn(self): #centers around gpspos, when using gps-centering
-		if self.wmsthread.isAlive():
+		if self.wmsthread.is_alive():#py39 isAlive-> is_alive
 			self.Log("Vent til WMS-hentning er aflsuttet.")
 		else:
 			if self.gpscentering and self.gotvalidgpspos: #if we have navigated away in the meantime...
@@ -206,13 +206,13 @@ class Map(MapBase.MapBase):
 			self.MapPanel.Zoom(self.x,self.y,0.5)
 			self.SetMap()
 	def ZoomOut(self):
-		if self.wmsthread.isAlive():
+		if self.wmsthread.is_alive(): #py39 isAlive-> is_alive
 			self.Log("Vent til WMS-hentning er aflsuttet.")
 		else:
 			self.MapPanel.Zoom(self.x,self.y,2)
 			self.SetMap()
 	def CanZoom(self):
-		if not self.wmsthread.isAlive():
+		if not self.wmsthread.is_alive(): #py39 isAlive-> is_alive
 			return True
 		else:
 			self.Log("Vent til WMS-hentning er aflsuttet.")
@@ -243,8 +243,8 @@ class Map(MapBase.MapBase):
 					size=self.MapPanel.GetCanvasSize()
 					try:
 						M,nx1,nx2,ny1,ny2=self.MapEngine.GetMap(x1,x2,y1,y2,size[0],size[1])
-					except Exception, msg:
-						self.map=wx.EmptyBitmap(size[0],size[1])
+					except Exception as msg:
+						self.map=wx.Bitmap(size[0],size[1])  #py39
 						self.Log(str(msg)+"\nKortet kunne ikke opdateres!")
 					else:
 						self.map=M
@@ -252,7 +252,7 @@ class Map(MapBase.MapBase):
 						#self.Log("Easting: %.0f m til %0.f m,   Northing: %.0f m til %.0f m" %(nx1,nx2,ny1,ny2))
 				else:
 					self.Log("Definer kortmappe...")
-			elif event is None and not self.wmsthread.isAlive() and self.drawlayer[0]:  #saa WMS-service
+			elif event is None and not self.wmsthread.is_alive() and self.drawlayer[0]:  #saa WMS-service #py39 isAlive-> is_alive
 				doplot=False #plot foerst naar kortet kommer!
 				size=self.MapPanel.GetCanvasSize()
 				x1,x2,y1,y2=self.MapPanel.GetBounds()
@@ -294,7 +294,7 @@ class Map(MapBase.MapBase):
 			self.SetInitialCenter(realcenter=True)
 			self.SetMap()
 		else:
-			self.Log(u"Kunne ikke s\u00E6tte kortmappen til %s. Indekser kortmappen vha. menupunkt." %dir)
+			self.Log("Kunne ikke s\u00E6tte kortmappen til %s. Indekser kortmappen vha. menupunkt." %dir)
 		return OK
 	def AddMapDir(self,dir,setmap=True):
 		OK=self.MapEngine.AddMapDir(dir)
@@ -304,7 +304,7 @@ class Map(MapBase.MapBase):
 				self.SetInitialCenter(realcenter=True)
 				self.SetMap()
 		elif not OK:
-			self.Log(u"Kunne ikke tif\u00F8je kortmappen %s. Indekser kortmappen vha. menupunkt." %dir)
+			self.Log("Kunne ikke tif\u00F8je kortmappen %s. Indekser kortmappen vha. menupunkt." %dir)
 		return OK
 	def SetCenterBasedOnData(self):
 		if self.MapEngine.IsInitialized() and self.MapEngine.GetNumberOfDirs()>0:

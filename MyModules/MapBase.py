@@ -1,8 +1,8 @@
 import wx
-import MapPanel
-import GdalMaps
-import GPS 
-from DataClass3 import PointData
+from . import MapPanel
+from . import GdalMaps
+from . import GPS 
+from .DataClass3 import PointData
 import numpy as np
 #Implements a base class MapBase for handling maps via wms or GDALMaps and point data (sqlite) via DataClass2
 #Direct user action and "mode"-handling should be wrapped on top of the MapBase class.
@@ -69,7 +69,7 @@ class MapBase(wx.Panel): #Base class for mapping and data access- no direct user
 		#On Close - do certain stuff
 		self.Bind(wx.EVT_CLOSE,self.OnClose)
 	def OnClose(self,event):
-		if self.gps.isAlive(): #saa skal vi ikke logge data til dette vindue!
+		if self.gps.is_alive(): #saa skal vi ikke logge data til dette vindue! #py39 isAlive-> is_alive
 			self.gps.DetachWindow()
 		self.MapEngine.kill()
 		event.Skip()
@@ -103,7 +103,7 @@ class MapBase(wx.Panel): #Base class for mapping and data access- no direct user
 				h="ikke koteret."
 			else:
 				h="%.3fm" %h
-			text=u"Punkt: %s   H\u00F8jde: %s" %(self.data.GetSelectedLabel(),h)
+			text="Punkt: %s   H\u00F8jde: %s" %(self.data.GetSelectedLabel().decode('utf-8'),h)
 			if info is not None:
 				text+=" "+info
 			return text
@@ -194,7 +194,7 @@ class MapBase(wx.Panel): #Base class for mapping and data access- no direct user
 				self.Log("GPS-position: (%.1f,%.1f)" %(self.x,self.y))
 				self.TestPointUpdate()
 			else:
-				self.Log(u"GPS-data ikke valide. Venter p\u00E5 bedre position...")
+				self.Log("GPS-data ikke valide. Venter p\u00E5 bedre position...")
 				self.gotvalidgpspos=False
 				return
 			if self.MapPanel.TestBoundary(self.x,self.y,0.3):
@@ -304,11 +304,11 @@ class MapBase(wx.Panel): #Base class for mapping and data access- no direct user
 		self.gps=gps
 		self.gotvalidgpspos=False 
 		self.gps.DefineWindow(self)
-		if self.gps.isAlive():
+		if self.gps.is_alive():#py39 isAlive-> is_alive
 			self.usegps=True
 			
 	def DetachGPS(self): #bruges hvis gps-traaden stadig koerer videre i hovedprogrammet, men ikka skal logge til dette vindue
-		if self.gps.isAlive():
+		if self.gps.is_alive():   #py39 isAlive -> is_alive
 			self.gps.DetachWindow()
 		self.gotvalidgpspos=False 
 		self.gps=GPS.DummyThread()

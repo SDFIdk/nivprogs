@@ -1,20 +1,20 @@
 import threading
 import sys
 import time
-from math import *
+from math import sqrt,floor,ceil,pi,sin,cos,tan
 import  wx.lib.newevent
 (GPSEvent,EVT_GPS) = wx.lib.newevent.NewEvent()
 (KillEvent,EVT_KILL_GPS) = wx.lib.newevent.NewEvent()
 (LogEvent,EVT_LOG) = wx.lib.newevent.NewEvent()
 if "gps_test" in sys.argv:
-	import gps_test as serial
+	from . import gps_test as serial
 else:
 	import serial
 #UPDATE GPS AND LL2UTM to handle W lon. --FIXED!
 class DummyThread():
 	def __init__(self):
 		self.alive=False
-	def isAlive(self):
+	def is_alive(self):#py39 isAlive-> is_alive
 		return False
 	def kill(self):
 		pass
@@ -46,7 +46,7 @@ class DummyWindow():
 	def SetMemory(*args):
 		pass
 class GpsThread(threading.Thread):
-	def __init__(self,parent=None,port=5,baud=4800,zone=32):
+	def __init__(self,parent=None,port="COM5",baud=4800,zone=32): # From: port=5
 		threading.Thread.__init__(self) # init the thread
 		self.x=-999
 		self.y=-999
@@ -54,7 +54,7 @@ class GpsThread(threading.Thread):
 		self.dop=1000
 		self.OK=0
 		self.speed=0
-		self.time=time.clock()
+		self.time=time.perf_counter()        #py39: time.clock() ->time.perf_counter()
 		self.doptime=self.time
 		self.xplot=0
 		self.yplot=0
@@ -98,9 +98,9 @@ class GpsThread(threading.Thread):
 	def run(self):
 		try:
 			self.gps=serial.Serial(self.port,self.baud,timeout=30)   #timeout,saa laeser den ikke en linie for evigt....
-		except Exception, msg:
+		except Exception as msg:
 			#self.Log(str(msg))
-			self.Log(u"Kunne ikke starte GPS-enheden!")
+			self.Log("Kunne ikke starte GPS-enheden!")
 			event=KillEvent(kill=True)
 			wx.PostEvent(self.parent,event)
 			return  #stop here...
@@ -110,20 +110,20 @@ class GpsThread(threading.Thread):
 		while self.alive:
 			time.sleep(0.12)
 			code="X"
-			while code!="$GPGGA" and self.alive:
+			while code!=b"$GPGGA" and self.alive:
 				try:
 					self.gps.flush()
 					line=self.gps.readline()
 				except:    					#Saa maa den vaere fjernet og skal draebes!
 					if self.alive: #saa er den ikke lukket udefra
-						self.Log(u"Kunne ikke f\u00E5 data fra GPS-enheden!\nPr\u00F8v evt. tilsutning igen via menupunkt.")
+						self.Log("Kunne ikke f\u00E5 data fra GPS-enheden!\nPr\u00F8v evt. tilsutning igen via menupunkt.")
 						if self.parent is not None:
 							event=KillEvent(kill=True)
 							wx.PostEvent(self.parent,event)
 					return
 				else:
 					if len(line)>0 and not line.isspace():
-						line=line.split(",")
+						line=line.split(b",")  # added b
 						code=line[0]
 			if self.alive:
 				try:
@@ -148,7 +148,7 @@ class GpsThread(threading.Thread):
 						x,y=ll2utm(Y,X,self.zone,1) #type 1 5412.1212 =54 deg +12.1212'
 						self.OK=True
 						self.dop=dop
-						t=time.clock()
+						t=time.perf_counter()     #py39 time.clock -> time-perf_counter
 						self.speed=sqrt((x-self.x)**2+(y-self.y)**2)/(t-self.time)*3.6
 						self.time=t
 						self.x=x
@@ -164,7 +164,7 @@ class GpsThread(threading.Thread):
 								evt=GPSEvent(plot=True,dop=self.dop,x=self.x,y=self.y,speed=self.speed) 
 								wx.PostEvent(self.plotwin,evt)
 						if self.dop>7 and not self.sent:
-							self.Log(u"GPS-dop %.1f, venter p\u00E5 bedre GPS-data..." %self.dop)
+							self.Log("GPS-dop %.1f, venter p\u00E5 bedre GPS-data..." %self.dop)
 							self.sent=True
 					else:
 						self.OK=False

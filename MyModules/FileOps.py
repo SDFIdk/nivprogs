@@ -7,7 +7,7 @@ except:
 else:
 	HAS_WIN32=True
 import time
-import Funktioner
+from . import Funktioner
 import shutil
 
 ATTACH_MSG=";Tilslutter til fil..."
@@ -74,20 +74,20 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 	statusdata.SetProject(projekt)
 	has_extra_lines=False
 	if nheads>0 and last_pos>head_pos:
-		msg+=u"Der er linier efter sidste hoved.\nM\u00E5ske blev programmet lukket ved en fejl."
+		msg+="Der er linier efter sidste hoved.\nM\u00E5ske blev programmet lukket ved en fejl."
 		msg+="\nSidste linie: %s" %last_line
 		start_pos=head_pos
 		has_extra_lines=True
 	elif nheads==0 and last_pos>header_pos:
-		msg+=u"Filen indeholder ingen hoveder, men linier efter headeren.\nM\u00E5ske blev programmet lukket ved en fejl."
+		msg+="Filen indeholder ingen hoveder, men linier efter headeren.\nM\u00E5ske blev programmet lukket ved en fejl."
 		msg+="\nSidste linie: %s" %last_line
 		start_pos=header_pos
 		has_extra_lines=True
 	elif nheads==0:
-		msg+=u"Filen indeholder ingen m\u00E5linger."
+		msg+="Filen indeholder ingen m\u00E5linger."
 		return True, False, msg
 	else:
-		msg=u"Filen er tilsyneladende OK."
+		msg="Filen er tilsyneladende OK."
 	#Hvis der er linier efter sidste hoved: forsoeg at laese maalinger og saette status#
 	if has_extra_lines:
 		mtl_have_warned=False
@@ -117,28 +117,28 @@ def ReadResultFile(resfile,statusdata,instruments,program="MGL"): #TODO: check a
 						check_line=i-4
 						Slut=None   #In prev. versions EndPoint was not stored here... It's not really a big deal...
 					if DEBUG:
-						print instrument_names,len(lines),check_line,code
+						print(instrument_names,len(lines),check_line,code)
 					if instrument_names[0] in lines[check_line]:
 						statusdata.SetInstrumentState(0) #foerste inst. baerer hoejden
 					else:
 						statusdata.SetInstrumentState(1) #andet inst baerer hoejden
 						if (not (instrument_names[1] in lines[i-4])) and (not mtl_have_warned):
-							msg+=u"\nKan ikke finde aktuelle instrumentnavne i resultatfilen.\n"
-							msg+=u"H\u00F8jdeb\u00E6rende instrument m\u00E5ske ikke sat OK."
+							msg+="\nKan ikke finde aktuelle instrumentnavne i resultatfilen.\n"
+							msg+="H\u00F8jdeb\u00E6rende instrument m\u00E5ske ikke sat OK."
 							mtl_have_warned=True
 					statusdata.AddSetup(hdiff,dist)
 				if code=="B1":
 					statusdata.SetStart(Start)
 				elif code=="B2": #Dette betyder at sidste hoved ikke naaede at blive skrevet da programmet crashede....
-					msg+=u"\nProgrammet er tilsyneladende afsluttet f\u00F8r sidste hoved blev skrevet.\n"
-					msg+=u"Ingen data er dog g\u00E5et tabt! Skriv det manglende hoved ind i resultatfilen."
+					msg+="\nProgrammet er tilsyneladende afsluttet f\u00F8r sidste hoved blev skrevet.\n"
+					msg+="Ingen data er dog g\u00E5et tabt! Skriv det manglende hoved ind i resultatfilen."
 					statusdata.SetEnd(Slut)
 					f=open(resfile,"a")
 					f.write("; manglende hoved skrives ind her...\n")
 					f.close()
 					statusdata.StartNewStretch()
 		if statusdata.GetStretches()+statusdata.GetSetups()==0:
-			msg+="\nFilen indeholder ingen m\u00E5linger."
+			msg+="\nFilen indeholder ingen m\\u00E5linger."
 			return True,False,msg
 	if not (ATTACH_MSG in lines[-1]):
 		f=open(resfile,"a")
@@ -163,7 +163,7 @@ def TjekMTLHeader(lines,instruments):
 					axisconst=float(sline[3])
 				except:
 					if DEBUG:
-						print sline
+						print(sline)
 					return False
 				else:
 					if instruments[nfound].addconst==addconst and instruments[nfound].axisconst==axisconst:
@@ -224,13 +224,13 @@ def DeleteToLastHead(resfilnavn):
 	f=open(resfilnavn,"r") #virker vist her med 'r'-mode selvom f.seek() bruges...
 	lines=f.readlines()
 	f.close()
-	for i in xrange(1,len(lines)+1):
+	for i in range(1,len(lines)+1):
 		sline=lines[len(lines)-i].split()
 		if len(sline)>0 and sline[0]=="#":
 			break
 	keep=len(lines)-i+1
 	f=open(resfilnavn,"w")
-	for i in xrange(len(lines)):
+	for i in range(len(lines)):
 		line=lines[i]
 		if i<keep or line.isspace():
 			f.write(line)
@@ -255,7 +255,7 @@ def DeleteLastAction(resfilnavn):
 		i+=1
 	keep=len(lines)-i+2
 	f=open(resfilnavn,"w")
-	for j in xrange(len(lines)):
+	for j in range(len(lines)):
 		line=lines[j]
 		if j<keep or line.isspace():
 			f.write(line)
@@ -274,7 +274,7 @@ def EditHead(resfilnavn,head_nr,newhead):
 	newline=FormatHead(newhead)
 	found=0
 	linenr=None
-	for i in xrange(len(lines)):
+	for i in range(len(lines)):
 		line=lines[i]
 		sline=line.split()
 		if len(sline)>0 and sline[0]=="#":
@@ -291,7 +291,7 @@ def EditHead(resfilnavn,head_nr,newhead):
 			f.write(line)
 		f.close()
 	elif DEBUG:
-		print "edit_head",found,linenr,newline
+		print("edit_head",found,linenr,newline)
 			
 
 def FormatHead(data):
@@ -355,9 +355,9 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 			if pline.find("*")==-1 and pline[0]!=";": #vi udskriver saa ikke slettede ting
 				pline=pline.replace(";","")
 				pline=pline.replace("\n","")
-				pline=pline.replace("oe",u"\u00F8")
-				pline=pline.replace("ae",u"\u00E6")
-				pline=pline.replace("aa",u"\u00E5")
+				pline=pline.replace("oe","\u00F8")
+				pline=pline.replace("ae","\u00E6")
+				pline=pline.replace("aa","\u00E5")
 				pline=pline.encode('L6')
 				Plines.append(pline)
 	if mode!=3: #testmode er 3
@@ -385,7 +385,7 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 				i=1
 	else:
 		for pline in Plines:
-			print pline
+			print(pline)
 	
 	f.close()
 	if mode==3: #testmode
@@ -404,7 +404,7 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 	if len(gem)==10:
 		dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Opstillinger: "+gem[-1])
 		i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,(u"H\u00F8jdeforskel: %.5f m" %(float(gem[6]))).encode('L6'))
+	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,("H\u00F8jdeforskel: %.5f m" %(float(gem[6]))).encode('L6'))
 	i+=1
 	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Datafil: "+filnavn)
 	i+=1
@@ -453,7 +453,7 @@ def SaetEfterHoved(filepointer,mode=1,JS="XXX"):
 		return lastpos,gnl2-gnl1
 	else:
 		if mode==3: #testmode
-			print lastpos, gnl2-gnl1
+			print(lastpos, gnl2-gnl1)
 		return lastpos,0
 		
 
@@ -508,8 +508,8 @@ def FilStatus(fil): #an slags analyse...
 				singles.append(e)
 		Nd=len(doubles)
 		Ns=len(singles)
-		msg=u"%*i dobbeltm\u00E5linger (frem + tilbage)\n%*i enkeltm\u00E5linger.\n"%(-3,Nd,-3,Ns)
+		msg="%*i dobbeltm\u00E5linger (frem + tilbage)\n%*i enkeltm\u00E5linger.\n"%(-3,Nd,-3,Ns)
 		if 2*Nd+Ns!=len(heads):
-			msg+=u"Dette giver en fejl p\u00E5 %i i forhold til antal hoveder.\n" %(len(heads)-2*Nd+Ns)
+			msg+="Dette giver en fejl p\u00E5 %i i forhold til antal hoveder.\n" %(len(heads)-2*Nd+Ns)
 		return msg
 

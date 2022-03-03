@@ -1,9 +1,9 @@
-import Funktioner
+from . import Funktioner
 import datetime
 import MyModules.GUIclasses2 as GUI
 import numpy as np
 import os
-import FileOps
+from . import FileOps
 #fix 14.04.10, simlk. Changed "centering error", which should make the test more forgiving at small distances - at large distances it has no effect. 
 # Last edit: 2012-01-09 fixed mtl test. Unified, 2012-04-23: fixed possible None return val in TestStretch
 #Rejcection criteria reflects a model variance for meas. of a strectch, should correpond to a variance of half the parameter used in the test. 
@@ -56,7 +56,7 @@ class FBreject(object):
 		self.initialized=True
 	def GetData(self):
 		data=""
-		for key in self.database.keys():
+		for key in list(self.database.keys()):
 			s=self.database[key]
 			data+="%s->%s: dist: %.2f m\n" %(key[0],key[1],s.dist)
 			for i in range(len(s.hdiffs)):
@@ -74,19 +74,19 @@ class FBreject(object):
 		nback=0
 		hdiffs_all=np.empty((0,))
 		dists=[]
-		if self.database.has_key(key_back):
+		if key_back in self.database:
 			s_back=self.database[key_back]
 			nback+=len(s_back.hdiffs)
 			if nback>0:
 				dists.append(s_back.dist)
 				hdiffs_all=np.append(hdiffs_all,np.array(s_back.hdiffs)*-1.0)
-		if self.database.has_key(key_forward):
+		if key_forward in self.database:
 			s_forward=self.database[key_forward]
 			nforward+=len(s_forward.hdiffs)
 			if nforward>0:
 				dists.append(s_forward.dist)
 				hdiffs_all=np.append(hdiffs_all,np.array(s_forward.hdiffs))
-		msg+=u"%s->%s er tidligere m\u00E5lt %d gang(e), og %d gang(e) i modsat retning.\n" %(start,end,nforward,nback)
+		msg+="%s->%s er tidligere m\u00E5lt %d gang(e), og %d gang(e) i modsat retning.\n" %(start,end,nforward,nback)
 		nall=len(hdiffs_all)
 		if len(hdiffs_all)>0:
 			d=np.mean(dists)
@@ -97,15 +97,15 @@ class FBreject(object):
 				raw_std=np.std(hdiffs_all,ddof=1)
 				raw_prec=raw_std/np.sqrt(len(hdiffs_all))
 				raw_max_diff=hdiffs_all.max()-hdiffs_all.min()
-				msg+=u"hdiff_middel: %.4f m, max-diff: %.2f mm (%.2f ne)\n" %(raw_mean,raw_max_diff*1000,raw_max_diff*1e3/norm_d)
+				msg+="hdiff_middel: %.4f m, max-diff: %.2f mm (%.2f ne)\n" %(raw_mean,raw_max_diff*1000,raw_max_diff*1e3/norm_d)
 				msg+="std_dev: %.2f mm, std_dev(middel): %.2f mm (%.2f ne)\n" %(raw_std*1000,raw_prec*1000,raw_prec*1e3/norm_d)
-			msg+=u"\nEfter inds\u00E6ttelse af ny m\u00E5ling:\n"
+			msg+="\nEfter inds\u00E6ttelse af ny m\u00E5ling:\n"
 			hdiffs_new=np.append(hdiffs_all,[hdiff])
 			new_mean=np.mean(hdiffs_new)
 			new_std=np.std(hdiffs_new,ddof=1)
 			new_prec=new_std/np.sqrt(len(hdiffs_new))
 			new_max_diff=hdiffs_new.max()-hdiffs_new.min()
-			msg+=u"hdiff_middel: %.4f m, max-diff: %.2f mm (%.2f ne)\n" %(new_mean,new_max_diff*1000,new_max_diff*1e3/norm_d)
+			msg+="hdiff_middel: %.4f m, max-diff: %.2f mm (%.2f ne)\n" %(new_mean,new_max_diff*1000,new_max_diff*1e3/norm_d)
 			msg+="std_dev: %.2f mm, std_dev(middel): %.2f mm (%.2f ne)\n" %(new_std*1000,new_prec*1000,new_prec*1e3/norm_d)
 			msg+="\nForkastelsesparameter: %.3f %s." %(self.parameter,self.unit)
 			max_dev=self.GetMaxDev(d) #in mm!!
@@ -115,16 +115,16 @@ class FBreject(object):
 			self.found=True
 			self.wasok=isok
 			if isok:
-				msg+=u"\nDen samlede standardafvigelse p\u00E5 middel er OK.\n"
+				msg+="\nDen samlede standardafvigelse p\u00E5 middel er OK.\n"
 			else:
-				msg+=u"\nDen samlede standarafvigelse p\u00E5 middel er IKKE OK\n" 
-				msg+=u"Foretag flere m\u00E5linger!\n"
+				msg+="\nDen samlede standarafvigelse p\u00E5 middel er IKKE OK\n" 
+				msg+="Foretag flere m\u00E5linger!\n"
 			if len(hdiffs_all)>1 and new_prec>raw_prec: #or something more fancy
-				msg+=u"Den nye m\u00E5ling er tilsyneladende en outlier og kan evt. omm\u00E5les!\n"
+				msg+="Den nye m\u00E5ling er tilsyneladende en outlier og kan evt. omm\u00E5les!\n"
 				isok=False
 			return True,isok,len(hdiffs_all),msg
 		else:
-			msg=u"%s->%s er ikke m\u00E5lt tidligere" %(start,end)
+			msg="%s->%s er ikke m\u00E5lt tidligere" %(start,end)
 			self.found=False
 			self.wasok=True
 			return True,True,0,msg
@@ -143,13 +143,13 @@ class FBreject(object):
 			m,h=Funktioner.GetTime(tid)
 			day,month,year=Funktioner.GetDate(dato)
 			date=datetime.datetime(year,month,day,h,m)
-			if data.has_key(key):
+			if key in data:
 				data[key].AddStretch(hdiff,dist,date,jside)
 			else:
 				data[key]=Stretch()
 				data[key].AddStretch(hdiff,dist,date,jside)
-		except Exception, msg:
-			print repr(msg)
+		except Exception as msg:
+			print(repr(msg))
 			return False
 		else:
 			return True
@@ -158,7 +158,7 @@ class FBreject(object):
 		msg=""
 		noutliers=0
 		nbad=0
-		keys=data.keys()
+		keys=list(data.keys())
 		for key_forward in keys:
 			l_msg="%s->%s:" %key_forward
 			key_back=(key_forward[1],key_forward[0])
@@ -176,7 +176,7 @@ class FBreject(object):
 					dists.append(s_back.dist)
 					hdiffs_all=np.append(hdiffs_all,np.array(s_back.hdiffs)*-1.0)
 			d=np.mean(dists)
-			l_msg+=u" m\u00E5lt %d gange frem og %d gange tilbage." %(nforward,nback)
+			l_msg+=" m\u00E5lt %d gange frem og %d gange tilbage." %(nforward,nback)
 			report=False
 			if len(hdiffs_all)>1:
 				std_dev=np.std(hdiffs_all,ddof=1)
@@ -190,7 +190,7 @@ class FBreject(object):
 					nbad+=1
 					report=True
 					l_msg+="\nForkastelseskriterie IKKE overholdt."
-					l_msg+=u"\nTilladt fejl p\u00E5 middel: %.2f mm, aktuel fejl: %.2f mm" %(max_dev,prec*1e3)
+					l_msg+="\nTilladt fejl p\u00E5 middel: %.2f mm, aktuel fejl: %.2f mm" %(max_dev,prec*1e3)
 				if len(hdiffs_all)>2:
 					dh=np.fabs(hdiffs_all-m)
 					outlier_limit=1.5*std_dev
@@ -207,10 +207,10 @@ class FBreject(object):
 								s=s_back
 							else:
 								s=s_forward
-							l_msg+=u"\nHdiff: %.4f m, m\u00E5lt %s, journalside: %s" %(s.hdiffs[i],s.times[i].isoformat().replace("T"," "),s.jpages[i])
+							l_msg+="\nHdiff: %.4f m, m\u00E5lt %s, journalside: %s" %(s.hdiffs[i],s.times[i].isoformat().replace("T"," "),s.jpages[i])
 							hdiffs_new=np.delete(hdiffs_all,i)
 							new_prec=np.std(hdiffs_new,ddof=1)/np.sqrt(len(hdiffs_new))
-							l_msg+=u"\nFejl p\u00E5 middel: %.2f mm, fejl p\u00E5 middel uden denne m\u00E5ling: %.2f mm" %(prec*1e3,new_prec*1e3)
+							l_msg+="\nFejl p\u00E5 middel: %.2f mm, fejl p\u00E5 middel uden denne m\u00E5ling: %.2f mm" %(prec*1e3,new_prec*1e3)
 				if report:
 					msg+="\n"+"*"*60+"\n"+l_msg
 				
@@ -221,9 +221,9 @@ class FBreject(object):
 				del data[key_back]
 		nprob=noutliers+nbad
 		if nprob==0:
-			return True,u"Ingen problemer fundet"
-		lmsg=u"%*s %d\n" %(-42,u"#overtr\u00E6delser af forkastelseskriterie:",nbad)
-		lmsg+=u"%*s %d\n" %(-42,"#outliere:",noutliers)
+			return True,"Ingen problemer fundet"
+		lmsg="%*s %d\n" %(-42,"#overtr\u00E6delser af forkastelseskriterie:",nbad)
+		lmsg+="%*s %d\n" %(-42,"#outliere:",noutliers)
 		return False,lmsg+msg
 			
 	def IsInitialized(self):
@@ -243,7 +243,7 @@ def GetPlotData(program="MGL",parameter=2.0,unit="ne"):
 			var_model=MTL_var_model_linear
 	dists=np.arange(0,1500,10)
 	precision=0.5*parameter  #since parameter is 'reject-parameter' and we define precison as half of dat - man :-)
-	out=2*np.sqrt(map(lambda x: var_model(x,precision), dists))
+	out=2*np.sqrt([var_model(x,precision) for x in dists])
 	return np.column_stack((dists,out))
 
 def GetGlobalMinLine(program="MGL"):
@@ -281,11 +281,11 @@ def MakeRejectData(resfiles):
 				m,h=Funktioner.GetTime(tid)
 				day,month,year=Funktioner.GetDate(dato)
 				date=datetime.datetime(year,month,day,h,m)
-			except Exception, msg:
-				print repr(msg),head
+			except Exception as msg:
+				print(repr(msg),head)
 				nerrors+=1
 			else:
-				if data.has_key(key):
+				if key in data:
 					data[key].AddStretch(hdiff,dist,date,jside)
 				else:
 					data[key]=Stretch()

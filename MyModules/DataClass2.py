@@ -67,7 +67,7 @@ class PointData():
 		self.cur.execute("select navn from beskrivelse where navn like ? union select navn from skitse where navn like ?",(pattern,pattern))
 		names=self.cur.fetchall()
 		if names is not None and len(names)>0: #hmm, got to know return type, when "error"
-			names=map(lambda x: x[0],names)
+			names=[x[0] for x in names]
 		else:
 			names=None
 		return names
@@ -89,8 +89,8 @@ class PointData():
 	def GetCoordinates(self,name):
 		try:
 			self.cur.execute("select easting,northing,z from geo where navn = ?",(name,))
-		except Exception,msg:
-			print repr(msg)
+		except Exception as msg:
+			print(repr(msg))
 			x,y,z=None,None,None
 		else:
 			data=self.cur.fetchone()
@@ -195,31 +195,31 @@ class PointData():
 		msg+="# punkter med koordinater og beskrivelser: %i\n" %ng_b
 		msg+="# punkter med koordinater og skitser     : %i\n" %ng_s
 		msg+="# punkter med beskrivelse eller skitse men uden lokation: %i\n" %nng_bs
-		msg+=u"# totale \u00E6ndringer i datafilen: %i" %ntc
+		msg+="# totale \u00E6ndringer i datafilen: %i" %ntc
 		return msg
 	#STUFF FOR UPDATING THE FILE
 	def UpdateDsc(self,BSK): 
-		for station in BSK.keys():
+		for station in list(BSK.keys()):
 			bsk=BSK[station]
 			#if station exists a replace will happen since name was set to unique in the create cmd
 			self.cur.execute("insert or replace into beskrivelse values(?,?)",(station,bsk)) 
 		self.con.commit()
 	def UpdateCoords(self,coords): #accepts a dictionary with tuples as values
-		for station in coords.keys():
+		for station in list(coords.keys()):
 			crd=coords[station]
 			#if station exists a replace will happen since name was set to unique in the create cmd
 			N,E=crd
 			self.cur.execute("insert or replace into geo(Navn,N,E) values(?,?,?)",(station,N,E)) 
 		self.con.commit()
 	def UpdateZs(self,coords): #accepts a dictionary with tuples as values
-		for station in coords.keys():
+		for station in list(coords.keys()):
 			crd=coords[station]
 			#if station exists a replace will happen since name was set to unique in the create cmd
 			Z,T=crd
 			self.cur.execute("insert or replace into geo values(?,?,?,?,?)",(station,N,E,Z,T)) 
 		self.con.commit()
 	def UpdateSkitser(self,skitser): #a dictionary of station names and file names	
-		for station in skitser.keys():
+		for station in list(skitser.keys()):
 			file=skitser[station]
 			try:
 				im=Image.open(file)

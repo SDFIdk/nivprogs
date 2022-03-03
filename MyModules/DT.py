@@ -62,7 +62,7 @@ def ENI(A,cut=-3,rad=3): #enlarge narrow islands and 'odder'
 	N=np.logical_and((Laplacian(D)<=cut),D<=rad)
 	D=image.morphology.distance_transform_edt(np.logical_not(N))
 	A[D<=rad]=0
-	print time.clock()-t
+	print(time.clock()-t)
 	return A
 
 	
@@ -115,12 +115,12 @@ def Trace(A):
 			if (i==1 and LG[i,j,0]<0) or (i==C.shape[0]-2 and LG[i,j,0]>0): #start point at top or bottom
 				endp=np.array([i,j])
 				i,j=endi[1]+1,endj[1]+1 #the we start in the other end!
-				print "adjusting 1"
+				print("adjusting 1")
 			if (j==1 and LG[i,j,1]<0) or (j==C.shape[1]-2 and LG[i,j,1]>0): #starting left or right
 				endp=np.array([i,j])
 				i,j=endi[1]+1,endj[1]+1
-				print "adjusting 2"
-			print C.shape,(i,j),LG[i,j]
+				print("adjusting 2")
+			print(C.shape,(i,j),LG[i,j])
 		else:
 			curve.closed=True
 			i=1

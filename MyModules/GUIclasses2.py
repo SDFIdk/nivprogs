@@ -44,7 +44,7 @@ class MainWindow(wx.Frame):
 		self.CreateStatusBar() 
 		#Appeareance#
 		dsize=wx.GetDisplaySize()
-		dsize=dsize-(40,40)
+		dsize=dsize-(40,40) 
 		self.SetSize(dsize)
 		self.Center()
 		self.SetBackgroundColour(BGCOLOR)
@@ -133,7 +133,7 @@ class PlotFrame(SecondaryWindow): #Frame for showing a single plot
 			mx=max(times)+0.1
 			y1=min(vals)-1
 			y2=max(vals)+1
-			data=zip(times,vals)
+			data=list(zip(times,vals))
 			line = plot.PolyLine(data, colour='blue', width=2)
 			graphics=[line]
 			for x in insertlines:
@@ -395,7 +395,7 @@ class StatusBox(wx.Panel):   #style is a dictionary: item.nr.: [fontsize,bold (1
 		self.bsizer=wx.StaticBoxSizer(self.box,wx.VERTICAL)
 		self.sizer=wx.BoxSizer()
 		for i in range(0,len(self.list)):
-			if style.has_key(i):
+			if i in style:
 				line=[MyText(self,self.list[i],style[i][0],bold=style[i][1]),MyText(self,"NA",style[i][0],style=style[i][2],bold=style[i][1])]
 			else:
 				line=[MyText(self,self.list[i],fs),MyText(self,"NA",fs,style=wx.ALIGN_LEFT,bold=bold)]
@@ -417,7 +417,7 @@ class StatusBox(wx.Panel):   #style is a dictionary: item.nr.: [fontsize,bold (1
 				self.text[i][1].SetLabel(self.list[i][1])
 			else:
 				self.text[i][1].SetLabel(self.list[i])
-			if paint and colours.has_key(i):
+			if paint and i in colours:
 				self.text[i][1].SetBackgroundColour(colours[i])
 		if field!=None:
 			if text!=None:
@@ -461,7 +461,7 @@ class StatusBox2(wx.Panel):
 		self.gridsizer=wx.FlexGridSizer(self.colsize,self.cols*2,10,10)
 		self.sizer=wx.BoxSizer()
 		n=0
-		for j in range(0,self.cols):
+		for j in range(0,int(self.cols)): # py39 self.cols -> int(self.cols)
 			i=0
 			maxtext=0
 			while n<self.N and i<self.colsize:
@@ -497,7 +497,7 @@ class StatusBox2(wx.Panel):
 			if field is None:
 				if len(inputlist)==0:
 					inputlist=["NA"]*self.N
-				input_range=range(len(inputlist))
+				input_range=list(range(len(inputlist)))
 				field=0
 			else: #well then field should be valid!
 				inputlist=[text]
@@ -524,7 +524,7 @@ class StatusBox2(wx.Panel):
 				extra_space=0
 				more_space=0
 				self.text[i][1].SetLabel("%*s%s%*s"%(extra_space,"",text_label,more_space,""))
-				if paint and colours.has_key(i):
+				if paint and i in colours:
 					if colours[i] is None:
 						col=self.parent.GetBackgroundColour()
 					else:
@@ -557,7 +557,7 @@ class StatusBox2(wx.Panel):
 class CombiBox(StatusBox):
 	def  __init__(self, *args,**kwargs):
 		StatusBox.__init__(self,*args,**kwargs)
-		if kwargs.has_key("buttons"):
+		if "buttons" in kwargs:
 			bnames=kwargs["buttons"]
 			self.buttons=[]
 			line=wx.StaticLine(self,style=wx.LI_HORIZONTAL,size=(120,-1))
@@ -775,11 +775,11 @@ class EditFields(wx.Panel):
 			self.field.append(field)
 			if style=='vertical':
 				sizer.Add(text,1,wx.ALL|wx.ALIGN_LEFT,5)
-				sizer.Add(field,1,wx.ALL|wx.ALIGN_RIGHT,5)
+				sizer.Add(field,1,wx.ALL,5)     #py39  wx.ALL|wx.ALIGN_RIGHT -> wx.ALL
 			else:
 				sizer.Add(text,0,wx.ALL|wx.CENTER,10)
 				sizer.Add(field,1,wx.ALL,10)
-			self.sizer.Add(sizer,1,wx.ALL|wx.ALIGN_RIGHT|wx.EXPAND,5)
+			self.sizer.Add(sizer,1,wx.ALL|wx.EXPAND,5)        #py39 wx.ALL|wx.ALIGN_RIGHT -> wx.ALL
 		for i in range(0,len(self.field)-1): #Navigation
 			self.field[i].next=self.field[i+1]
 		i=0
@@ -794,12 +794,12 @@ class EditFields(wx.Panel):
 			field=MyNum(self,bounds[i][0],bounds[i][1],size=(numsize,-1)) 
 			self.numfield.append(field)
 			if style=='vertical':
-				sizer.Add(text,1,wx.ALL|wx.ALIGN_LEFT,5) 
-				sizer.Add(field,1,wx.ALL|wx.ALIGN_RIGHT,5)
+				sizer.Add(text,1,wx.ALL,5)       #ændret py39
+				sizer.Add(field,1,wx.ALL,5)      #Ændret py39
 			else:
-				sizer.Add(text,0,wx.ALL|wx.CENTER,10)
+				sizer.Add(text,0,wx.ALL,10)      #ændret py39
 				sizer.Add(field,1,wx.ALL,10)
-			self.sizer.Add(sizer,1,wx.ALL|wx.ALIGN_RIGHT|wx.EXPAND,5)
+			self.sizer.Add(sizer,1,wx.ALL|wx.EXPAND,5)    #ændret py39
 			i+=1
 		i=0
 		for value in numvalues:
@@ -1072,10 +1072,10 @@ class MyDscDialog(wx.Dialog): #punktbeskrivelsesdialog....
 		self.SetSizerAndFit(self.sizer)
 		self.OKbutton.SetFocus()
 	def OnSave(self,event):
-		name=self.point+".txt"
+		name=self.point+".txt".encode("utf-8") #py39 ".txt" -> ".txt".encode("utf-8")
 		f=open(name,"w")
 		msg=self.title+"\n"+self.msg
-		f.write(msg.encode("utf-8")) #test encoding...
+		f.write(msg) #test encoding... py39: msg.encode("utf-8") -> msg
 		f.close()
 		self.Close()
 	def OnOK(self,event):
@@ -1090,12 +1090,12 @@ def ErrorBox(window,msg):
 	dlg.ShowModal()
 	dlg.Destroy()
 
-def Message(window,msg,title=u"Bem\u00E6rk:"):
+def Message(window,msg,title="Bem\u00E6rk:"):
 	dlg=MyMessageDialog(window,msg=msg,title=title)
 	dlg.ShowModal()
 	dlg.Destroy()
 
-def YesNo(window,msg,title=u"Foresp\u00F8rgsel",buttonlabels=["OK","FORTRYD"]):
+def YesNo(window,msg,title="Foresp\u00F8rgsel",buttonlabels=["OK","FORTRYD"]):
 	dlg=OKdialog(window,title=title,msg=msg,buttonlabels=buttonlabels)
 	dlg.ShowModal()
 	ok=dlg.WasOK()

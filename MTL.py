@@ -14,7 +14,7 @@ import MyModules.Funktioner as Funktioner
 import MyModules.FileOps as FileOps
 import MyModules.Analysis as Analysis
 import sys,os
-import MyModules.Sketch as Sketch #just kidding!
+#import MyModules.Sketch as Sketch #just kidding!
 BASEDIR=Core.BASEDIR #the directory, where the program is located
 PROGRAM=Core.ProgramType()
 PROGRAM.name="MTL"
@@ -49,12 +49,12 @@ class MTLmain(Core.MLBase):
 		basisbuttons=[instrument.name for instrument in instruments]
 		lower_panel=wx.Panel(self)
 		self.water_box=GUI.ButtonBox(lower_panel,["Basis","Vandovergang"],fontsize=self.size,label="Vandovergang",style="vertical")
-		basisbox_start=GUI.ButtonBox(lower_panel,basisbuttons+[u"Overf\u00F8r h\u00F8jde"],fontsize=self.size,label="Basis-start",style="vertical")
-		middlebox=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
-		basisbox_slut=GUI.ButtonBox(lower_panel,[u"G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
+		basisbox_start=GUI.ButtonBox(lower_panel,basisbuttons+["Overf\u00F8r h\u00F8jde"],fontsize=self.size,label="Basis-start",style="vertical")
+		middlebox=GUI.ButtonBox(lower_panel,["G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Inst>>Inst",style="vertical")
+		basisbox_slut=GUI.ButtonBox(lower_panel,["G\u00E5 til m\u00E5ling"],fontsize=self.size,label="Basis-slut",style="vertical")
 		self.buttonboxes=[basisbox_start,middlebox,basisbox_slut]
 		self.anamenu.AppendSeparator()
-		FileAnalysis=self.anamenu.Append(wx.ID_ANY,u"Analyse plot","Plot analyse af data i resultatfil.")
+		FileAnalysis=self.anamenu.Append(wx.ID_ANY,"Analyse plot","Plot analyse af data i resultatfil.")
 		#EVENT HANDLING SETUP#
 		basisbox_start.button[0].Bind(wx.EVT_BUTTON,self.OnBasis1)
 		basisbox_start.button[1].Bind(wx.EVT_BUTTON,self.OnBasis2)
@@ -99,7 +99,7 @@ class MTLmain(Core.MLBase):
 		self.mwindow=GUI.DummyWindow() #alwyas has a measurement window attribute,
 		self.UpdateStatus()
 		if not ini.use_corrections:
-			self.Log(u"NB: korrektioner for jordkrumning + refraktion er sl\u00E5et FRA!")
+			self.Log("NB: korrektioner for jordkrumning + refraktion er sl\u00E5et FRA!")
 	def UpdateStatus(self):
 		self._UpdateStatus()
 		allowed_actions=[True,False,False]
@@ -158,11 +158,11 @@ class MTLmain(Core.MLBase):
 		self.statusdata.SetStart(start)
 		instname=self.statusdata.GetDefiningInstrument().GetName()
 		resfile=open(self.resfile,"a")
-		self.Log(u"Overf\u00F8rer instrumenth\u00F8jde til %s" %instname)
+		self.Log("Overf\u00F8rer instrumenth\u00F8jde til %s" %instname)
 		resfile.write("%*s %*s %*s %s\n" %((-12,"Basis",-12,"Instrument",-18,"Overfoert afstand","Overfoert hoejdeforskel")))
 		resfile.write("%*s %*s %*s %.5fm\n" %(-12,start,-12,instname,-18,"%.3fm"%dist,hdiff))
 		resfile.write("* B1 %s " %start+"%.3f %.7f\n" %(dist,hdiff))
-		if self.gps.isAlive():
+		if self.gps.is_alive():
 			try:
 				x,y,dop=self.gps.GetPos() #not compl. thread safe
 			except:
@@ -182,11 +182,11 @@ class MTLmain(Core.MLBase):
 		win=MakeBasis(self,self.statusdata.GetInstrumentState())
 		win.InitializeMap()
 	def OnFileAnalysis(self,event):
-		fname=Core.GetFile(self,u"V\u00E6lg en resultatfil",Core.RESDIR)
+		fname=Core.GetFile(self,"V\u00E6lg en resultatfil",Core.RESDIR)
 		if len(fname)==0:
 			return
 		self.Log(SL)
-		self.Log(u"L\u00E6ser %s" %fname)
+		self.Log("L\u00E6ser %s" %fname)
 		instnames=FileOps.GetInstrumentNames(fname,PROGRAM.type)
 		if len(instnames)!=2:
 			self.Log("Tilsyneladende ikke en MTL-resultatfil!")
@@ -197,7 +197,7 @@ class MTLmain(Core.MLBase):
 			GUI.ErrorBox(self,"Ingen gensidige opstillinger fundet i filen.")
 			return
 		self.Log("Fandt %d gensidige opstillinger i %s, plotter data...." %(len(dists),fname))
-		theplot=GUI.MultiPlotFrame(self,title=u"Plots af m\u00E5linger i %s." %fname)
+		theplot=GUI.MultiPlotFrame(self,title="Plots af m\u00E5linger i %s." %fname)
 		#plot index_errs#
 		theplot.plotter[0].SetEnableLegend(True)
 		ind1=np.array(ind1)
@@ -460,7 +460,7 @@ class SatsEdit(GUI.TwoButtonDialog):
 			self.lb.Check(i,keep_mask[i])
 		self.lb.Bind(wx.EVT_CHECKLISTBOX,self.OnCheck)
 		self.lb.SetFont(GUI.DefaultFont(FONTSIZE-1))
-		self.status=GUI.StatusBox2(self,[u"Middelv\u00E6rdi:","Middelfejl:","Max afvigelse:"],label=u"H\u00F8jdeforskel",minlengths=[8,8,8])
+		self.status=GUI.StatusBox2(self,["Middelv\u00E6rdi:","Middelfejl:","Max afvigelse:"],label="H\u00F8jdeforskel",minlengths=[8,8,8])
 		self.InsertObject(self.lb)
 		self.InsertObject(self.status)
 		self.UpdateStatus()
@@ -477,7 +477,7 @@ class SatsEdit(GUI.TwoButtonDialog):
 		nkeep=mask.sum()
 		OK=True
 		if nkeep==0:
-			dlg=GUI.OKdialog(self.parent,u"Bekr\u00E6ft!","Vil du slette alle satser?")
+			dlg=GUI.OKdialog(self.parent,"Bekr\u00E6ft!","Vil du slette alle satser?")
 			dlg.ShowModal()
 			OK=dlg.WasOK()
 			dlg.Destroy()
@@ -529,15 +529,15 @@ class WaterFrame(GUI.FullScreenWindow):
 		self.resfile=parent.resfile
 		self.instrument=self.statusdata.GetInstruments()[0]
 		#WRITE TO LOG#
-		self.Log(u"Starter m\u00E5ling af vandovergang kl. %s" %Funktioner.Nu())
+		self.Log("Starter m\u00E5ling af vandovergang kl. %s" %Funktioner.Nu())
 		self.instrument.SetLogWindow(self)
 		self.instrument.SetEventHandler(self)
 		#define gui stuff #
-		self.statusbox=GUI.StatusBox2(self,["Mode:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3,fontsize=FONTSIZE-1)
+		self.statusbox=GUI.StatusBox2(self,["Mode:","Antal satser:", "H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3,fontsize=FONTSIZE-1)
 		self.statusbox.UpdateStatus([self.modenames[self.mmode]])
-		self.main=GUI.ButtonBox2(self,[u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",fontsize=FONTSIZE)
+		self.main=GUI.ButtonBox2(self,["TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",fontsize=FONTSIZE)
 		#CONST STUFF
-		self.const_fields=GUI.EditFields(self,numlabels=["Afstand til sigteplader:",u"Hdiff - fjernpunkt \u00D8verste plade",u"Hdiff - fjernpunkt nederste plade"],
+		self.const_fields=GUI.EditFields(self,numlabels=["Afstand til sigteplader:","Hdiff - fjernpunkt \u00D8verste plade","Hdiff - fjernpunkt nederste plade"],
 		bounds=[(0,99999),(-99,99),(-99,99)])
 		
 		#self.main.button[1].Enable(0)
@@ -590,22 +590,22 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.resfile=parent.resfile
 		self.instruments=self.statusdata.GetInstruments()
 		#WRITE TO LOG#
-		self.Log(u"Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+		self.Log("Starter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
 		for instrument in self.instruments:
 			instrument.SetLogWindow(self)
 			instrument.SetEventHandler(self)
 		inames=self.statusdata.GetInstrumentNames()
-		inames=map(lambda x:x+": ",inames)
+		inames=[x+": " for x in inames]
 		self.aim=self.statusdata.GetInstrumentAims()
 		#define setup class#
 		self.setup=MTLsetup.MTLTransferSetup(self.aim,[[inst.addconst,inst.axisconst] for inst in self.instruments],self.ini,use_corrections=self.ini.use_corrections)
 		#define gui stuff #
 		self.statusbox=GUI.StatusBox2(self,inames+["Mode: "],fontsize=FONTSIZE-1,label="Status",colsize=3,minlengths=[7,7,11],bold_list=[2])
-		self.statusbox.UpdateStatus(map(Funktioner.Bool2sigte,self.aim))
-		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", u"H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
+		self.statusbox.UpdateStatus(list(map(Funktioner.Bool2sigte,self.aim)))
+		self.resultbox=GUI.StatusBox2(self,["Afstand:","Antal satser:", "H\u00F8jdeforskel:","Middelfejl:","Max. afvigelse:"],label="Resultat",colsize=3
 		,fontsize=FONTSIZE-1)
 		self.resultbox.UpdateStatus([])
-		self.main=GUI.ButtonBox2(self,["AFSTAND",u"TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=3,fontsize=FONTSIZE)
+		self.main=GUI.ButtonBox2(self,["AFSTAND","TILF\u00D8J SATS","CHECK SATS(ER)","ACCEPTER","AFBRYD"],label="Styring",colsize=3,fontsize=FONTSIZE)
 		self.main.button[1].Enable(0)
 		self.main.button[2].Enable(0)
 		self.main.button[3].Enable(0)
@@ -656,13 +656,13 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			return
 		elif (code=="<" and self.mmode==0) or (code=="?" and self.mmode==1):
 			Core.SoundBadData()
-			msg=[u"Forventede en afstandsm\u00E5ling!",u"Forventede en vinkelm\u00E5ling!"][self.mmode]
+			msg=["Forventede en afstandsm\u00E5ling!","Forventede en vinkelm\u00E5ling!"][self.mmode]
 			msg+="\nSendt fra instrument: %s" %val
 			GUI.ErrorBox(self,msg)
 			self.SetManualMode() #end control here
 			return
 		if DEBUG:
-			print "Call from instrument:",id
+			print("Call from instrument:",id)
 			self.PrintAutoFields()
 		if len(self.auto_fields[id])>0:
 			Core.SoundGoodData()
@@ -686,8 +686,8 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def OnSetDistanceMode(self,event):
 		n=self.setup.GetNsats()
 		if (n>0):
-			dlg=GUI.OKdialog(self,u"Vil du g\u00E5 til afstandsm\u00E5ling?",
-			u"Du har allerede m\u00E5lt %d satser.\nEr du sikker p\u00E5, at du vil starte forfra?"%n)
+			dlg=GUI.OKdialog(self,"Vil du g\u00E5 til afstandsm\u00E5ling?",
+			"Du har allerede m\u00E5lt %d satser.\nEr du sikker p\u00E5, at du vil starte forfra?"%n)
 			dlg.ShowModal()
 			ok=dlg.WasOK()
 			dlg.Destroy()
@@ -695,7 +695,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 				return
 		self.SetDistanceMode()
 	def SetDistanceMode(self):
-		self.Log(u"Starter afstandsm\u00E5ling.")
+		self.Log("Starter afstandsm\u00E5ling.")
 		self.mmode=0
 		self.setup.Clear()
 		self.spanel.Show(0)
@@ -704,7 +704,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.lower.SetSizerAndFit(self.lower.sizer)
 		self.LayoutSizer()
 	def SetWaterMode(self):
-		self.Log(u"Starter afstandsm\u00E5ling.")
+		self.Log("Starter afstandsm\u00E5ling.")
 		self.mmode=0
 		self.setup.Clear()
 		self.wpanel.Show()
@@ -714,7 +714,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.lower.SetSizerAndFit(self.lower.sizer)
 		self.LayoutSizer()
 	def SetZMode(self):
-		self.Log(u"Starter satsm\u00E5ling.")
+		self.Log("Starter satsm\u00E5ling.")
 		self.mmode=1
 		self.dpanel.Show(0)
 		self.spanel.Show()
@@ -724,10 +724,10 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def SetManualMode(self):
 		if self.mode==0:
 			return
-		self.Log(u"Skifter til 'manuel mode'. Afslutter instrumentl\u00E6sning.")
+		self.Log("Skifter til 'manuel mode'. Afslutter instrumentl\u00E6sning.")
 		self.mode=0
 		for inst in self.instruments:
-			if (inst.IsReading()): #or inst.thread.isAlive()
+			if (inst.IsReading()): #or inst.thread.is_alive()
 				inst.Kill()
 		for col in self.auto_fields:
 			for field in col:
@@ -737,9 +737,9 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 	def PrintAutoFields(self): #for debugging
 		print("Auto-fields are:")
 		for id_x in range(2):
-			print "id:",id_x
+			print("id:",id_x)
 			for field in self.auto_fields[id_x]:
-				print field.ij_id
+				print(field.ij_id)
 	def SetAutoMode(self,col1,col2):
 		if self.mode>0:
 			self.SetManualMode()
@@ -774,7 +774,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		self.statusbox.UpdateStatus(text=self.modenames[self.mode],colour=self.modecolors[self.mode],field=2)
 		self.LayoutSizer()
 	def PromptUser(self,msg):
-		dlg=GUI.OKdialog(self,u"Fors\u00E6t?",msg+u"\nVil du fors\u00E6tte?")
+		dlg=GUI.OKdialog(self,"Fors\u00E6t?",msg+"\nVil du fors\u00E6tte?")
 		dlg.ShowModal()
 		ok=dlg.WasOK()
 		dlg.Destroy()
@@ -784,12 +784,12 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			if (not self.setup.AreDistancesDone()): #escape if we are not done - perhaps shouldnt be called in the first place!
 				return
 			diff,ok=self.setup.DistanceTest()
-			msg=u"Stor forskel mellem afstandsm\u00E5linger: %.3f m" %abs(diff)
+			msg="Stor forskel mellem afstandsm\u00E5linger: %.3f m" %abs(diff)
 		else:
 			if (not self.setup.IsValid()): #escape if we are not done - perhaps shouldnt be called in the first place!
 				return
 			ok=self.setup.SatsTest()
-			msg=u"Den aktuelle sats opfylder ikke fejlkriterierne!"
+			msg="Den aktuelle sats opfylder ikke fejlkriterierne!"
 		if not ok:
 			ok=self.PromptUser(msg)
 			if not ok:
@@ -818,10 +818,10 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 			self.CloseOK()
 			
 	def CloseOK(self):
-		self.Log(u"Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
+		self.Log("Afslutter m\u00E5ling mellem instrumenter kl. %s" %Funktioner.Nu())
 		hdiff=self.setup.GetTotalHdiff()
 		dist=self.setup.GetDistance()
-		self.Log(u"Afstand: %.2f m, h\u00F8jdeforskel: %.5f m" %(dist,hdiff))
+		self.Log("Afstand: %.2f m, h\u00F8jdeforskel: %.5f m" %(dist,hdiff))
 		self.statusdata.GotoNextInstrument() #do this before writing data.....
 		self.WriteData()
 		self.statusdata.AddSetup(hdiff,dist) #signal code for setup type
@@ -842,7 +842,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		hdiff=self.setup.GetTotalHdiff()
 		dist=self.setup.GetDistance()
 		#Skriv til fil
-		spaces=map(len,self.statusdata.GetInstrumentNames())
+		spaces=list(map(len,self.statusdata.GetInstrumentNames()))
 		space=max(spaces)+4
 		space1=spaces[0]+4
 		space2=spaces[1]+4
@@ -854,7 +854,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		rerrs=self.setup.GetRerrors()
 		for i in range(nsats):
 			if i==0:
-				d1,d2=map(lambda x: "%.3fm" %x,self.setup.GetDistances())
+				d1,d2=["%.3fm" %x for x in self.setup.GetDistances()]
 			else:
 				d1,d2="",""
 			resfile.write("%*s"%(-space,Inst1.GetName()+":")+"%*s" %(-10,d1)+"%*s"%(-10,satser[i,0,0])+"%*s" %(-10,satser[i,1,0])
@@ -874,7 +874,7 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		newinstrument=self.statusdata.GetDefiningInstrument().GetName()
 		resfile.write("* II %s %.3f %.7f\n"%(newinstrument,dist,hdiff))
 		resfile.write("; ukorrigerede afst.: %.3f %.3f\n" %tuple(self.setup.GetData()[0].tolist()))
-		if self.parent.gps.isAlive():
+		if self.parent.gps.is_alive():
 			try:
 				x,y,dop=self.parent.gps.GetPos() 
 			except:
@@ -889,12 +889,12 @@ class Instrument2Instrument(GUI.FullScreenWindow):
 		valid=self.setup.GetValidity().sum()+self.setup.GetNsats()*4
 		if valid>1:
 			dlg=GUI.OKdialog(self,"Vil du afslutte?",
-			u"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5, at du vil aflsutte?"%valid)
+			"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5, at du vil aflsutte?"%valid)
 			dlg.ShowModal()
 			quit=dlg.WasOK()
 			dlg.Destroy()
 		if quit:
-			self.Log(u"Afbryder m\u00E5ling mellem instrumenter.")
+			self.Log("Afbryder m\u00E5ling mellem instrumenter.")
 			self.Close()
 	def Log(self,text):
 		self.parent.Log(text)
@@ -908,7 +908,7 @@ class OverfPanel(wx.Panel):
 		self.parent=parent
 		self.setup=basis_setup #a class which handles field validation, data storage and calculation
 		self.sizer=wx.GridSizer(5,4,5,5)
-		headings=[u"M\u00E6rke","1. kikkertstilling","2. kikkertstilling","Indeksfejl (%s)" %ANGLE_UNIT]
+		headings=["M\u00E6rke","1. kikkertstilling","2. kikkertstilling","Indeksfejl (%s)" %ANGLE_UNIT]
 		for text in headings:
 			field=GUI.MyText(self,text,fontsize+2,style=wx.ALIGN_CENTER)
 			self.sizer.Add(field,1,wx.ALL,0)
@@ -921,7 +921,7 @@ class OverfPanel(wx.Panel):
 			field3=GUI.MyTextField(self,size=(hsize,-1),fontsize=FS)
 			field2.SetValidator(basis_setup.Position1Validator)
 			field3.SetValidator(basis_setup.Position2Validator)
-			field4=GUI.MyNum(self,low,high,size=(hsize,-1),fontsize=FS,style=wx.TE_READONLY)
+			field4=GUI.MyNum(self,low,high,size=(hsize,-1),fontsize=FS,style=wx.TE_PROCESS_ENTER)#wx.TE_READONLY)
 			self.columns[0].append(field1)
 			self.columns[1].append(field2)
 			self.columns[2].append(field3)
@@ -1002,7 +1002,7 @@ class MTLChoiceBox(GUI.StuffWithBox): #TODO: Fix browsing on enter hit in rodbox
 		self.laegtebox=Core.RodBox(self,laegter,size=(hsize,-1),fontsize=fontsize)
 		self.laegtebox.Bind(wx.EVT_TEXT_ENTER,self.OnEnter)
 		self.laegtebox.SetSelection(0)
-		laegtesizer=GUI.FieldWithLabel(self,self.laegtebox,u"L\u00E6gte:",fontsize)
+		laegtesizer=GUI.FieldWithLabel(self,self.laegtebox,"L\u00E6gte:",fontsize)
 		self.AddStuff(pointsizer)
 		self.AddStuff(laegtesizer)
 		self.FinishUp()
@@ -1054,8 +1054,8 @@ class MakeBasis(GUI.FullScreenWindow):
 		index_min,index_max=self.instrument.GetIndexBounds()
 		self.maal=OverfPanel(self,self.setup,index_min,index_max,FONTSIZE) #use global fontsize
 		self.valg.next_item=self.maal #controls that after 'enter' in rod-selection, we should go here.... 
-		self.resultbox=GUI.StatusBox2(self,["Afstand: ",u"H\u00F8jde:"],label="Resultat",fontsize=FONTSIZE-1,colsize=2,bold=True)
-		self.controlbox=GUI.StatusBox2(self,[u"H\u00F8jde (m1+m3): ",u"H\u00F8jde (m2+m4): ","Difference: "],fontsize=FONTSIZE-1,label="Kontrol",bold=True)
+		self.resultbox=GUI.StatusBox2(self,["Afstand: ","H\u00F8jde:"],label="Resultat",fontsize=FONTSIZE-1,colsize=2,bold=True)
+		self.controlbox=GUI.StatusBox2(self,["H\u00F8jde (m1+m3): ","H\u00F8jde (m2+m4): ","Difference: "],fontsize=FONTSIZE-1,label="Kontrol",bold=True)
 		self.resultbox.UpdateStatus([])
 		self.controlbox.UpdateStatus([])
 		#EVENT HANDLING SETUP#
@@ -1094,19 +1094,19 @@ class MakeBasis(GUI.FullScreenWindow):
 		if DEBUG:
 			self.TestMode()
 		#WRITE TO LOG#
-		self.Log(u"Starter basism\u00E5ling kl. %s" %Funktioner.Nu())
+		self.Log("Starter basism\u00E5ling kl. %s" %Funktioner.Nu())
 		self.Log("Sigte: %s, instrument: %s" %(Funktioner.Bool2sigte(self.sigte),self.instrument.GetName()))
 		#TEST INSTRUMENT#
 		if not self.instrument.TestPort():
 			#GUI.ErrorBox(self,u"Kunne ikke \u00E5bne instrumentets com-port...")
-			self.Log(u"Kunne ikke \u00E5bne instrumentets com-port...")
+			self.Log("Kunne ikke \u00E5bne instrumentets com-port...")
 	def OnEVTClose(self,event):
-		if self.parent.gps.isAlive():
+		if self.parent.gps.is_alive():
 			self.map.DetachGPS()
 			self.parent.map.AttachGPS(self.parent.gps)
 		event.Skip()
 	def InitializeMap(self): #should be called every time the frame is shown to go to gps-mode
-		if self.parent.gps.isAlive():
+		if self.parent.gps.is_alive():
 			self.parent.map.DetachGPS()
 			self.map.AttachGPS(self.parent.gps)
 			self.map.SetGPSMode()
@@ -1123,17 +1123,17 @@ class MakeBasis(GUI.FullScreenWindow):
 		valid=self.setup.GetValidity()[:,1:].sum()
 		if valid>1:
 			dlg=GUI.OKdialog(self,"Vil du afslutte?",
-			u"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5, at du vil aflsutte?"%valid)
+			"Du har foretaget %i valide m\u00E5linger.\nEr du sikker p\u00E5, at du vil aflsutte?"%valid)
 			dlg.ShowModal()
 			quit=dlg.WasOK()
 			dlg.Destroy()
 		if quit:
-			self.Log(u"Afbryder basism\u00E5ling.")
+			self.Log("Afbryder basism\u00E5ling.")
 			self.Close()
 	def OnAccept(self,event):
 		mask=self.setup.GetValidity()
 		if not mask.all():
-			GUI.ErrorBox(self,u"Udf\u00F8r alle m\u00E5linger f\u00F8rst")
+			GUI.ErrorBox(self,"Udf\u00F8r alle m\u00E5linger f\u00F8rst")
 		else:
 			OK=self.valg.point.Validate()
 			if OK:
@@ -1164,9 +1164,9 @@ class MakeBasis(GUI.FullScreenWindow):
 				self.UpdateStatus()
 				self.instrument.ReadData()
 			else:
-				GUI.ErrorBox(self,u"Skift til manuel mode f\u00F8rst")
+				GUI.ErrorBox(self,"Skift til manuel mode f\u00F8rst")
 		else:
-			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
+			GUI.ErrorBox(self,"Indtast m\u00E6rker f\u00F8rst")
 	def SetSingleAutoMode(self,field):
 		mask=self.setup.GetValidity()
 		maerker_ok=(mask[:,0].sum()==4) 
@@ -1178,9 +1178,9 @@ class MakeBasis(GUI.FullScreenWindow):
 				self.UpdateStatus()
 				self.instrument.ReadData()
 			else:
-				GUI.ErrorBox(self,u"Skift til manuel mode f\u00F8rst")
+				GUI.ErrorBox(self,"Skift til manuel mode f\u00F8rst")
 		else:
-			GUI.ErrorBox(self,u"Indtast m\u00E6rker f\u00F8rst")
+			GUI.ErrorBox(self,"Indtast m\u00E6rker f\u00F8rst")
 	def SetManualMode(self):
 		self.mode=0
 		self.instrument.Kill() 
@@ -1211,11 +1211,11 @@ class MakeBasis(GUI.FullScreenWindow):
 			code,val=event.value
 			if code=='E':
 				Core.SoundBadData()
-				GUI.ErrorBox(self,unicode(val))
+				GUI.ErrorBox(self,str(val))
 				self.SetManualMode()  #leave function here...
 			elif code!='<':
 				Core.SoundBadData()
-				GUI.ErrorBox(self,u"Forventede en vinkelm\u00E5ling!")
+				GUI.ErrorBox(self,"Forventede en vinkelm\u00E5ling!")
 				self.SetManualMode()  #leave function here...
 			else: #then code is '<' and we have angles...
 				field=self.auto_fields.pop(0)
@@ -1240,11 +1240,11 @@ class MakeBasis(GUI.FullScreenWindow):
 			#self.Log(repr(found)+repr(OK)+repr(diff)+repr(nfound))
 			if found:
 				if OK:
-					self.Log(u"Fremm\u00E5ling fundet, forkastelseskriterie overholdt.")
+					self.Log("Fremm\u00E5ling fundet, forkastelseskriterie overholdt.")
 					return True
 				else:
 					self.Log(msg)
-					msg+=u"\nVil du godkende m\u00E5lingen?"
+					msg+="\nVil du godkende m\u00E5lingen?"
 					dlg=GUI.OKdialog(self,"Forkastelseskriterie",msg)
 					dlg.ShowModal()
 					OK=dlg.WasOK()
@@ -1277,7 +1277,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			self.statusdata.SetStart(point)
 			self.WriteData(point)
 		self.statusdata.SetInstrumentState(self.instrument_number)
-		self.Log(u"Afslutter basism\u00E5ling kl. %s" %Funktioner.Nu())
+		self.Log("Afslutter basism\u00E5ling kl. %s" %Funktioner.Nu())
 		index_errors=self.setup.GetIndexErrors()
 		for i_err in index_errors:
 			self.instrument.AddIndexError(i_err)
@@ -1320,13 +1320,13 @@ class MakeBasis(GUI.FullScreenWindow):
 			if ekstra.find("dontprint")==-1:
 				try:
 					FileOps.Jside(self.resfile,mode=1,program="MTL")
-				except Exception, msg:
+				except Exception as msg:
 					GUI.ErrorBox(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
 			#update data 
 			if self.parent.fbtest is not None:
 				OK=self.parent.fbtest.InsertStretch(start,slut,self.statusdata.GetHdiff(),self.statusdata.GetDistance(),dato,tid)
 				if not OK:
-					GUI.ErrorBox(self,"Kunne ikke inds\u00E6tte str\u00E6kningen i forkastelses-databasen.")
+					GUI.ErrorBox(self,"Kunne ikke inds\\u00E6tte str\\u00E6kningen i forkastelses-databasen.")
 			self.statusdata.AddTemperature(temp,Funktioner.MyTime())
 			hvd.Destroy()
 			return True
@@ -1335,16 +1335,16 @@ class MakeBasis(GUI.FullScreenWindow):
 			return False
 	def WriteData(self,point):
 		resfile=open(self.resfile,"a")
-		space=max(map(len,self.statusdata.GetInstrumentNames()))+4
+		space=max(list(map(len,self.statusdata.GetInstrumentNames())))+4
 		rod_names=[rod.GetName() for rod in self.laegter]
 		rod_name=rod_names[self.valg.GetRod()]
-		rspace=max(map(len,rod_names))
+		rspace=max(list(map(len,rod_names)))
 		dist,h1,h2,hdiff=self.setup.GetResult()
 		resfile.write("%*s %*s %*s %*s %s\n" %(-13,"Basis",-space,"Instrument",-rspace,"Laegte",-10,"Afstand","Hoejdeforskel"))
 		self.Log("Punkt: %s" %point)
-		self.Log(u"L\u00E6gte: %s\n" %rod_name)
+		self.Log("L\u00E6gte: %s\n" %rod_name)
 		resfile.write("%*s %*s %*s %*s %.5fm\n" %(-13,point,-space,self.instrument.GetName(),-rspace,rod_name,-10,"%.2fm"%dist,hdiff))
-		tup=tuple(map(lambda x:"%.2fm"%x, self.setup.GetData()[:,0]))
+		tup=tuple(["%.2fm"%x for x in self.setup.GetData()[:,0]])
 		resfile.write("%-8s %-8s %-8s %-8s\n" %tup)
 		resfile.write("%-8s %-8s %-8s %-8s "%tuple(self.setup.GetRawData()[:,1].tolist()))
 		resfile.write("%.5fm\n" %(h1))
@@ -1354,7 +1354,7 @@ class MakeBasis(GUI.FullScreenWindow):
 			resfile.write("* B1 %s %.3f %.7f\n" %(point,dist,hdiff))
 		else:
 			resfile.write("* B2 %s %.3f %.7f\n" %(point,dist,hdiff)) #Well we break the backw. comp. of the file format here... Shouldn't be important.
-		if self.parent.gps.isAlive():
+		if self.parent.gps.is_alive():
 			try:
 				x,y,dop=self.parent.gps.GetPos() 
 			except:

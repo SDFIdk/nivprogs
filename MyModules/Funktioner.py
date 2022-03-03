@@ -1,5 +1,5 @@
 import time
-from math import *
+from math import sin, sqrt,cos,atan,radians
 import os
 def Reject(afst): #afst. i m, bugfix for L<7m
 	if afst<200:
@@ -93,7 +93,7 @@ def GetDate(date):
 		delim=":"
 	elif "-" in date:
 		delim="-"
-	date=map(int,date.split(delim))
+	date=list(map(int,date.split(delim)))
 	if date[0]>365:
 		date.reverse()
 	return date
@@ -149,12 +149,12 @@ def EtOrd(s):
 	return s.strip().replace(" ","")
 
 def Internationale(line):
-	line=line.replace(u"\u00E5","aa")
-	line=line.replace(u"\u00C5","AA")
-	line=line.replace(u"\u00C6","Ae")
-	line=line.replace(u"\u00D8","Oe")
-	line=line.replace(u"\u00E6","ae")
-	line=line.replace(u"\u00F8","oe")
+	line=line.replace("\u00E5","aa")
+	line=line.replace("\u00C5","AA")
+	line=line.replace("\u00C6","Ae")
+	line=line.replace("\u00D8","Oe")
+	line=line.replace("\u00E6","ae")
+	line=line.replace("\u00F8","oe")
 	try:
 		line=str(line)
 	except:

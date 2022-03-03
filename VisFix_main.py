@@ -25,7 +25,7 @@ OGR_VECTOR_FORMATS="*.shp;*.tab;*.gml"
 #Bugfix/update 25.03.11 - fixed "selected point" stuff. Now managed by DataClass - should be more clear, since this class knows all about the points....
 #VisFix simplified to be ONLY a point data, and map-data viewer. No observations anymore.
 Program="VisFix ver. beta 2.4"
-aboutstr=u"""
+aboutstr="""
 Standalone-program til visualisering af h\u00F8jdefikspunkter.
 Bruger GDAL til kortvisning. Bugs rettes til simlk@kms.dk
 """
@@ -82,8 +82,8 @@ class LeftPanel(wx.Panel):
         self.showlabels.SetValue(True)
         self.shortnames=wx.CheckBox(self,label="Korte navne")
         self.shortnames.SetValue(False) #must be false to match MapBase default attr.
-        self.addbutton=GUI.MyButton(self,u"Tilf\u00F8j kort",10)
-        losttypes=["Vis kun valide",u"Vis kun tabtg\u00E5ede"]
+        self.addbutton=GUI.MyButton(self,"Tilf\u00F8j kort",10)
+        losttypes=["Vis kun valide","Vis kun tabtg\u00E5ede"]
         self.lostbox=wx.RadioBox(self,label="Validitet",choices=losttypes,style=wx.RA_SPECIFY_COLS,majorDimension=1)
         nametypes=["HS-navne","G.M./G.I.-navne","GPS-navne"]
         self.namebox=wx.RadioBox(self,label="Punkttype",choices=nametypes,style=wx.RA_SPECIFY_COLS,majorDimension=1)
@@ -149,7 +149,7 @@ class ZoomPanel(wx.Panel):
 class BottomPanel(wx.Panel):
     def __init__(self,parent):
         wx.Panel.__init__(self,parent)
-        self.info=GUI.FileLikeTextCtrl(self,size=(550,100),style=wx.TE_READONLY|wx.TE_MULTILINE)
+        self.info=GUI.FileLikeTextCtrl(self,size=(550,100),style=wx.TE_READONLY|wx.TE_MULTILINE) 
         self.info.SetFont(wx.Font(12,wx.SWISS,wx.NORMAL,wx.BOLD))# info field for dispalying text messages.
         modes=["Naviger","Punkt-mode","Digitalisering"]
         self.modebox=wx.RadioBox(self,label="Venstreklik-tilstand",choices=modes,style=wx.RA_SPECIFY_COLS,majorDimension=2)
@@ -185,38 +185,38 @@ class MainFrame(wx.Frame):
         #DEMmenu=wx.Menu()
         self.about=filemenu.Append(wx.ID_ANY, "&About"," Om programmet")
         filemenu.AppendSeparator()
-        pagesetup=filemenu.Append(wx.ID_ANY,u"Papirst\u00F8rrelse",u"Definer papir.")
+        pagesetup=filemenu.Append(wx.ID_ANY,"Papirst\u00F8rrelse","Definer papir.")
         preview=filemenu.Append(wx.ID_ANY,"Preview","Preview udprint af plot.")
         printout=filemenu.Append(wx.ID_ANY,"Udskriv","Udskriv plot til printer.")
         filemenu.AppendSeparator()
         self.exit=filemenu.Append(wx.ID_ANY,"E&xit"," Afslut programmet")
-        self.GPSstart=self.mapmenu.Append(wx.ID_ANY,"Tilslut GPS",u"Fors\u00F8g at tilutte USB-GPS via virtuel COM-port.")
+        self.GPSstart=self.mapmenu.Append(wx.ID_ANY,"Tilslut GPS","Fors\u00F8g at tilutte USB-GPS via virtuel COM-port.")
         self.GPSstop=self.mapmenu.Append(wx.ID_ANY,"Stop GPS","Stopper GPS-enhed")
         #self.DefinerKort=self.mapmenu.Append(wx.ID_ANY,"Definer kortmappe","Tilslut en ny mappe med raster kort.")
-        AddMapdir=self.mapmenu.Append(wx.ID_ANY,u"Tilf\u00F8j kortmappe",u"Tilf\u00F8j en kortmappe og for\u00F8g zoom-mulighederne!")
+        AddMapdir=self.mapmenu.Append(wx.ID_ANY,"Tilf\u00F8j kortmappe","Tilf\u00F8j en kortmappe og for\u00F8g zoom-mulighederne!")
         #RemoveMapdir=self.mapmenu.Append(wx.ID_ANY,u"Fjern kortmappe","Afbryd forbindelsen til en kortmappe.")
-        MakeIndex=self.mapmenu.Append(wx.ID_ANY,u"Indekser en kortmappe","Indekser en kortmappe for at kunne forbedre zoom-muligheder.")
+        MakeIndex=self.mapmenu.Append(wx.ID_ANY,"Indekser en kortmappe","Indekser en kortmappe for at kunne forbedre zoom-muligheder.")
         SetLineFile=self.mapmenu.Append(wx.ID_ANY,"Definer kystliniefil","Definerer kyst- (eller anden) linie udfra en fil i et standard vektorformat.") 
-        SetPolygonFile=self.mapmenu.Append(wx.ID_ANY,u"Definer opm\u00E5lingsdistriktfil",u"Definer distrikter udfra en fil i et standard vektorformat.")
+        SetPolygonFile=self.mapmenu.Append(wx.ID_ANY,"Definer opm\u00E5lingsdistriktfil","Definer distrikter udfra en fil i et standard vektorformat.")
         GoToWMS=self.mapmenu.Append(wx.ID_ANY,"Kort via WMS","Definer og hent kort via kortforsyningen.")
         GoToDiskMaps=self.mapmenu.Append(wx.ID_ANY,"Kort fra disk","Vis kort fra den aktuelle kortmappe.")
-        SetCenter=self.mapmenu.Append(wx.ID_ANY,u"G\u00E5 til (x,y)",u"V\u00E6lg kortudsnit.")
-        self.DefinerData=self.punktmenu.Append(wx.ID_ANY,"Definer datafil",u"V\u00E6lg en sqlite-datfil.")
+        SetCenter=self.mapmenu.Append(wx.ID_ANY,"G\u00E5 til (x,y)","V\u00E6lg kortudsnit.")
+        self.DefinerData=self.punktmenu.Append(wx.ID_ANY,"Definer datafil","V\u00E6lg en sqlite-datfil.")
         MakeData=self.punktmenu.Append(wx.ID_ANY,"Dan ny datafil","Danner en ny tom sqlite datafil, som kan tilsluttes og opdateres.")
         self.GetInfoItem=self.punktmenu.Append(wx.ID_ANY,"Hent punktinformation","Hent skite og beskrivelse for et punktnavn.")
         GetStats=self.punktmenu.Append(wx.ID_ANY,"Statistik for datafil","Se information om indhold af sqlite-datafile.")
-        DigitalizeItem=self.punktmenu.Append(wx.ID_ANY,"Digitaliser punkt(er)",u"Digitaliser punktkoordinater ved at klikke p\u00E5 kortet.")
+        DigitalizeItem=self.punktmenu.Append(wx.ID_ANY,"Digitaliser punkt(er)","Digitaliser punktkoordinater ved at klikke p\u00E5 kortet.")
         #Update datafile- submenu
         submenu=wx.Menu()
-        AddIDs=submenu.Append(wx.ID_ANY,u"Tilf\u00F8j identiteter til datafil",u"Tilf\u00F8jer NYE identiteter til alias tabellen udfra en fil med identiteter fra refgeo.")
-        UpdateIDs=submenu.Append(wx.ID_ANY,u"Opdater/tilf\u00F8j identiteter i/til datafil",u"Tilf\u00F8jer eller opdaterer identiteter til/i alias tabellen udfra en fil med identiteter fra refgeo.")
-        UpdateDsc=submenu.Append(wx.ID_ANY,"Opdater beskrivelser",u"Opdater datafilen udfra en fil med beskrivelser fra datbasen.")
+        AddIDs=submenu.Append(wx.ID_ANY,"Tilf\u00F8j identiteter til datafil","Tilf\u00F8jer NYE identiteter til alias tabellen udfra en fil med identiteter fra refgeo.")
+        UpdateIDs=submenu.Append(wx.ID_ANY,"Opdater/tilf\u00F8j identiteter i/til datafil","Tilf\u00F8jer eller opdaterer identiteter til/i alias tabellen udfra en fil med identiteter fra refgeo.")
+        UpdateDsc=submenu.Append(wx.ID_ANY,"Opdater beskrivelser","Opdater datafilen udfra en fil med beskrivelser fra datbasen.")
         UpdateZs=submenu.Append(wx.ID_ANY,"Opdater koter","Opdater datafilen udfra en fil med koter fra refgeo.")
-        UpdateKanKo=submenu.Append(wx.ID_ANY,"Opdater (x,y)-lokationer",u"Opdater lokationer vha. udtr\u00E6k fra refgeo.")
+        UpdateKanKo=submenu.Append(wx.ID_ANY,"Opdater (x,y)-lokationer","Opdater lokationer vha. udtr\u00E6k fra refgeo.")
         UpdateSkitse=submenu.Append(wx.ID_ANY,"Opdater skitser","Opdater datfilen udfra en mappe med skitser.")
-        MarkAsGeo=submenu.Append(wx.ID_ANY,"Marker som geometrisk",u"Marker punkter som m\u00E5lt geometrisk udfra en lokationsfil.")
-        MarkAsLost=submenu.Append(wx.ID_ANY,u"Marker som tabtg\u00E5et",u"Marker punkter som tabtg\u00E5et udfra en identitetsfil. Kun punkter i denne fil vil have tabtg\u00E5et attribut efter opdatering ")
-        self.punktmenu.AppendMenu(wx.ID_ANY,"Opdater datafil",submenu)
+        MarkAsGeo=submenu.Append(wx.ID_ANY,"Marker som geometrisk","Marker punkter som m\u00E5lt geometrisk udfra en lokationsfil.")
+        MarkAsLost=submenu.Append(wx.ID_ANY,"Marker som tabtg\u00E5et","Marker punkter som tabtg\u00E5et udfra en identitetsfil. Kun punkter i denne fil vil have tabtg\u00E5et attribut efter opdatering ")
+        self.punktmenu.Append(wx.ID_ANY,"Opdater datafil",submenu)          # Ændret til py39
         #Visningsmenu
         self.ToggleNavKort=vismenu.Append(wx.ID_ANY,"Vis/skjul navigationskort","Naviger rundt via minimap.")
         self.ToggleToolBar=vismenu.Append(wx.ID_ANY,"Vis/skjul toolbar","Vis/skjul knap-toolbar.")
@@ -300,7 +300,7 @@ class MainFrame(wx.Frame):
         ####################
         p2 = wx.Panel(splitter)
         p2.SetBackgroundColour("sky blue")
-        self.Map=MapBrowser.Map(p2,900,700,Data.PointData(Ini['datafile']),Ini['mapdirs'],Ini['districtfile'],Ini['coastline'],self)
+        self.Map=MapBrowser.Map(p2,900,600,Data.PointData(Ini['datafile']),Ini['mapdirs'],Ini['districtfile'],Ini['coastline'],self) #Ændret Py39: 700->600
         p2.sizer=wx.BoxSizer()
         p2.sizer.Add(self.Map,1,wx.EXPAND)
         p2.SetSizer(p2.sizer)
@@ -348,7 +348,7 @@ class MainFrame(wx.Frame):
         #self.knap5=GUI.MyButton(self.buttonpanel,"PUNKTER",10)
         #self.knap6=GUI.MyButton(self.buttonpanel,"PKT.NAVNE TIL/FRA",10)
         #self.knap7=GUI.MyButton(self.buttonpanel,"SLET PUNKTER",10)
-        self.knap8=GUI.MyButton(self.buttonpanel,u"RESET ST\u00D8RRELSE",10)
+        self.knap8=GUI.MyButton(self.buttonpanel,"RESET ST\u00D8RRELSE",10)
         self.knap9=GUI.MyButton(self.buttonpanel,"GEM FIL",10)
         self.knap10=GUI.MyButton(self.buttonpanel,"STOP WMS",10)
         self.knap11=GUI.MyButton(self.buttonpanel,"VIS NAV.KORT",10)
@@ -409,8 +409,8 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU,self.OnKillWMS,id=self.MenuKnap13)  #draeb wms-traad - hvis du bliver utaalmodig
         self.Bind(wx.EVT_MENU,self.OnSetCenter,id=self.MenuKnap14)  #draeb wms-traad - hvis du bliver utaalmodig
         self.sizer=wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(splitter,8,wx.CENTER|wx.ALIGN_CENTER|wx.ALL|wx.EXPAND,5)
-        self.sizer.Add(bottompanel,1,wx.ALL|wx.EXPAND,5)
+        self.sizer.Add(splitter,8,wx.CENTER|wx.ALL|wx.EXPAND,5)         #Ændret til py39
+        self.sizer.Add(bottompanel,1,wx.ALL|wx.EXPAND,5)  #5 ->8
         self.container.sizer.Add(self.buttonpanel,2,wx.EXPAND|wx.ALL|wx.CENTER)
         self.container.SetSizerAndFit(self.container.sizer)
         self.SetSizerAndFit(self.sizer)
@@ -430,12 +430,12 @@ class MainFrame(wx.Frame):
             #self.DisablePoints()
             #self.Map.data=None
             if Ini['datafile'] is not None:
-                warnstr+=(u"Kunne ikke genkende %s som en sqlite-datafil. V\u00E6lg en fil via menupunkt.\n" %Ini['datafile'])
+                warnstr+=("Kunne ikke genkende %s som en sqlite-datafil. V\u00E6lg en fil via menupunkt.\n" %Ini['datafile'])
                 doprompt=True
         if not self.Map.PolygonEngine.IsInitialized():
             self.DisablePolygons()
             if Ini['districtfile'] is not None:
-                warnstr+=(u"Polygonfil %s med opm\u00E5lingsdistriker kunne ikke tilsluttes.\n" %Ini['districtfile'])
+                warnstr+=("Polygonfil %s med opm\u00E5lingsdistriker kunne ikke tilsluttes.\n" %Ini['districtfile'])
                 doprompt=True
         indexname=MapBrowser.GdalMaps.GetIndexName()
         notindexed=[]
@@ -444,12 +444,12 @@ class MainFrame(wx.Frame):
                 notindexed.append(dir)
         if len(notindexed)>0:
             doprompt=True
-            warnstr+=u"F\u00F8lgende mapper er ikke indekseret og kan ikke tilsuttes:\n"
+            warnstr+="F\u00F8lgende mapper er ikke indekseret og kan ikke tilsuttes:\n"
             for dir in notindexed:
                 warnstr+="%s\n" %dir
             warnstr+="Indekser kortmapper vha. menupunkt i programmet."
         if doprompt:
-            dlg=GUI.MyMessageDialog(self,u"Bem\u00E6rk:",warnstr)
+            dlg=GUI.MyMessageDialog(self,"Bem\u00E6rk:",warnstr)
             dlg.ShowModal()
             dlg.Destroy()
         self.SetPanMode()
@@ -471,7 +471,7 @@ class MainFrame(wx.Frame):
         self.pageSetupData.SetPrintData(self.print_data)
     def OnEVTClose(self,event):
         self.Map.CloseDown()
-        if self.gps.isAlive():
+        if self.gps.is_alive():#py39 isAlive-> is_alive
             self.gps.kill()
             self.gps.join()
         event.Skip() #ellers lukkes ikke!
@@ -481,27 +481,27 @@ class MainFrame(wx.Frame):
         d.ShowModal() # Shows it
         d.Destroy() # finally destroy it when finished.
     def OnExit(self,event):
-        if self.gps.isAlive():
+        if self.gps.is_alive():#py39 isAlive-> is_alive
             self.gps.kill()
         WriteIni(self.Ini)
         self.Close()
     def OnGPSkill(self,event):
         if event.kill:
             self.DetachGPS()
-            self.Log(u"GPS'en ikke tilsluttet!")
+            self.Log("GPS'en ikke tilsluttet!")
         self.Update()
     def OnUpdateDsc(self,event):
         if not self.Map.data.IsInitialized():
             self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
             return
-        file=GetFile(self,u"V\u00E6lg fil med beskrivelser.")
+        file=GetFile(self,"V\u00E6lg fil med beskrivelser.")
         if file!=-1:
             f=open(file)
             bsks,nd,nempty=Extract.GetBsk(f)
             f.close()
             msg="Fandt %i beskrivelser i %s. Tomme beskrivelser: %i. \nAntal dubletter: %i." %(len(bsks),file,nempty,nd)
             if len(bsks)>0:
-                msg+=u"\nF\u00F8rste beskrivelse er for punktet:\n%s" %(bsks.keys()[0])
+                msg+="\nF\u00F8rste beskrivelse er for punktet:\n%s" %(list(bsks.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
                 dlg=GUI.OKdialog(self,"Beskrivelser",msg)
                 dlg.ShowModal()
@@ -517,14 +517,14 @@ class MainFrame(wx.Frame):
         if not self.Map.data.IsInitialized():
             self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
             return
-        file=GetFile(self,u"V\u00E6lg fil med kotetr\u00E6k.")
+        file=GetFile(self,"V\u00E6lg fil med kotetr\u00E6k.")
         if file!=-1:
             f=open(file)
             zs,nd=Extract.GetZs(f)
             f.close()
-            msg=u"Fandt %i koter i %s.\nAntal dubletter: %i." %(len(zs),file,nd)
+            msg="Fandt %i koter i %s.\nAntal dubletter: %i." %(len(zs),file,nd)
             if len(zs)>0:
-                msg+=u"\nF\u00F8rste kote er for punktet:\n%s" %(zs.keys()[0])
+                msg+="\nF\u00F8rste kote er for punktet:\n%s" %(list(zs.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
                 dlg=GUI.OKdialog(self,"Koter",msg)
                 dlg.ShowModal()
@@ -539,14 +539,14 @@ class MainFrame(wx.Frame):
         if not self.Map.data.IsInitialized():
             self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
             return
-        file=GetFile(self,u"V\u00E6lg fil med lokationer for punkter der kan koteres.")
+        file=GetFile(self,"V\u00E6lg fil med lokationer for punkter der kan koteres.")
         if file!=-1:
             f=open(file)
             crds,nd=Extract.GetLoc(f)
             f.close()
-            msg=u"Fandt %i koordinats\u00E6t i %s.\nAntal dubletter: %i." %(len(crds),file,nd)
+            msg="Fandt %i koordinats\u00E6t i %s.\nAntal dubletter: %i." %(len(crds),file,nd)
             if len(crds)>0:
-                msg+=u"\nF\u00F8rste koordinats\u00E6t er for punktet:\n%s" %(crds.keys()[0])
+                msg+="\nF\u00F8rste koordinats\u00E6t er for punktet:\n%s" %(list(crds.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
                 dlg=GUI.OKdialog(self,"Koordinater",msg)
                 dlg.ShowModal()
@@ -561,13 +561,13 @@ class MainFrame(wx.Frame):
         if not self.Map.data.IsInitialized():
             self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
             return
-        ddlg=wx.DirDialog(self,message=u"Angiv en mappe punktskitser",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
+        ddlg=wx.DirDialog(self,message="Angiv en mappe punktskitser",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
         if ddlg.ShowModal()==wx.ID_OK:
             dir=ddlg.GetPath()
             skitser,nd=Extract.GetSkitser(dir)
-            msg=u"Fandt %i mulige skitser i %s.\nAntal dubletter: %i." %(len(skitser),dir,nd)
+            msg="Fandt %i mulige skitser i %s.\nAntal dubletter: %i." %(len(skitser),dir,nd)
             if len(skitser)>0:
-                msg+=u"\nF\u00F8rste skitse er for punktet:\n%s" %(skitser.keys()[0])
+                msg+="\nF\u00F8rste skitse er for punktet:\n%s" %(list(skitser.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
                 dlg=GUI.OKdialog(self,"Skitser",msg)
                 dlg.ShowModal()
@@ -587,16 +587,16 @@ class MainFrame(wx.Frame):
         self.AddOrUpdateIDs(True)
     def AddOrUpdateIDs(self,update=False):
         if not self.Map.HasData():
-            self.Log(u"Tilslut datafil f\u00F8rst.")
+            self.Log("Tilslut datafil f\u00F8rst.")
             return
-        file=GetFile(self,u"V\u00E6lg fil med identiteter:")
+        file=GetFile(self,"V\u00E6lg fil med identiteter:")
         if file!=-1:
             f=open(file)
             Stations,Nd,Ngm,Ngps=Extract.GetIDs(f)
             f.close()
-            msg=u"Fandt %i stationer, %i G.M/G.I-navne og %i GPS-navne i %s.\nAntal dubletter: %i." %(len(Stations),Ngm,Ngps,file,Nd)
+            msg="Fandt %i stationer, %i G.M/G.I-navne og %i GPS-navne i %s.\nAntal dubletter: %i." %(len(Stations),Ngm,Ngps,file,Nd)
             if len(Stations)>0:
-                msg+=u"\nF\u00F8rste station er:\n%s" %(Stations.keys()[0])
+                msg+="\nF\u00F8rste station er:\n%s" %(list(Stations.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
                 dlg=GUI.OKdialog(self,"Identiteter",msg)
                 dlg.ShowModal()
@@ -615,19 +615,19 @@ class MainFrame(wx.Frame):
         if not self.Map.data.IsInitialized():
             self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
             return
-        file=GetFile(self,u"V\u00E6lg fil med lokationer for punkter, som er m\u00E5lt geometrisk.")
+        file=GetFile(self,"V\u00E6lg fil med lokationer for punkter, som er m\u00E5lt geometrisk.")
         if file!=-1:
             f=open(file)
             crds,nd=Extract.GetLoc(f)
             f.close()
-            msg=u"Fandt %i punkter %s.\nAntal dubletter: %i." %(len(crds),file,nd)
+            msg="Fandt %i punkter %s.\nAntal dubletter: %i." %(len(crds),file,nd)
             if len(crds)>0:
-                msg+=u"\nEksempel p\u00E5 punkt i filen:\n%s" %(crds.keys()[0])
+                msg+="\nEksempel p\u00E5 punkt i filen:\n%s" %(list(crds.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
-                dlg=GUI.OKdialog(self,u"Marker geometrisk opm\u00E5ling",msg)
+                dlg=GUI.OKdialog(self,"Marker geometrisk opm\u00E5ling",msg)
                 dlg.ShowModal()
                 if dlg.WasOK():
-                    self.Map.data.MarkAsGeo(crds.keys())
+                    self.Map.data.MarkAsGeo(list(crds.keys()))
                 dlg.Destroy()
                 n=self.Map.data.GetNChanged()
                 self.Log("Datafil opdateret. Opdateringer ialt: %d" %n)
@@ -638,19 +638,19 @@ class MainFrame(wx.Frame):
         if not self.Map.data.IsInitialized():
             self.Log("Datafil ikke tilsluttet. Kan ikke opdatere...")
             return
-        file=GetFile(self,u"V\u00E6lg fil med lokationer (punktnavne) for punkter, som er tabtg\u00E5et")
+        file=GetFile(self,"V\u00E6lg fil med lokationer (punktnavne) for punkter, som er tabtg\u00E5et")
         if file!=-1:
             f=open(file)
             Stations,nd=Extract.GetLoc(f)
             f.close()
-            msg=u"Fandt %i stationer" %(len(Stations))
+            msg="Fandt %i stationer" %(len(Stations))
             if len(Stations)>0:
-                msg+=u"\nFilen indeholder eksempelvis stationen:\n%s" %(Stations.keys()[0])
+                msg+="\nFilen indeholder eksempelvis stationen:\n%s" %(list(Stations.keys())[0])
                 msg+="\nVil du opdatere datafilen?"
                 dlg=GUI.OKdialog(self,"Identiteter",msg)
                 dlg.ShowModal()
                 if dlg.WasOK():
-                    self.Map.data.MarkAsLost(Stations.keys())
+                    self.Map.data.MarkAsLost(list(Stations.keys()))
                 dlg.Destroy()
                 n=self.Map.data.GetNChanged()
                 self.Log("Datafil opdateret. Opdateringer ialt: %i" %n)
@@ -697,33 +697,33 @@ class MainFrame(wx.Frame):
     ## Map Menu Stuff
     ########################
     def OnMakeIndex(self,event):
-        dlg=wx.DirDialog(self,message=u"Angiv en mappe med geokodede kortfiler",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
+        dlg=wx.DirDialog(self,message="Angiv en mappe med geokodede kortfiler",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
         if dlg.ShowModal()==wx.ID_OK:
             dir=dlg.GetPath()
             try:
                 self.Log("Indekser... Kan tage et par minutter for store mapper.\n") #Clear the info-field
                 self.info.SetInsertionPointEnd()
                 MapBrowser.GdalMaps.MakeIndex(str(dir),self.info)
-            except Exception, msg:
+            except Exception as msg:
                 self.Log(str(msg))
                 self.Log("Muligvis er kortmappen i brug...",append=True)
         dlg.Destroy()
     def OnDefinerKort(self,event):
-        dlg=wx.DirDialog(self,message=u"Angiv en mappe med kort",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
+        dlg=wx.DirDialog(self,message="Angiv en mappe med kort",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
         if dlg.ShowModal()==wx.ID_OK:
             dir=dlg.GetPath()
             OK=self.Map.DefineMapDir(str(dir))
             if OK:
-                self.Log(u"S\u00E6tter kortmappen til %s." %dir)
+                self.Log("S\u00E6tter kortmappen til %s." %dir)
                 self.Ini['mapdirs']=[str(dir)]
         dlg.Destroy()
     def OnShowDEM(self,event):
-        dlg=wx.DirDialog(self,message=u"Angiv en mappe med DHM-filer",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
+        dlg=wx.DirDialog(self,message="Angiv en mappe med DHM-filer",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
         if dlg.ShowModal()==wx.ID_OK:
             dir=dlg.GetPath()
             OK=self.Map.DefineMapDir(str(dir),isDEM=True)
             if OK:
-                self.Log(u"S\u00E6tter kortmappen til %s." %dir)
+                self.Log("S\u00E6tter kortmappen til %s." %dir)
             else:
                 self.Log("Kunne ikke initialisere kortmotoren...")
         dlg.Destroy()
@@ -732,12 +732,12 @@ class MainFrame(wx.Frame):
         self.Map.MapEngine.SetColorMap(id)
         self.Map.SetMap()
     def OnAddMapDir(self,event):
-        dlg=wx.DirDialog(self,message=u"Angiv en mappe med kort",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
+        dlg=wx.DirDialog(self,message="Angiv en mappe med kort",defaultPath="C://",style=wx.DD_DIR_MUST_EXIST)
         if dlg.ShowModal()==wx.ID_OK:
             dir=dlg.GetPath()
             OK=self.Map.AddMapDir(str(dir))
             if OK:
-                self.Log(u"Tilf\u00F8jer kortmappen %s." %dir)
+                self.Log("Tilf\u00F8jer kortmappen %s." %dir)
                 self.Ini['mapdirs'].append(str(dir))
                 self.mapdirbox.AddMapDir(str(dir))
                 self.UpdateZoomSlider()
@@ -761,7 +761,7 @@ class MainFrame(wx.Frame):
     def OnRemoveMapdir(self,event):
         dirs=self.Map.MapEngine.GetMapDirs()
         dirnames=[dir.GetName() for dir in dirs]
-        dlg=GUI.MyMultiChoiceDialog(self,title="Afbryd forbindelse til kortmappe(r)",msg=u"V\u00E6lg kortmappe(r):",choices=dirnames)
+        dlg=GUI.MyMultiChoiceDialog(self,title="Afbryd forbindelse til kortmappe(r)",msg="V\u00E6lg kortmappe(r):",choices=dirnames)
         dlg.ShowModal()
         if dlg.WasOK():
             selected=dlg.GetSelections()
@@ -772,7 +772,7 @@ class MainFrame(wx.Frame):
                     self.Log("Kunne ikke fjerne %s" %dirnames[i],append=True)
         dlg.Destroy()
     def OnDefinerData(self,event):
-        file=GetFile(self, u"V\u00E6lg en sqlite-datafil:")
+        file=GetFile(self, "V\u00E6lg en sqlite-datafil:")
         if file!=-1:
             try:
                 self.Map.DefineData(Data.PointData(file))
@@ -786,7 +786,7 @@ class MainFrame(wx.Frame):
                     self.Log("Kunne ikke genkende %s som en sqlite-datafil." %file)
         
     def OnMakeData(self,event):
-        dlg=wx.FileDialog(self,u"V\u00E6lg et navn til datafilen:",wildcard="*.sqlite",style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+        dlg=wx.FileDialog(self,"V\u00E6lg et navn til datafilen:",wildcard="*.sqlite",style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
         if dlg.ShowModal()==wx.ID_OK:
             file=dlg.GetPath()
             OK=Data.MakeDatabase(file)
@@ -811,9 +811,9 @@ class MainFrame(wx.Frame):
         self.GetInfo()
     def GetInfo(self):
         if not self.Map.data.IsInitialized():
-            self.Log(u"Data ikke initialiseret. V\u00E6lg sqlite-datafil i under menu.")
+            self.Log("Data ikke initialiseret. V\u00E6lg sqlite-datafil i under menu.")
             return
-        dlg=GUI.InputDialog(self,title="Punktinfo",textlabels=[u"Punktnavn, eller del heraf:\n(brug % som wildcard.)  "])
+        dlg=GUI.InputDialog(self,title="Punktinfo",textlabels=["Punktnavn, eller del heraf:\n(brug % som wildcard.)  "])
         dlg.ShowModal()
         if dlg.WasOK():
             prefix=dlg.GetTextValues()[0]
@@ -826,7 +826,7 @@ class MainFrame(wx.Frame):
         if names is not None:
             self.Log("Fandt %i punkter." %len(names))
             if len(names)>1:
-                dlg=GUI.MySingleChoiceDialog(self,"Punkter fra databasen",u"Fandt %i punkter.\nV\u00E6lg et punkt:" %len(names),choices=names)
+                dlg=GUI.MySingleChoiceDialog(self,"Punkter fra databasen","Fandt %i punkter.\nV\u00E6lg et punkt:" %len(names),choices=names)
                 dlg.ShowModal()
                 OK=dlg.OK
                 if OK:
@@ -839,7 +839,7 @@ class MainFrame(wx.Frame):
                 punkt=names[0]
             bsk,skitse,w,h,found=self.Map.data.GetSkitseAndBsk(punkt) #should be improved to see if point was found!
             if found:
-                skitse=wx.BitmapFromBuffer(w,h,skitse)
+                skitse=wx.Bitmap.FromBuffer(w,h,skitse)
                 x,y=self.Map.data.GetCoordinates(punkt)
                 if x is not None:
                     self.Map.GoTo(x,y)
@@ -854,7 +854,7 @@ class MainFrame(wx.Frame):
         self.GoToWMS()
     def GoToWMS(self):
         choices=Kortforsyningen.GetServiceNames()
-        dlg=GUI.MySingleChoiceDialog(self,"WMS-kort",u"V\u00E6lg korttype",choices)
+        dlg=GUI.MySingleChoiceDialog(self,"WMS-kort","V\u00E6lg korttype",choices)
         dlg.ShowModal()
         OK=dlg.OK
         if OK:
@@ -888,18 +888,18 @@ class MainFrame(wx.Frame):
             vals=dlg.GetNumValues()
             port=int(vals[0])-1 #Python indeksering af porte!
             baud=int(vals[1])
-            self.Log(u"Fors\u00F8ger tilslutning af GPS med port %i, baudrate %i"%(port+1,baud))
+            self.Log("Fors\u00F8ger tilslutning af GPS med port %i, baudrate %i"%(port+1,baud))
             self.gps=GPS.GpsThread(self,port,baud)
             self.gps.start()
             self.Map.AttachGPS(self.gps)
-            if self.gps.isAlive():
+            if self.gps.is_alive():#py39 isAlive-> is_alive
                 self.gpsbutton.Enable()
             self.Ini['gpsport']=port+1
             self.Ini['gpsbaud']=baud
         dlg.Destroy()
         self.Update()	
     def OnGPSstop(self,e):
-        if self.gps.isAlive():
+        if self.gps.is_alive():#py39 isAlive-> is_alive
             self.gps.kill()
             self.DetachGPS()
             self.Log("GPS-enheden stoppes...")
@@ -917,9 +917,9 @@ class MainFrame(wx.Frame):
     def OnVisNavKort(self,e):
         self.Map.ShowMiniMap()
     def Update(self):
-        self.GPSstop.Enable(self.gps.isAlive())
-        self.GPSstart.Enable(not self.gps.isAlive())
-        self.gpsbutton.Enable(self.gps.isAlive())
+        self.GPSstop.Enable(self.gps.is_alive())#py39 isAlive-> is_alive
+        self.GPSstart.Enable(not self.gps.is_alive())#py39 isAlive-> is_alive
+        self.gpsbutton.Enable(self.gps.is_alive())#py39 isAlive-> is_alive
         self.GetInfoItem.Enable(self.Map.data.IsInitialized())
     def Log(self,text,append=False):
         if append:
@@ -939,8 +939,8 @@ class MainFrame(wx.Frame):
         #	popupmenu.Append(self.MenuKnap5,"Hent punkter")
         #	#popupmenu.Append(self.MenuKnap6,"Pkt.navne til/fra")
         #	#popupmenu.Append(self.MenuKnap7,"Slet punkter")
-        popupmenu.Append(self.MenuKnap8,u"Reset kortst\u00F8rrelse")
-        popupmenu.Append(self.MenuKnap9,u"Gem Fil")
+        popupmenu.Append(self.MenuKnap8,"Reset kortst\u00F8rrelse")
+        popupmenu.Append(self.MenuKnap9,"Gem Fil")
         if self.container.IsShown():
             tlabel="Skjul toolbar"
         else:
@@ -953,7 +953,7 @@ class MainFrame(wx.Frame):
         popupmenu.Append(self.MenuKnap11,tlabel)
         #if self.Map.positions is not None:
         #	popupmenu.Append(self.MenuKnap12,"Slet positioner")
-        if self.Map.wmsthread.isAlive():
+        if self.Map.wmsthread.is_alive():#py39 isAlive-> is_alive
             popupmenu.Append(self.MenuKnap13,"Stop WMS-hentning")
         popupmenu.Append(self.MenuKnap14,"Go to (x,y)")
         self.PopupMenu(popupmenu)
@@ -972,7 +972,7 @@ class MainFrame(wx.Frame):
         dlg1 = wx.FileDialog(self, 
         "Gem kort som bmp, png, eller jpg-fil", ".", "",
         "BMP files (*.bmp)|*.bmp|PNG files (*.png)|*.png|JPG files (*.jpg)|*.jpg",
-        wx.SAVE|wx.OVERWRITE_PROMPT)
+        wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT) #Py39 wx.SAVE -> wx.FD_SAVE + wx.OVERWRITE.. -> wx.FD_OVERWRITE..
         try:
             while 1:
                 if dlg1.ShowModal() == wx.ID_OK:
@@ -1039,14 +1039,14 @@ class MainFrame(wx.Frame):
         self.modebox.SetSelection(0)
     def SetPointMode(self):
         if not self.pointmode:
-            self.Log(u"Skifter til 'point-mode'. Klik p\u00E5 et punkt")
+            self.Log("Skifter til 'point-mode'. Klik p\u00E5 et punkt")
         self.pointmode=True
         self.panmode=False
         self.digitizemode=False
         self.modebox.SetSelection(1)
     def SetDigitizeMode(self):
         if not self.digitizemode:
-            self.Log(u"Skifter til 'digitaliserings-mode'.")
+            self.Log("Skifter til 'digitaliserings-mode'.")
         self.pointmode=False
         self.panmode=False
         self.digitizemode=True
@@ -1074,8 +1074,8 @@ class MainFrame(wx.Frame):
                     self.dscdlg.Close()
                 except:
                     pass
-                skitse=wx.BitmapFromBuffer(w,h,skitse)
-                self.dscdlg=GUI.MyDscDialog(self,title="Beskrivelse for %s" %punkt,msg=bsk,image=skitse,point=punkt)
+                skitse=wx.Bitmap.FromBuffer(w,h,skitse)     #Ændret py39
+                self.dscdlg=GUI.MyDscDialog(self,title="Beskrivelse for %s" %punkt.decode(),msg=bsk,image=skitse,point=punkt)
                 self.dscdlg.Show()
             else:
                 self.Log("--Beskrivelse og skitse kunne ikke findes...",append=True)
@@ -1106,7 +1106,7 @@ class MainFrame(wx.Frame):
                 self.DigitalizeWindow.AddPoint(label,ux,uy)
             except:
                 pass
-        elif self.panmode and not self.Map.wmsthread.isAlive(): #ikke nyt koor.system naar wms-hentning paagar!
+        elif self.panmode and not self.Map.wmsthread.is_alive(): #ikke nyt koor.system naar wms-hentning paagar!#py39 isAlive-> is_alive
             self.Map.UnSelect()
             self.info.SetValue("")
             self.Map.GoTo(ux,uy)
@@ -1189,7 +1189,7 @@ class MainFrame(wx.Frame):
         printout = PlotPrintout(self)
         printout2 = PlotPrintout(self)
         self.preview = wx.PrintPreview(printout, printout2, self.print_data)
-        if not self.preview.Ok():
+        if not self.preview.IsOk(): # py39: .ok -> .IsOk
             wx.MessageDialog(self, "Print Preview failed.\n" \
                        "Check that default printer is configured\n", \
                        "Print error", wx.OK|wx.CENTRE).ShowModal()
@@ -1201,7 +1201,7 @@ class MainFrame(wx.Frame):
         frame = wx.PreviewFrame(self.preview, frameInst, "Preview")
         frame.Initialize()
         frame.SetPosition(self.GetPosition())
-        frame.SetSize((700,600))
+        frame.SetSize((700,600)) 
         frame.Centre(wx.BOTH)
         frame.Show(True)
 #Function which fetches a filename via wx.FileDialog
@@ -1257,7 +1257,7 @@ class DigitalizeWindow(wx.Frame):
         def OnExit(self,event):
             self.Close()
         def OnSave(self,event):
-            dlg = wx.FileDialog(self, "Gem koordinatfil", ".", style=wx.SAVE|wx.OVERWRITE_PROMPT)
+            dlg = wx.FileDialog(self, "Gem koordinatfil", ".", style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT) #Py39 wx.SAVE -> wx.FD_SAVE + wx.OVERWRITE.. -> wx.FD_OVERWRITE..
             if dlg.ShowModal()==wx.ID_OK:
                 fname=dlg.GetPath()
                 f=open(fname,"w")
@@ -1280,7 +1280,7 @@ class FontPicker(wx.Panel):
         label=GUI.MyText(self,label,12)
         self.fontname=wx.TextCtrl(self,value=self.font.GetNativeFontInfoUserDesc(),size=(200,-1),style=wx.TE_READONLY)
         self.fontname.SetFont(self.font)
-        button=GUI.MyButton(self,u"V\u00E6lg font",12)
+        button=GUI.MyButton(self,"V\u00E6lg font",12)
         button.Bind(wx.EVT_BUTTON,self.OnFont)
         self.sizer=wx.BoxSizer(wx.HORIZONTAL)
         self.sizer.Add(label,0,wx.ALL,5)
@@ -1317,14 +1317,14 @@ class StyleFrame(wx.Frame):
         self.plotstyle=plotstyle
         self.pointsize=wx.SpinCtrl(self,min=1,max=20,initial=plotstyle.pointsize,value="%i"%plotstyle.pointsize)
         self.pointsize.Enable(not plotstyle.usebest)
-        self.usebest=wx.CheckBox(self,label=u"Brug bedste punktst\u00F8rrelse.")
+        self.usebest=wx.CheckBox(self,label="Brug bedste punktst\u00F8rrelse.")
         self.usebest.SetValue(plotstyle.usebest)
         self.fontpicker=FontPicker(self,label="Font til punktnavne:",font=plotstyle.font,color=plotstyle.textcolor)
         #clabel1=GUI.MyText(self,"Farve til horisontale vektorer:",12)
         #clabel2=GUI.MyText(self,"Farve til vertikale vektorer:",12)
         #clabel3=GUI.MyText(self,u"Farve p\u00E5 brugerdefinerede punkter:",12)
         #clabel4=GUI.MyText(self,u"Farve p\u00E5 forbindelseslinier:",12)
-        pslabel=GUI.MyText(self,u"Punktst\u00F8rrelse:")
+        pslabel=GUI.MyText(self,"Punktst\u00F8rrelse:")
         #vwlabel=GUI.MyText(self,"Tykkelse af vektorer:")
         self.buttons=GUI.ButtonPanel(self,buttons=["Gentegn","OK","Fortyd"])
         #Event handling#
@@ -1376,7 +1376,7 @@ class PlotPrintout(wx.Printout):
         self.win = win
         self.Map=win.Map
     def HasPage(self, page):
-        if page == 1:
+        if page == 1: 
             return True
         else:
             return False
@@ -1407,25 +1407,25 @@ class PlotPrintout(wx.Printout):
         pixTop= margTopSize*PPIPrinter[1]/25.4
         pixBottom= margBottomSize*PPIPrinter[1]/25.4
 
-        plotAreaW= pageSize[0]-(pixLeft+pixRight)
-        plotAreaH= pageSize[1]-(pixTop+pixBottom)
+        plotAreaW= int(pageSize[0]-(pixLeft+pixRight))      # py39 float til int 1415+1416+1424+1425
+        plotAreaH= int(pageSize[1]-(pixTop+pixBottom))
 
         # ratio offset and scale to screen size if preview
         if self.IsPreview():
-                ratioW= float(dcSize[0])/pageSize[0]
-                ratioH= float(dcSize[1])/pageSize[1]
+                ratioW= int(dcSize[0]/pageSize[0])
+                ratioH= int(dcSize[1]/pageSize[1])
                 pixLeft *= ratioW
                 pixTop *= ratioH
                 plotAreaW *= ratioW
                 plotAreaH *= ratioH
         # Set offset and scale
-        dc.SetDeviceOrigin(pixLeft,pixTop)
+        dc.SetDeviceOrigin(int(pixLeft),int(pixTop))    #py39 int tilføjet
         # Thicken up pens and increase marker size for printing
-        ratioW= float(plotAreaW)/clientDcSize[0]
-        ratioH= float(plotAreaH)/clientDcSize[1]
-        aveScale= (ratioW+ratioH)/2
+        ratioW= int(plotAreaW/clientDcSize[0])          #py39 int tilføjet
+        ratioH= int(plotAreaH/clientDcSize[1])          #py39 int tilføjet
+        aveScale= int((ratioW+ratioH)/2)                #py39 int tilføjet
         # rescale plot to page or preview plot area
-        dc.SetClippingRegion(0,0,plotAreaW,plotAreaH)
+        dc.SetClippingRegion(int(0),int(0),plotAreaW,plotAreaH) #py39 int tilføjet
         self.Map.MapPanel.SetPrintSize((plotAreaW,plotAreaH),aveScale)
         self.Map.PrintPlot(dc=dc,signature="%s: %s" %(Program,time.asctime()))
         # rescale back to original
@@ -1461,7 +1461,7 @@ def SetUp():
             i=line.find(":")
             if i!=-1:
                 key=line[:i].strip()
-                print key,line[i:]
+                print(key,line[i:])
             else:
                 key=None
             line=line[i+1:].split()
@@ -1480,7 +1480,7 @@ def SetUp():
                 if mapdir[-1] not in ["/","\\"]:
                     mapdir+="/"
                 if not os.path.exists(mapdir+indexname):
-                    print "Advarsel: %s ikke indekseret!" %mapdir[:-1]
+                    print("Advarsel: %s ikke indekseret!" %mapdir[:-1])
                 mapdirs.append(mapdir)
             if key=="datafile" and len(line)>0:
                 datafile=line[0]

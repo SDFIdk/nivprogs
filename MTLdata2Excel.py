@@ -5,7 +5,7 @@ import os,sys
 from MyModules import Analysis
 
 def usage():
-	print("Kald: %s <res_filnavn> <udfil_excel> <udfil_gis>" %os.path.basename(sys.argv[0]))
+	print(("Kald: %s <res_filnavn> <udfil_excel> <udfil_gis>" %os.path.basename(sys.argv[0])))
 	sys.exit()
 	
 def float2excel(val,prc): #stupid...
@@ -15,9 +15,9 @@ def float2excel(val,prc): #stupid...
 def main(args):
 	if len(args)<4:
 		usage()
-	print("Reading %s, writing %s ('Excellish') and %s (standard csv for GIS)." %(args[1],args[2],args[3]))
+	print(("Reading %s, writing %s ('Excellish') and %s (standard csv for GIS)." %(args[1],args[2],args[3])))
 	data=Analysis.GetTransferSetupData(args[1])
-	print("Opstillinger fundet: %d" %len(data))
+	print(("Opstillinger fundet: %d" %len(data)))
 	f_excel=open(args[2],"w")
 	f_gis=open(args[3],"w")
 	f_excel.write("nopst;dist;ind1;ind2;rerr;rerr_raw;h1;h2;date;time;temp\n")

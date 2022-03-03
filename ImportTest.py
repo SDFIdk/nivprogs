@@ -7,7 +7,7 @@ f.write("System is: %s, architecture: %s\n" %(sys.platform,platform.architecture
 f.write("%s\n" %SL)
 try:
 	import VisFix
-except Exception,e:
+except Exception as e:
 	f.write("Import of VisFix failed with exception:\n")
 	f.write("%s\n" %repr(e))
 	f.write("%s\n"%traceback.format_exc())
@@ -17,7 +17,7 @@ else:
 f.write("%s\n" %SL)
 try:
 	import MGL
-except Exception,e:
+except Exception as e:
 	f.write("Import of MGL failed with exception:\n")
 	f.write("%s\n" %repr(e))
 	f.write("%s\n"%traceback.format_exc())
@@ -27,7 +27,7 @@ else:
 f.write("%s\n" %SL)
 try:
 	import MTL
-except Exception,e:
+except Exception as e:
 	f.write("Import of MTL failed with exception:\n")
 	f.write("%s\n" %repr(e))
 	f.write("%s\n"%traceback.format_exc())

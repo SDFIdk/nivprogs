@@ -19,7 +19,7 @@ class DummyThread(object):
 		self.alive=False
 	def Kill(self):
 		pass
-	def isAlive(self):
+	def is_Alive(self):
 		return False
 #Base Instrument Class, should be subclassed to MTLinstrument and MGLinstrument
 #Threads created by subclasses should implement a 'Kill' method.....
@@ -98,8 +98,8 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			if (is_fake and expect=="?"):
 				con.returnDistances()
 			
-		except Exception,msg: #well this is easiest since the eventhandler should be listening...
-			event=DataEvent(id=self.id,value=['E',(u'Instrumentets com port (port %i) kunne ikke \u00E5bnes'%self.port)+"\n"+repr(msg) ]) #for at foelge samme standard som traaden bruger, se nedenfor
+		except Exception as msg: #well this is easiest since the eventhandler should be listening...
+			event=DataEvent(id=self.id,value=['E',('Instrumentets com port (port %i) kunne ikke \u00E5bnes'%self.port)+"\n"+repr(msg) ]) #for at foelge samme standard som traaden bruger, se nedenfor
 			wx.PostEvent(self.eventhandler,event)
 		else:
 			self.portstatus=True  #flag to signal that the we can connect to instrument.
@@ -115,7 +115,7 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			self.index_max=self.index_mean+1.8*self.index_std
 			self.index_min=self.index_max-1.8*self.index_std
 			if DEBUG:
-				print "ierr-limits:",self.index_min,self.index_max
+				print("ierr-limits:",self.index_min,self.index_max)
 	def GetIndexBounds(self):
 		return self.index_min,self.index_max
 
@@ -143,7 +143,7 @@ class TopconThread(threading.Thread):
 			self.connection.close()
 		except:
 			pass
-		text=u"L\u00E6sning fra %s blev afbrudt." %self.name
+		text="L\u00E6sning fra %s blev afbrudt." %self.name
 		event=LogEvent(text=text)
 		wx.PostEvent(self.logwindow,event)
 	def run(self):
@@ -155,12 +155,12 @@ class TopconThread(threading.Thread):
 			for j in range(0,4):
 				self.connection.write(self.accept_code)
 			self.connection.close()
-		except Exception,msg:
+		except Exception as msg:
 			try:
 				self.connection.close()
 			except:
 				pass
-			msg=u"Fejl ved l\u00E6sning fra instrument:\n"+str(msg)
+			msg="Fejl ved l\u00E6sning fra instrument:\n"+str(msg)
 			self.alive=False
 			evt=DataEvent(id=self.id,value=["E",msg])
 			wx.PostEvent(self.eventhandler,evt)
@@ -231,12 +231,12 @@ class DiniThread(threading.Thread):
 				data=self.connection.readline()
 			else:
 				data=self.connection.read(78)
-		except Exception, msg:
+		except Exception as msg:
 			if self.logwindow is not None:
 				if self.alive:
-					text=u"Kunne ikke l\u00E6se data fra instrumentet!\n"+repr(msg)	
+					text="Kunne ikke l\u00E6se data fra instrumentet!\n"+repr(msg)	
 				else:
-					text=u"L\u00E6sning fra instrumentet afbrudt."
+					text="L\u00E6sning fra instrumentet afbrudt."
 				event=LogEvent(text=text)
 				wx.PostEvent(self.logwindow,event)
 				self.alive=False

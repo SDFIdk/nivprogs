@@ -31,7 +31,7 @@ class MapPanel(wx.Panel):
 		self.canvas.Bind(wx.EVT_LEFT_UP, self.OnMouseLeftUp)
 		self.canvas.Bind(wx.EVT_MOTION, self.OnMotion)
 		self.canvas.Bind(wx.EVT_ENTER_WINDOW,self.OnEnterWindow)
-		self.Buffer=wx.EmptyBitmap(size[0],size[1])
+		self.Buffer=wx.Bitmap(size[0],size[1])        # Ændret til py39
 		self.canvas.Bind(wx.EVT_SIZE,self.OnSize)
 		self._hasDragged=False
 		self._dlineEnabled=False
@@ -58,7 +58,7 @@ class MapPanel(wx.Panel):
 	def SetCanvasSize(self,size):
 		self.size=size
 		self.canvas.SetSize(size)
-		self.Buffer=wx.EmptyBitmap(size[0],size[1])
+		self.Buffer=wx.Bitmap(size[0],size[1])    #py39
 		self.SetCoordinates(self.x1,self.y2)
 	def SetPrintSize(self,size,scale): #used when printing
 		self.viewpixelsize=self.pixelsize
@@ -174,7 +174,7 @@ class MapPanel(wx.Panel):
 			self.mapsize=(w,h)
 			if dc is None:
 				if region is None:
-					self.Buffer=wx.EmptyBitmap(w,h)
+					self.Buffer=wx.Bitmap(w,h)         #Ændret py39
 					dc=wx.MemoryDC(self.Buffer)
 				else:
 					dc=wx.MemoryDC(self.Buffer)
@@ -185,12 +185,12 @@ class MapPanel(wx.Panel):
 			w,h=self.size
 			if region is None:
 				raster=np.ones(shape=(h,w,3),dtype=np.uint8)*255
-				self.Buffer=wx.BitmapFromBuffer(w,h,raster)
+				self.Buffer=wx.Bitmap.FromBuffer(w,h,raster)    ## Ændret til py39
 			else:
 				dc=wx.MemoryDC(self.Buffer)
 				dc.SetClippingRegion(x1,y1,cw,ch)
-				raster=np.ones(shape=(ch,cw,3),dtype=np.uint8)*255
-				raster=wx.BitmapFromBuffer(cw,ch,raster)
+				raster=np.ones(shape=(int(ch),int(cw),3),dtype=np.uint8)*255 #Ændret py39 int() tilføjet
+				raster=wx.Bitmap.FromBuffer(cw,ch,raster)       ## Ændret til py39
 				dc.DrawBitmap(raster,x1,y1)
 		if region is None or (x1<self.lastgpspos[0]<x2 and y1<self.lastgpspos[1]<y2):
 			self._gpsonscreen=False
@@ -437,7 +437,7 @@ class MapPanel(wx.Panel):
 		else:
 			pointsize=self.pointsize
 		dc=wx.MemoryDC(self.Buffer)
-		dc.BeginDrawing()
+		#dc.BeginDrawing()    #Ændret fra py39
 		dc.SetPen(wx.Pen(wx.BLACK))
 		dc.SetBrush(wx.Brush(color,style= wx.SOLID ))
 		sc=self.Array2ScreenCoords(coords)
@@ -446,7 +446,7 @@ class MapPanel(wx.Panel):
 		xmax,ymax=np.max(sc,0)
 		for i in range(0,np.size(coords,0)):
 			dc.DrawCircle(sc[i,0],sc[i,1],self.pointsize)
-		dc.EndDrawing()
+		#dc.EndDrawing()    #ændret fra py39
 		xmin=max(0,xmin-2*self.pointsize)
 		xgap=xmax-xmin+2*self.pointsize
 		ymin=max(0,ymin-2*self.pointsize)
@@ -458,7 +458,7 @@ class MapPanel(wx.Panel):
 		else:
 			pointsize=self.pointsize
 		dc=wx.ClientDC(self.canvas)
-		dc.BeginDrawing()
+		#dc.BeginDrawing()
 		dc.SetPen(wx.Pen(wx.BLACK))
 		dc.SetBrush(wx.Brush(color,style= wx.SOLID ))
 		sc=self.Array2ScreenCoords(coords)
@@ -467,7 +467,7 @@ class MapPanel(wx.Panel):
 		xmax,ymax=np.max(sc,0)
 		for i in range(0,np.size(coords,0)):
 			dc.DrawCircle(sc[i,0],sc[i,1],self.pointsize)
-		dc.EndDrawing()
+		#dc.EndDrawing()
 		xmin=max(0,xmin-2*self.pointsize)
 		xgap=xmax-xmin+2*self.pointsize
 		ymin=max(0,ymin-2*self.pointsize)
@@ -485,15 +485,15 @@ class MapPanel(wx.Panel):
 		self.lastgpssize=bestsize+1 #buffer slightly
 	def _DrawGPS(self,xtop,ytop,size): #not used in printing
 		#Draws/erases  gps rectangle
-		self.gpsbg=wx.EmptyBitmap(size,size)
+		self.gpsbg=wx.Bitmap(size,size)      #py39
 		bufdc=wx.MemoryDC(self.Buffer)
 		newdc=wx.MemoryDC(self.gpsbg)
 		newdc.Blit(0,0,size,size,bufdc,xtop,ytop)
-		bufdc.BeginDrawing()
+		#bufdc.BeginDrawing()  #udkomm. fra py3
 		bufdc.SetPen(wx.Pen(wx.BLACK))
 		bufdc.SetBrush(wx.Brush( wx.BLUE, wx.SOLID ))
 		bufdc.DrawRectangle(xtop,ytop,size,size)
-		bufdc.EndDrawing()
+		#bufdc.EndDrawing()  # UDKOMM. fra py3
 	def _EraseGPS(self):
 		bufdc=wx.MemoryDC(self.Buffer)
 		bg=wx.MemoryDC(self.gpsbg)
@@ -584,10 +584,10 @@ class MapPanel(wx.Panel):
 		dc=wx.ClientDC(self.canvas)
 		if xmin is not None and ymin is not None:
 			dc.SetClippingRegion(xmin,ymin,xgap,ygap)
-		dc.BeginDrawing()
+		#dc.BeginDrawing()     # Udkommenteret py39
 		dc.Clear()
 		dc.DrawBitmap(self.Buffer,0,0)
-		dc.EndDrawing()
+		#dc.EndDrawing()       ## Udkommenteret py39
 	def OnPaint(self, event):
 		# All that is needed here is to draw the buffer to screen
 		#self._gpsonscreen=False
@@ -644,14 +644,14 @@ class MapPanel(wx.Panel):
 		rectHeight=abs(pty-max(corner1[1],corner2[1]))
 		# draw rectangle
 		dc = wx.ClientDC( self.canvas )
-		dc.BeginDrawing()                 
+		#dc.BeginDrawing()                 
 		dc.SetPen(wx.Pen(colour=wx.GREEN,width=2,style=wx.SHORT_DASH))
 		dc.SetBrush(wx.Brush( wx.WHITE, wx.TRANSPARENT ) )
 		dc.SetLogicalFunction(wx.INVERT)
 		#dc.DrawRectangle( ptx,pty, rectWidth,rectHeight)
 		dc.DrawLine(corner1[0],corner1[1],corner2[0],corner2[1])
 		dc.SetLogicalFunction(wx.COPY)
-		dc.EndDrawing()
+		#dc.EndDrawing()
 	def SaveFile(self,fileName):
 		# File name has required extension
 		fType = fileName[-3:].strip()
