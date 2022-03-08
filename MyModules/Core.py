@@ -5,7 +5,7 @@ import serial
 from . import GPS 
 from . import MLmap as Map
 import wx
-from playsound import playsound # added
+import sounddevice as sd
 from . import DataClass3 as DataClass
 from .GdalMaps import INDEXNAME
 from .ExtractKMS import IdenticalTranslation
@@ -1351,14 +1351,12 @@ class IniReader(object):
 # Sound Alert  
 #-------------------------------------#
 def SoundAlert():
-	playsound(MMDIR+'chord.wav')
+	sd.play(MMDIR+'chord.wav')
 def SoundGotData():
-	playsound(MMDIR+'gotdata.wav')
+	sd.play(MMDIR+'gotdata.wav')
 def SoundBadData():
-	playsound(MMDIR+'alert.wav')
+	sd.play(MMDIR+'alert.wav')
 def SoundGoodData():
-	playsound(MMDIR+'gooddata.wav')
+	sd.play(MMDIR+'gooddata.wav')
 def SoundKey():
-	playsound(MMDIR+'ding.wav')
-	#sound = wx.Sound(MMDIR+'ding.wav')  #adv added
-	#sound.Play(wx.SOUND_ASYNC)
+	sd.play(MMDIR+'ding.wav')
