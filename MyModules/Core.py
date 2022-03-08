@@ -6,6 +6,7 @@ from . import GPS
 from . import MLmap as Map
 import wx
 import sounddevice as sd
+import soundfile as sf
 from . import DataClass3 as DataClass
 from .GdalMaps import INDEXNAME
 from .ExtractKMS import IdenticalTranslation
@@ -1351,12 +1352,17 @@ class IniReader(object):
 # Sound Alert  
 #-------------------------------------#
 def SoundAlert():
-	sd.play(MMDIR+'chord.wav')
+	data, fs = sf.read(MMDIR+'chord.wav')
+	sd.play(data,fs)
 def SoundGotData():
-	sd.play(MMDIR+'gotdata.wav')
+	data ,fs = sf.read(MMDIR+'gotdata.wav')
+	sd.play(data,fs)
 def SoundBadData():
-	sd.play(MMDIR+'alert.wav')
+	data, fs = sf.read(MMDIR+'alert.wav')
+	sd.play(data,fs)
 def SoundGoodData():
-	sd.play(MMDIR+'gooddata.wav')
+	data,fs = sf.read(MMDIR+'gooddata.wav')
+	sd.play(data,fs)
 def SoundKey():
-	sd.play(MMDIR+'ding.wav')
+	data,fs = sf.read(MMDIR+'ding.wav')
+	sd.play(data,fs)
