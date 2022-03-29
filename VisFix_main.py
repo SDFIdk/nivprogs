@@ -886,7 +886,7 @@ class MainFrame(wx.Frame):
         dlg.ShowModal()
         if dlg.WasOK():
             vals=dlg.GetNumValues()
-            port=int(vals[0])-1 #Python indeksering af porte!
+            port=int(vals[0])
             baud=int(vals[1])
             self.Log("Fors\u00F8ger tilslutning af GPS med port %i, baudrate %i"%(port+1,baud))
             self.gps=GPS.GpsThread(self,port,baud)

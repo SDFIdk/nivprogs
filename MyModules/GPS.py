@@ -97,7 +97,7 @@ class GpsThread(threading.Thread):
 			pass
 	def run(self):
 		try:
-			self.gps=serial.Serial(self.port,self.baud,timeout=30)   #timeout,saa laeser den ikke en linie for evigt....
+			self.gps=serial.Serial(f'COM{self.port}',self.baud,timeout=30) # 'COM6',4800,timeout=30)   #  #timeout,saa laeser den ikke en linie for evigt....
 		except Exception as msg:
 			#self.Log(str(msg))
 			self.Log("Kunne ikke starte GPS-enheden!")
@@ -110,10 +110,12 @@ class GpsThread(threading.Thread):
 		while self.alive:
 			time.sleep(0.12)
 			code="X"
-			while code!=b"$GPGGA" and self.alive:
+			while code!="$GPGGA" and self.alive:
 				try:
 					self.gps.flush()
 					line=self.gps.readline()
+					line = line.decode('UTF-8') # new
+
 				except:    					#Saa maa den vaere fjernet og skal draebes!
 					if self.alive: #saa er den ikke lukket udefra
 						self.Log("Kunne ikke f\u00E5 data fra GPS-enheden!\nPr\u00F8v evt. tilsutning igen via menupunkt.")
@@ -123,7 +125,7 @@ class GpsThread(threading.Thread):
 					return
 				else:
 					if len(line)>0 and not line.isspace():
-						line=line.split(b",")  # added b
+						line=line.split(",")  # added b
 						code=line[0]
 			if self.alive:
 				try:
