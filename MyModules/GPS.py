@@ -46,7 +46,7 @@ class DummyWindow():
 	def SetMemory(*args):
 		pass
 class GpsThread(threading.Thread):
-	def __init__(self,parent=None,port="COM5",baud=4800,zone=32): # From: port=5
+	def __init__(self,parent=None,port="COM5",baud=4800,zone=32):
 		threading.Thread.__init__(self) # init the thread
 		self.x=-999
 		self.y=-999
@@ -68,7 +68,7 @@ class GpsThread(threading.Thread):
 	def TestConnection(self):
 		self.connectionstatus=False
 		try:
-			s=serial.Serial(self.port,self.baud)
+			s=serial.Serial(f'COM{self.port}',self.baud)
 			s.close()
 		except:
 			pass

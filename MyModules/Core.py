@@ -422,7 +422,7 @@ class MLBase(GUI.MainWindow):
 		dlg.ShowModal()
 		if dlg.WasOK():
 			vals=dlg.GetNumValues()
-			port=int(vals[0])-1 #Python indeksering af porte!
+			port=int(vals[0])-1 #Python indeksering af porte! -1 fjernet
 			baud=int(vals[1])
 			self.Log("Fors\u00F8ger tilslutning af GPS med port %i, baudrate %i"%(port+1,baud))
 			self.gps=GPS.GpsThread(self,port,baud)
@@ -815,7 +815,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			self.Close()
 		else:
 			#Setup GPS#
-			self.gps=GPS.GpsThread(None,self.ini.gpsport-1,self.ini.gpsbaud) #parent should be None here - because the real parent
+			self.gps=GPS.GpsThread(None,self.ini.gpsport,self.ini.gpsbaud) #parent should be None here - because the real parent
 			self.data=DataClass.PointData(self.ini.database)  #is the MLBase-frame which gets the gps as input. 
 		#decide whether precision_mode should be set#
 		SetPrecisionMode(self.ini,self.program.type)
