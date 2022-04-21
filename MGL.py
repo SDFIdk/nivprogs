@@ -1244,13 +1244,14 @@ class MGLinireader(Core.IniReader): #add more error handling!
 		self.ini.maxsl=50 #max. sigtel.
 		self.ini.maxsd=0.00012 #max inst. sd
 		self.ini.maxhd=0.00050 #max forskel mellem sigter i praes.-mode
-		self.ini.instport=5 
+		self.ini.instport=5
 		self.ini.instbaud=9600
 	def CheckAdditionalKeys(self,key,line):
 		if key=="instrument" and len(line)>3:
 			instrumenttype=line[1]
 			instrumentname=line[0]
 			instrumentport=int(line[2])
+			print(instrumentport)
 			instrumentbaud=int(line[3])
 			if instrumenttype.lower().find("dini")!=-1:
 				self.instruments.append(Instrument.DINI(instrumentname,instrumentport,instrumentbaud,instrumenttype))

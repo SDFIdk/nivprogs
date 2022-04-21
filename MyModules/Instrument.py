@@ -19,7 +19,7 @@ class DummyThread(object):
 		self.alive=False
 	def Kill(self):
 		pass
-	def is_Alive(self):
+	def is_alive(self): # FROM is_Alive
 		return False
 #Base Instrument Class, should be subclassed to MTLinstrument and MGLinstrument
 #Threads created by subclasses should implement a 'Kill' method.....
@@ -43,9 +43,10 @@ class Instrument(object):
 			self.portstatus=True
 		else:
 			try:
-				s=serial.Serial(self.port-1,self.baudrate)
+				s=serial.Serial(f'COM{self.port}',self.baudrate) # NEW
 				s.close()
 			except:
+				print("instrument failed")
 				pass
 			else:
 				self.portstatus=True
@@ -94,7 +95,7 @@ class MTLinstrument(Instrument): #well really a Topcon instrument for now....
 			return "Instrument: %s,  konstanter: %.5f m %.4f m, type: %s, com-port: %i" %(self.name,self.addconst,self.axisconst,self.type,self.port)
 	def ReadData(self,expect=None): #is really common, at least, to instruments communicating via (virtual) com-port.....
 		try:
-			con=serial.Serial(self.port-1,self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
+			con=serial.Serial(f'COM{self.port}',self.baudrate,timeout=800,parity=serial.PARITY_EVEN,bytesize=7,stopbits=2)  #nb, 1 eller 2??
 			if (is_fake and expect=="?"):
 				con.returnDistances()
 			
@@ -204,7 +205,7 @@ class DINI(Instrument):
 			return "Instrument: %s,  type: %s, com-port: %i, newline: %s" %(self.name,self.type,self.port,self.readline)
 	def ReadData(self):
 		try:
-			con=serial.Serial(self.port-1,self.baudrate,stopbits=1,bytesize=8,parity=serial.PARITY_NONE)
+			con=serial.Serial(f'COM{self.port}',self.baudrate,stopbits=1,bytesize=8,parity=serial.PARITY_NONE)
 		except: #well this is easiest since the eventhandler should be listening...
 			event=DataEvent(OK=False,hascon=False)
 			wx.PostEvent(self.eventhandler,event)
@@ -215,7 +216,7 @@ class DINI(Instrument):
 
 #DINI-data format implemented here --- could be separated out in a function so that the thread-setup can be used for other insts.
 class DiniThread(threading.Thread):
-	def __init__(self,connection,eventhandler,logwin,readline=False):
+	def __init__(self,connection,eventhandler,logwin,readline=True): # FROM False
 		threading.Thread.__init__(self)
 		self.connection=connection
 		self.eventhandler=eventhandler
