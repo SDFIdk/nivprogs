@@ -8,3 +8,5 @@ resultatfiler/
 README.docx
 README.md
 *.txt
+*.log
+*.ini
