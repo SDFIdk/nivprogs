@@ -1,4 +1,5 @@
 import os,sys
+from win32 import win32gui
 try:
 	import win32ui
 	import win32con
@@ -329,7 +330,7 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 	if (not HAS_WIN32):
 		raise Warning("Udprint kraever win32-moduler, som ikke er loadet korrekt")
 		return False
-	f=open(resfile,"rb") #'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!
+	f=open(resfile,"rb") # 'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!
 	f.readline() #foerste linie er program version
 	#filnavn=f.readline().split()[1] #anden linie indeholder filnavn
 	filnavn=resfile
@@ -343,7 +344,8 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 	Plines=[]
 	while len(line)>0 and tegn!="#":
 		line=f.readline()
-		#print line
+		line = line.decode()
+		#print(line)
 		if (not line.isspace()) and len(line)>1:
 			#print line
 			tegn=line.split()[0]

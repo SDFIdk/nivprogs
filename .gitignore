@@ -8,3 +8,6 @@ resultatfiler/
 *.txt
 *.log
 *.ini
+MGL.ini
+MTL.ini
+VF.ini

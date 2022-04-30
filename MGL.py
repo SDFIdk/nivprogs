@@ -906,6 +906,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			jside=jside.replace(",",".").strip().replace(" ","")
 			resfile=open(self.resfile,"a")
 			if len(ekstra)>0:
+				print(ekstra)
 				for line in ekstra.splitlines():
 					line=Funktioner.Internationale(line)
 					resfile.write(line+"\n") #ikke kommentar-tegn foran mere....
@@ -919,10 +920,13 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 			self.parent.Log("Journalside: %s" %jside)
 			self.parent.Log("Hdiff: %.4f m Afstand: %.2f m Opstillinger: %d" %(hdiff,dist,nopst)) 
 			#now print
+			print(self.resfile)
 			if ekstra.find("dontprint")==-1:
 				try:
 					FileOps.Jside(self.resfile,mode=1,program="MGL")
+					print('FileOps lykkedes')
 				except Exception as msg:
+					print('NOPE printer fejl')
 					GUI.ErrorBox(self,"Fejl under udprintning af journalside!\nFortvivl ikke, denne kan gendannes fra datafilen.")
 			#update data 
 			if self.parent.fbtest is not None:

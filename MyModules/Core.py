@@ -918,7 +918,7 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 	def OnAddToFile(self,event):
 		dlg = wx.FileDialog(self, message="V\u00E6lg en fil",defaultDir=RESDIR, defaultFile="",
 		wildcard="*.*",
-		style=wx.OPEN)
+		style=wx.FD_OPEN)
 		if dlg.ShowModal()==wx.ID_OK:
 			fname=dlg.GetFilename()
 			dir=dlg.GetDirectory()
@@ -943,9 +943,9 @@ class StartFrame(wx.Frame): #a common GUI-base class for setting up things
 			return
 		if isres:
 			data=self.statusdata
-			self.fil.field2.SetValue(data.GetProject().decode('utf-8'))
+			self.fil.field2.SetValue(data.GetProject()) #.decode('utf-8') NEW
 			imsg="Data for resultatfil:\n"
-			imsg+="Projekt: %s\n" %data.GetProject().decode('utf-8')
+			imsg+="Projekt: %s\n" %data.GetProject() #.decode('utf-8')
 			imsg+="Afsluttede Str\u00E6k: %i\n#Opst.: %i\nSamlet afstand %.2f m\n" %(data.GetStretches(),data.GetSetupsAll(),data.GetDistanceAll())
 			if data.GetSetups()>0:
 				imsg+="Uafsluttet str\u00E6kning:\n"
