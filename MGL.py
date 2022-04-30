@@ -1024,7 +1024,7 @@ class MyNumMGL(GUI.MyNum): #a MGL version of the classic GUI-class :-)
 	def OnEnter(self,event): #Overides prev event-handler 
 		if (not self.ok) and self.sound and (not self.IsEmpty()):
 			Core.SoundAlert()
-		elif self.__next__!=None:
+		elif self.next!=None:  # NEW: () added
 			self.next.SetFocus()
 			event.Skip()
 		else:
