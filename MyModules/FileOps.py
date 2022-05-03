@@ -2,6 +2,7 @@ import os,sys
 from win32 import win32gui
 try:
 	import win32ui
+	import win32print
 	import win32con
 except:
 	HAS_WIN32=False
@@ -330,7 +331,7 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 	if (not HAS_WIN32):
 		raise Warning("Udprint kraever win32-moduler, som ikke er loadet korrekt")
 		return False
-	f=open(resfile,"rb") # 'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!
+	f=open(resfile,'rb') # 'rb' fordi f.tell() i SaetEfterHoved ellers screwer up!
 	f.readline() #foerste linie er program version
 	#filnavn=f.readline().split()[1] #anden linie indeholder filnavn
 	filnavn=resfile
@@ -347,7 +348,6 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 		line = line.decode()
 		#print(line)
 		if (not line.isspace()) and len(line)>1:
-			#print line
 			tegn=line.split()[0]
 			if tegn=="#":
 				gem=line.split()
@@ -366,21 +366,21 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 		nl=len(Plines)
 		fs=10  #Fontsize
 		ls=14  #"linesize"
-		pb=48  #pagebrak ca 57 liner her...
-		if nl>48 and nl<71:  #Saa proever vi at presse det ind paa een side!!! 
+		pb=40  #pagebrak ca 53 liner her...
+		if nl>pb and nl<71:  #Saa proever vi at presse det ind paa een side!!! 
 			fs=8
-			ls=10        #giver 81 linier
+			ls=8        #giver 81 linier
 			pb=72
-		scale_factor = 20 # dvs. 20 twips til punkt ???
+		scale_factor = 10 # dvs. 20 twips til punkt ???
 		dc = win32ui.CreateDC()
 		dc.CreatePrinterDC()
-		dc.SetMapMode(win32con.MM_TWIPS) # 1440 pr. tomme
+		#dc.SetMapMode(win32con.MM_TWIPS) # 1440 pr. tomme
 		dc.StartDoc("ml-journalside")
 		font = win32ui.CreateFont({"name": "Courier New","height": int(scale_factor * fs),"weight": 400,})
 		dc.SelectObject(font)  #nb. med disse indstillinger ca. 57 linier pr. a4-side!
 		i=1
 		for pline in Plines:
-			dc.TextOut(scale_factor * 40,-i * scale_factor * ls,pline)
+			dc.TextOut(scale_factor * 40,i * scale_factor * ls,pline.decode("L6"))
 			i+=1
 			if i==pb:
 				dc.EndPage()
@@ -392,25 +392,26 @@ def Jside(resfile,mode=1,JS="XXX",program="MTL"): #mode 1: normal, mode 2: soege
 	f.close()
 	if mode==3: #testmode
 		return True 
+	dc.StartPage()
 	i=pb #Skulle saette hovedet forneden!
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Startpunkt: "+gem[1])
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Startpunkt: "+gem[1])
 	i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Slutpunkt : "+gem[2])
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Slutpunkt : "+gem[2])
 	i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Dato og tid: "+gem[3]+" "+gem[4])
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Dato og tid: "+gem[3]+" "+gem[4])
 	i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Temperatur: "+gem[8])
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Temperatur: "+gem[8])
 	i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Afstand: %s m"%gem[5])
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Afstand: %s m"%gem[5])
 	i+=1
 	if len(gem)==10:
-		dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Opstillinger: "+gem[-1])
+		dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Opstillinger: "+gem[-1])
 		i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,("H\u00F8jdeforskel: %.5f m" %(float(gem[6]))).encode('L6'))
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,("H\u00F8jdeforskel: %.5f m" %(float(gem[6]))))#.encode('L6'))
 	i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Datafil: "+filnavn)
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Datafil: "+filnavn)
 	i+=1
-	dc.TextOut(scale_factor * 40,-i * scale_factor * ls,"Journalside: "+gem[7])
+	dc.TextOut(scale_factor * 40,i * scale_factor * ls,"Journalside: "+gem[7])
 	dc.EndDoc()
 	return True
 				
