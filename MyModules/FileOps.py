@@ -209,7 +209,7 @@ def GetInstrumentNames(fname,program="MTL"):
 
 def TjekHeader(fname,program_name): #majet, majet simpel funktion, som bare ser efter programnavn i foerste linie af en fil....
 	try:
-		f=open(fname,"r")
+		f=open(fname,encoding="L6")
 	except:
 		return False
 	line=f.readline()
