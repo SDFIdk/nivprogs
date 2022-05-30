@@ -429,6 +429,7 @@ def SaetEfterHoved(filepointer,mode=1,JS="XXX"):
 	found=False
 	while len(line)>0:
 		line=f.readline()
+		line=line.decode("utf-8") 
 		nl+=1
 		if len(line)>2 and not line.isspace():
 			line=line.split()
