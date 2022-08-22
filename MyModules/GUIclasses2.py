@@ -316,6 +316,7 @@ class MyTextField(wx.TextCtrl):
 		else:
 			event.Skip()
 	def OnEnter(self,event):
+		print('HOLA GUI ENTER')
 		if self.next!=None:
 			self.next.SetFocus()
 		event.Skip() #to allow a 'bling' sound
@@ -973,13 +974,13 @@ def ButtonAndField(parent,size=12,buttonlabel="hit me!",field=None,style='left',
 			sizer=wx.BoxSizer(wx.VERTICAL)
 		if style=='left' or style=='above':
 			if text!=None:
-				sizer.Add(text,1,wx.ALL|wx.Center|wx.EXPAND,5)
+				sizer.Add(text,1,wx.ALL|wx.CENTER|wx.EXPAND,5) #fra Center
 			sizer.Add(button,1,wx.ALL,5)
 			if field!=None:
 				sizer.Add(field,1,wx.ALL,5)
 		else:
 			if text!=None:
-				sizer.Add(text,1,wx.ALL|wx.Center|wx.EXPAND,5)
+				sizer.Add(text,1,wx.ALL|wx.CENTER|wx.EXPAND,5) #fra Center
 			if field!=None:
 				sizer.Add(field,1,wx.ALL,5)
 			sizer.Add(button,1,wx.ALL,5)
