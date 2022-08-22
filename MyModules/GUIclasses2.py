@@ -9,16 +9,16 @@ BGCOLOR="light gray"
 #-----------------------------------------------------------------------#
 def DefaultFont(size,bold=False):
 	if bold:
-		style=wx.BOLD
+		style=wx.FONTWEIGHT_BOLD
 	else:
-		style=wx.NORMAL
-	return wx.Font(size,wx.SWISS,wx.NORMAL,style)
+		style=wx.FONTWEIGHT_NORMAL
+	return wx.Font(size,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,style)
 def DefaultLogFont(size,bold=False):
 	if bold:
-		style=wx.BOLD
+		style=wx.FONTWEIGHT_BOLD
 	else:
-		style=wx.NORMAL
-	return wx.Font(size,wx.MODERN,wx.NORMAL,style)
+		style=wx.FONTWEIGHT_NORMAL
+	return wx.Font(size,wx.FONTFAMILY_MODERN,wx.FONTSTYLE_NORMAL,style)
 #---------------------------------------------#
 #----------Dummy Window------------------#
 #---------------------------------------------#
@@ -225,8 +225,8 @@ class DebugWindow(wx.Frame):
 class MyButton(wx.Button):
 	def __init__(self, parent, label="", fontsize=12):
 		wx.Button.__init__(self,parent,label=label)
-		self.font2=wx.Font(fontsize,wx.SWISS,wx.NORMAL,wx.BOLD)
-		self.font1=wx.Font(fontsize,wx.SWISS,wx.NORMAL,wx.NORMAL)
+		self.font2=wx.Font(fontsize,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_BOLD) #FONTWEIGHT_ added NEW
+		self.font1=wx.Font(fontsize,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL)
 		self.SetFont(self.font1)
 		self.Bind(wx.EVT_SET_FOCUS,self.OnFocus)
 		self.Bind(wx.EVT_KILL_FOCUS,self.KillFocus)
@@ -239,8 +239,8 @@ class MyButton(wx.Button):
 		self.Refresh()
 		event.Skip()
 	def SetFontSize(self,fs):
-		self.font2=wx.Font(fs,wx.SWISS,wx.NORMAL,wx.BOLD)
-		self.font1=wx.Font(fs,wx.SWISS,wx.NORMAL,wx.NORMAL)
+		self.font2=wx.Font(fs,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_BOLD)
+		self.font1=wx.Font(fs,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL)
 		self.SetFont(self.font1)
 #Text-field. Process enter - for browsing to a 'next'-element.
 #Has a validation method to check if empty
@@ -390,7 +390,7 @@ class StatusBox(wx.Panel):   #style is a dictionary: item.nr.: [fontsize,bold (1
 		fs=fontsize
 		wx.Panel.__init__(self, self.parent)
 		self.box=wx.StaticBox(self,label=label)
-		self.box.SetFont(wx.Font(fs,wx.SWISS,wx.NORMAL,wx.NORMAL))
+		self.box.SetFont(wx.Font(fs,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL)) #NEW
 		self.text=[]
 		hsizers=[]
 		self.bsizer=wx.StaticBoxSizer(self.box,wx.VERTICAL)
@@ -577,7 +577,7 @@ class InventoryBox(wx.Panel):
 		self.label=label
 		self.container=wx.Panel(self)
 		self.box=wx.StaticBox(self.container,label=label)
-		self.box.SetFont(wx.Font(fontsize,wx.SWISS,wx.NORMAL,wx.NORMAL))
+		self.box.SetFont(wx.Font(fontsize,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL))
 		self.field=[]
 		self.vsizer=[]
 		self.bsizer=wx.StaticBoxSizer(self.box,wx.HORIZONTAL)
@@ -607,7 +607,7 @@ class InventoryBox(wx.Panel):
 			self.container.Destroy()
 			self.container=wx.Panel(self)
 			self.box=wx.StaticBox(self.container,label=self.label)
-			self.box.SetFont(wx.Font(self.fs,wx.SWISS,wx.NORMAL,wx.NORMAL))
+			self.box.SetFont(wx.Font(self.fs,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL))
 			self.field=[]
 			self.vsizer=[]
 			self.bsizer=wx.StaticBoxSizer(self.box,wx.HORIZONTAL)
@@ -905,7 +905,7 @@ class ButtonBox(wx.Panel):
 	def __init__(self, parent,buttons=[],style='horizontal',label="ButtonBox",fontsize=12):
 		wx.Panel.__init__(self, parent)
 		self.button=[]
-		font=wx.Font(fontsize,wx.SWISS,wx.NORMAL,wx.NORMAL)
+		font=wx.Font(fontsize,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL)
 		self.box=wx.StaticBox(self,label=label)
 		self.box.SetFont(font)
 		if style=='horizontal':
@@ -925,7 +925,7 @@ class ButtonBox2(wx.Panel):
 	def __init__(self,parent,buttons,label="Buttons",colsize=2,fontsize=12):
 		wx.Panel.__init__(self, parent)
 		self.button=[]
-		font=wx.Font(fontsize,wx.SWISS,wx.NORMAL,wx.NORMAL)
+		font=wx.Font(fontsize,wx.FONTFAMILY_SWISS,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_NORMAL)
 		self.box=wx.StaticBox(self,label=label)
 		self.box.SetFont(font)
 		self.boxsizer=wx.StaticBoxSizer(self.box,wx.VERTICAL)
