@@ -243,7 +243,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		else:
 			self.nextpanel=GUI.ButtonPanel(self,buttons=["N\u00E6ste opstilling","Dobbeltm\u00E5ling"])
 			self.doublebutton=self.nextpanel.button[1]
-			self.doublebutton.Enable(0) #FROM (0)
+			self.doublebutton.Enable(0)
 		self.deletebutton=self.optionpanel.button[0]
 		self.backbutton=self.optionpanel.button[1]
 		self.nextbutton=self.nextpanel.button[0]
@@ -570,7 +570,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 					self.SetManualMode()
 					self.nextbutton.SetFocus()
 		else:  #if error, we set 'manual' mode
-			if event.hascon: # HER
+			if event.hascon:
 				self.Log("Kunne ikke l\u00E6se data fra instrumentet!")
 			else: #then we couldnt open connection
 				self.Log("Kunne ikke \u00E5bne instrumentets com-port!")
@@ -830,7 +830,6 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.Log(msg)
 				return True
 	def GoToDouble(self):
-		print('went to double')
 		self.forward.DisableTop()
 		self.back.DisableTop()
 		self.forward.EnableBottom()
@@ -1020,7 +1019,6 @@ class MyNumMGL(GUI.MyNum): #a MGL version of the classic GUI-class :-)
 		GUI.MyNum.__init__(self,parent,low,high,digitlength=digitlength,ntype=ntype,**kwargs)
 		self.sound=True #play sound on bad input?
 	def OnEnter(self,event): #Overides prev event-handler 
-		print('MGL OnEnter')
 		if (not self.ok) and self.sound and (not self.IsEmpty()):
 			Core.SoundAlert()
 		elif self.next!=None:  # NEW: () added
@@ -1048,7 +1046,6 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		#browsing#
 		self.point.SetNext(self.rod)
 		self.dist.SetNext(self.hd)
-		print('MGL NEXT')
 		self.dist.SetPrev(self.rod)
 		self.hd.SetPrev(self.dist)
 		#sizers#
@@ -1160,7 +1157,7 @@ class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 	def EnableBottom(self):
 		self.hd2.Enable()
 	def DisableBottom(self):
-		self.hd2.Enable(0) #FROM (0)
+		self.hd2.Enable(0)
 	
 	
 
@@ -1277,6 +1274,4 @@ class MGLinireader(Core.IniReader): #add more error handling!
 	
 if __name__=="__main__":
 	main()
-	
-	
-	
+
