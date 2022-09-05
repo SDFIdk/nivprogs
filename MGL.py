@@ -1137,9 +1137,6 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		self.rodefunction=fct
 		self.rod.Bind(wx.EVT_TEXT_ENTER,self.OnRodEnter)
 	def OnRodEnter(self,event):
-		#self.rodefunction(self.aim)
-		print('FOUND ROOOOD')
-		#self.SetAutoHandler('forward')
 		self.OnAutoButton(event)
 		event.Skip()
 		
