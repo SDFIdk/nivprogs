@@ -291,7 +291,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.opststatus.UpdateStatus()
 		self.strkstatus.UpdateStatus()
 		#Log-field
-		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE,size=(-1,80))
+		self.log=wx.TextCtrl(self,style=wx.TE_READONLY|wx.TE_MULTILINE,size=(-1,80)) # TE_PROCESS_ENTER mulig style : fra style 
 		self.log.SetFont(GUI.DefaultFont(size-1))
 		#Define Layout, sizer programming still a bit of a mystery - well its not that interesting :-)
 		self.CreateRow()
@@ -1057,7 +1057,7 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		self.bsizer.Add(rodsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)
 		self.bsizer.Add(distsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)
 		self.bsizer.Add(maalsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)
-		self.bsizer.Add(self.autobutton,0,wx.ALL|wx.CENTER,5)
+		self.bsizer.Add(self.autobutton,0,wx.ALL|wx.ALIGN_CENTER,5)
 		self.sizer.Add(self.bsizer,0,wx.ALL,5)
 		self.SetSizerAndFit(self.sizer)
 	def DefinePrevItem(self,item):
@@ -1134,14 +1134,14 @@ class MGLpanel(wx.Panel): # panel with text, two fields with two buttons to the 
 		self.rodefunction=fct
 		self.rod.Bind(wx.EVT_TEXT_ENTER,self.OnRodEnter)
 	def OnRodEnter(self,event):
-		self.rodefunction(self.aim)
+		self.OnAutoButton(event)
 		event.Skip()
 		
 	
 class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 	def __init__(self,parent,title,rods=[],size=12):
 		MGLpanel.__init__(self,parent,title,rods,size)
-		self.hd2=MyNumMGL(self,-100,100,5,size=(120,-1),fontsize=size)
+		self.hd2=MyNumMGL(self,-100,100,5,size=(160,-1),fontsize=18) #size
 		self.hds=[self.hd,self.hd2]
 		maalsizer=GUI.FieldWithLabel(self,field=self.hd2,size=size,label="H2:")
 		self.bsizer.Insert(4,maalsizer,1,wx.ALL|wx.ALIGN_RIGHT,5)
@@ -1157,7 +1157,7 @@ class MGLPpanel(MGLpanel): #'precision mode' which has 2 hd-fields
 	def EnableBottom(self):
 		self.hd2.Enable()
 	def DisableBottom(self):
-		self.hd2.Enable() #FROM (0)
+		self.hd2.Enable(0)
 	
 	
 
@@ -1274,6 +1274,4 @@ class MGLinireader(Core.IniReader): #add more error handling!
 	
 if __name__=="__main__":
 	main()
-	
-	
-	
+
