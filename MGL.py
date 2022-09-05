@@ -830,6 +830,7 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 				self.Log(msg)
 				return True
 	def GoToDouble(self):
+		print('went to double')
 		self.forward.DisableTop()
 		self.back.DisableTop()
 		self.forward.EnableBottom()
@@ -838,7 +839,6 @@ class MGLMeasurementFrame(GUI.FullScreenWindow):
 		self.back.hd2.SetFocus()
 		self.nmode=2
 		if self.instrument.GetPortStatus():
-			print('NEEEEEEEEEW')
 			self.AutoHandler('back')
 	def StartNew(self,swap=True):
 		self.nmode=1
