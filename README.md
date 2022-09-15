@@ -2,11 +2,11 @@
 Diverse programmer relateret til nivellement
 
 
-# Installation 
+# Installation
 Hvis mamba og git er installeret, kan nivprogs hentes ved at følge guiden nedenfor. Start i mappen, hvor programmet skal installeres, og skriv derefter: 
 
 ```
-(base) $ git clone https://github.com/Kortforsyningen/nivprogs
+(base) $ git clone https://github.com/SDFIdk/nivprogs
 (base) $ cd nivprogs
 (base) $ mamba env create -f environment.yml
 ```
